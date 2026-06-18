@@ -56,6 +56,9 @@
   select.sz-소{color:var(--muted);font-weight:600}
   select.sz-중{color:#1d5fc4;font-weight:600}
   select.sz-대{color:#c0392b;font-weight:600}
+  /* 완료/hold/drop 행: 회색 처리 (완료/drop은 취소선) */
+  tr.row-muted td,tr.row-muted td input,tr.row-muted td select{color:var(--muted)}
+  tr.row-strike td,tr.row-strike td input,tr.row-strike td select{text-decoration:line-through}
   .row-del{cursor:pointer;color:var(--muted);width:24px;text-align:center;padding:0}
   .row-del:hover{color:var(--over)}
   .row-del svg{width:13px;height:13px;vertical-align:middle}
@@ -630,6 +633,8 @@ function renderProjects(){
     const p=state.projects[idx];
     const tr=document.createElement('tr');
     tr.dataset.idx=idx;
+    if(p.status==='완료'||p.status==='hold'||p.status==='drop') tr.classList.add('row-muted');
+    if(p.status==='완료'||p.status==='drop') tr.classList.add('row-strike');
     // 정렬 적용 중엔 드래그 비활성(시각 순서와 데이터 순서가 달라 혼란 방지)
     const handle = isSorted
       ? `<td class="row-del" title="정렬 적용 중에는 드래그 이동 불가 (정렬 해제 후 가능)" style="cursor:not-allowed;color:var(--line-strong)">
@@ -910,7 +915,7 @@ function upd(i,k,v){ state.projects[i][k]=v; save();
   if(k==='status'||k==='size'){refreshPreview();}
   if(k==='pic1'||k==='pic2'){refreshPreview();}   // 인원별 요약/캐파 갱신
   // 규모는 색상 갱신을 위해, 정렬 키 변경 시 정렬 갱신을 위해 재렌더
-  if(k==='size'||activeView().sort.some(s=>s.key===k)) renderProjects();
+  if(k==='size'||k==='status'||activeView().sort.some(s=>s.key===k)) renderProjects();
 }
 function updContract(i,v){
   state.projects[i].contract=v; save();
