@@ -790,11 +790,11 @@ function renderCapacity(){
 
 /* ---------- render: settings ---------- */
 function renderSettings(){
-  let h='<tr><th>규모\\단계</th>'+STAGES.map(s=>`<th>${s}</th>`).join('')+'<th>합</th></tr>';
-  SIZES.forEach(sz=>{ h+=`<tr><td>${sz}</td>`; let tot=0;
-    STAGES.forEach((st,i)=>{ const v=(state.mm[sz]&&state.mm[sz][i])||0; tot+=Number(v)||0;
+  let h='<tr><th>규모\\단계</th>'+STAGES.map(s=>`<th>${s}</th>`).join('')+'</tr>';
+  SIZES.forEach(sz=>{ h+=`<tr><td>${sz}</td>`;
+    STAGES.forEach((st,i)=>{ const v=(state.mm[sz]&&state.mm[sz][i])||0;
       h+=`<td class="num"><input type="number" step="0.1" min="0" value="${v}" oninput="updMM('${sz}',${i},this.value)"></td>`; });
-    h+=`<td class="total">${tot.toFixed(1)}</td></tr>`; });
+    h+=`</tr>`; });
   document.getElementById('mmTable').innerHTML=h;
   document.getElementById('fxPlan').value=state.fixed.plan;
   document.getElementById('fxDesign').value=state.fixed.design;
