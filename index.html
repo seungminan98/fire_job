@@ -53,6 +53,9 @@
     color:var(--ink);padding:2px 0;min-width:52px}
   td input:focus,td select:focus{outline:1.5px solid var(--ink);outline-offset:1px;border-radius:3px;background:#fff}
   td.num input{text-align:right}
+  select.sz-소{color:var(--muted);font-weight:600}
+  select.sz-중{color:#1d5fc4;font-weight:600}
+  select.sz-대{color:#c0392b;font-weight:600}
   .row-del{cursor:pointer;color:var(--muted);width:24px;text-align:center;padding:0}
   .row-del:hover{color:var(--over)}
   .row-del svg{width:13px;height:13px;vertical-align:middle}
@@ -186,6 +189,7 @@
           <div class="seg-tabs" id="viewTabs">
             <button class="active" data-view="gantt">간트차트</button>
             <button data-view="capacity">캐파 / Pull</button>
+            <button data-view="people">인원별</button>
           </div>
         </div>
         <div class="card-b">
@@ -202,6 +206,18 @@
             </div>
             <div class="gantt-scroll"><div id="capArea"></div></div>
             <p class="hint">월별 필요 M/M 합계 vs 가용 인원. 가용·임계% 는 아래 설정에서 조정.</p>
+          </div>
+          <div id="view-people" style="display:none">
+            <div style="font-size:12px;font-weight:600;margin-bottom:8px">담당자 요약 (정/부 공사 수)</div>
+            <div class="gantt-scroll"><div id="peopleSummary"></div></div>
+            <div style="font-size:12px;font-weight:600;margin:16px 0 8px">인원별 월 캐파 (M/M)</div>
+            <div class="legend">
+              <span><span class="sw" style="background:var(--ok-bg);border:1px solid var(--ok)"></span>여유</span>
+              <span><span class="sw" style="background:var(--warn-bg);border:1px solid var(--warn)"></span>빠듯</span>
+              <span><span class="sw" style="background:var(--over-bg);border:1px solid var(--over)"></span>초과</span>
+            </div>
+            <div class="gantt-scroll"><div id="peopleCap"></div></div>
+            <p class="hint">한 사람의 한 달 풀(full) 부담을 <b>1.0 M/M</b>로 봅니다. 정은 100%, 부는 70% 비중으로 합산(설정에서 조정). 임계%는 아래 ‘가용 인원·판정 기준’의 빠듯/초과 %를 1인 기준으로 적용.</p>
           </div>
         </div>
       </div>
@@ -252,6 +268,10 @@
           <div class="field">가용 인원(M/M)<input type="number" step="0.5" min="0" id="capacityInput" oninput="onSettingChange()"></div>
           <div class="field">빠듯(%)<input type="number" step="5" min="0" id="warnPct" oninput="onSettingChange()"></div>
           <div class="field">초과(%)<input type="number" step="5" min="0" id="overPct" oninput="onSettingChange()"></div>
+          <br>
+          <div class="field">정 비중(%)<input type="number" step="5" min="0" id="leadPct" oninput="onSettingChange()"></div>
+          <div class="field">부 비중(%)<input type="number" step="5" min="0" id="subPct" oninput="onSettingChange()"></div>
+          <p class="hint">인원별 캐파에서 한 공사의 M/M를 정·부에게 나눠 합산하는 비중입니다.</p>
 
           <div class="toolbar" style="margin-top:6px">
             <button class="btn" onclick="exportSettingsCSV()">설정 내보내기</button>
@@ -308,6 +328,7 @@ const BASE_COLUMNS = [
   {key:"area",  label:"연면적", type:"num",  w:70},
   {key:"floors",label:"층수",   type:"num",  w:56},
   {key:"start", label:"착수일", type:"date", w:130},
+  {key:"end",   label:"종료일", type:"enddate", w:130},
   {key:"current",label:"현단계",type:"current", w:84},
   {key:"mech",  label:"기계",   type:"text", w:60},
   {key:"elec",  label:"전기",   type:"text", w:60},
@@ -334,6 +355,7 @@ function defaultState(){
     projects:[], mm,
     fixed:{ plan:0.5, design:1.5, contract:1.5, settle:1.0, handover:1.0 },
     varRatio:{ receipt:2, construct:8 },
+    picRatio:{ lead:1.0, sub:0.7 },
     capacity:5, warnPct:80, overPct:100, seq:1,
     customCols:[], expanded:[],
     views:[ defaultView("기본") ], activeView:0
@@ -366,6 +388,7 @@ function migrate(){
   const d=defaultState();
   if(!state.fixed) state.fixed=d.fixed;
   if(!state.varRatio) state.varRatio=d.varRatio;
+  if(!state.picRatio) state.picRatio=d.picRatio;
   if(state.capacity==null)state.capacity=d.capacity;
   if(state.warnPct==null)state.warnPct=d.warnPct;
   if(state.overPct==null)state.overPct=d.overPct;
@@ -506,12 +529,13 @@ function cellHTML(c, p, idx){
   }
   const v = p[c.key];
   switch(c.type){
-    case "size":   return sel(SIZES,v,`upd(${idx},'size',this.value)`);
+    case "size":   return sizeSel(v,idx);
     case "cat":    return sel(CATS,v,`upd(${idx},'cat',this.value)`);
     case "status": return sel(STATUSES,v,`upd(${idx},'status',this.value)`);
     case "contract": return sel(CONTRACTS,v,`updContract(${idx},this.value)`);
     case "current":return sel(["",...STAGES],v,`upd(${idx},'current',this.value)`);
     case "date":   return `<input type="date" value="${esc(v)}" onchange="updStart(${idx},this.value)">`;
+    case "enddate":return `<input type="date" value="${esc(v)}" onchange="updEnd(${idx},this.value)">`;
     case "num":    return `<input value="${esc(v)}" oninput="upd(${idx},'${c.key}',this.value)">`;
     default:       return `<input value="${esc(v)}" oninput="upd(${idx},'${c.key}',this.value)">`;
   }
@@ -574,7 +598,7 @@ function compareVals(a,b,type){
     const va=isNaN(na)?Infinity:na, vb=isNaN(nb)?Infinity:nb;
     return va<vb?-1:va>vb?1:0;
   }
-  if(type==="date"){
+  if(type==="date"||type==="enddate"){
     const da=parseD(a), db=parseD(b);
     const va=da?da.getTime():Infinity, vb=db?db.getTime():Infinity;
     return va<vb?-1:va>vb?1:0;
@@ -788,6 +812,64 @@ function renderCapacity(){
   h+='</tr></tbody></table>'; area.innerHTML=h;
 }
 
+/* ---------- render: 인원별 (담당자 요약 + 캐파) ---------- */
+function projectMonthlyTotal(p){
+  const mm=projectMonthlyMM(p); const out={};
+  Object.keys(mm).forEach(m=>{ let t=0; Object.values(mm[m]).forEach(v=>t+=v); out[m]=t; });
+  return out;
+}
+function peopleData(){
+  const r=state.picRatio||{lead:1,sub:0.7};
+  const map={}; // name -> {lead,sub,projSet,monthly}
+  const ensure=n=>{ if(!map[n])map[n]={lead:0,sub:0,projSet:new Set(),monthly:{}}; return map[n]; };
+  state.projects.forEach(p=>{
+    if(p.status==="drop") return;
+    const tot=projectMonthlyTotal(p);
+    const lead=(p.pic1||'').trim(), sub=(p.pic2||'').trim();
+    if(lead){ const o=ensure(lead); o.lead++; o.projSet.add(p.id);
+      Object.keys(tot).forEach(m=>o.monthly[m]=(o.monthly[m]||0)+tot[m]*(r.lead||0)); }
+    if(sub){ const o=ensure(sub); o.sub++; o.projSet.add(p.id);
+      Object.keys(tot).forEach(m=>o.monthly[m]=(o.monthly[m]||0)+tot[m]*(r.sub||0)); }
+  });
+  return map;
+}
+function renderPeople(){
+  const sumArea=document.getElementById('peopleSummary');
+  const capArea=document.getElementById('peopleCap');
+  if(!sumArea||!capArea) return;
+  const map=peopleData();
+  const names=Object.keys(map).sort((a,b)=>(map[b].lead+map[b].sub)-(map[a].lead+map[a].sub)||a.localeCompare(b,'ko'));
+  if(!names.length){
+    sumArea.innerHTML='<div class="empty">담당자(정/부)가 입력된 공사가 없습니다.</div>';
+    capArea.innerHTML=''; return;
+  }
+  // 요약 피벗
+  let s='<table class="gantt cap"><thead><tr><th class="namehdr">담당자</th>'
+    +'<th class="mhdr">정 공사</th><th class="mhdr">부 공사</th><th class="mhdr">담당 공사(중복제외)</th></tr></thead><tbody>';
+  names.forEach(n=>{ const o=map[n];
+    s+=`<tr><td class="namecell">${esc(n)}</td>`
+      +`<td style="padding:5px">${o.lead}</td>`
+      +`<td style="padding:5px">${o.sub}</td>`
+      +`<td style="padding:5px;font-weight:600">${o.projSet.size}</td></tr>`; });
+  s+='</tbody></table>'; sumArea.innerHTML=s;
+
+  // 인원별 월 캐파 (1.0 M/M = 1인 풀)
+  const months=allMonths();
+  if(!months.length){ capArea.innerHTML='<div class="empty">일정이 입력된 공사가 없습니다.</div>'; return; }
+  const warn=(Number(state.warnPct)||0)/100, over=(Number(state.overPct)||0)/100; // 1인 기준 비율
+  let h='<table class="gantt cap"><thead><tr><th class="namehdr">담당자</th>';
+  months.forEach(m=>h+=`<th class="mhdr">${m.slice(2)}</th>`); h+='</tr></thead><tbody>';
+  names.forEach(n=>{ const mo=map[n].monthly;
+    h+=`<tr><td class="namecell">${esc(n)}</td>`;
+    months.forEach(m=>{ const val=mo[m]||0;
+      if(val<=0){ h+='<td style="padding:5px;color:var(--line-strong)">·</td>'; return; }
+      const col=val>over?'var(--over)':val>=warn?'var(--warn)':'var(--ok)';
+      h+=`<td style="padding:5px 6px"><div style="font-size:10px;color:${col};font-weight:600">${val.toFixed(2)}</div>`
+        +`<div class="bar-wrap"><div class="bar" style="width:${Math.min(100,val*100)}%;background:${col}"></div></div></td>`; });
+    h+='</tr>'; });
+  h+='</tbody></table>'; capArea.innerHTML=h;
+}
+
 /* ---------- render: settings ---------- */
 function renderSettings(){
   let h='<tr><th>규모\\단계</th>'+STAGES.map(s=>`<th>${s}</th>`).join('')+'</tr>';
@@ -806,6 +888,8 @@ function renderSettings(){
   document.getElementById('capacityInput').value=state.capacity;
   document.getElementById('warnPct').value=state.warnPct;
   document.getElementById('overPct').value=state.overPct;
+  document.getElementById('leadPct').value=Math.round((state.picRatio.lead||0)*100);
+  document.getElementById('subPct').value=Math.round((state.picRatio.sub||0)*100);
 }
 
 /* ---------- mutations ---------- */
@@ -824,8 +908,9 @@ function delProject(i){ if(confirm("이 공사를 삭제할까요?")){
   save(); renderProjects(); refreshPreview(); } }
 function upd(i,k,v){ state.projects[i][k]=v; save();
   if(k==='status'||k==='size'){refreshPreview();}
-  // 정렬 키에 영향을 주는 값이 바뀌면 정렬도 갱신 필요
-  if(activeView().sort.some(s=>s.key===k)) renderProjects();
+  if(k==='pic1'||k==='pic2'){refreshPreview();}   // 인원별 요약/캐파 갱신
+  // 규모는 색상 갱신을 위해, 정렬 키 변경 시 정렬 갱신을 위해 재렌더
+  if(k==='size'||activeView().sort.some(s=>s.key===k)) renderProjects();
 }
 function updContract(i,v){
   state.projects[i].contract=v; save();
@@ -838,6 +923,9 @@ function updCustom(i,key,v){
   if(activeView().sort.some(s=>s.key===key)) renderProjects();
 }
 function updStart(i,v){ state.projects[i].start=v; autoSplit(state.projects[i]); save(); renderProjects(); refreshPreview(); }
+function updEnd(i,v){ const p=state.projects[i]; p.end=v;
+  if(parseD(p.start)) autoSplit(p);   // 종료일 기준으로 단계 재분배
+  save(); renderProjects(); refreshPreview(); }
 function updStageEnd(i,si,v){
   const p=state.projects[i];
   if(!p.stages) p.stages=STAGES.map(()=>({start:"",end:""}));
@@ -855,11 +943,13 @@ function onFixChange(){
 }
 function onSettingChange(){
   state.capacity=numv('capacityInput'); state.warnPct=numv('warnPct'); state.overPct=numv('overPct');
+  state.picRatio.lead=numv('leadPct')/100; state.picRatio.sub=numv('subPct')/100;
   save(); refreshPreview();
 }
 function numv(id){ return Number(document.getElementById(id).value)||0; }
 function resetDefaults(){ if(confirm("M/M·고정기간·인원 설정을 기본값으로 되돌릴까요? (공사 목록 유지)")){
   const d=defaultState(); state.mm=d.mm; state.fixed=d.fixed; state.varRatio=d.varRatio;
+  state.picRatio=d.picRatio;
   state.capacity=d.capacity; state.warnPct=d.warnPct; state.overPct=d.overPct;
   state.projects.forEach(p=>{ if(parseD(p.start)) autoSplit(p); });
   save(); renderProjects(); renderSettings(); refreshPreview(); } }
@@ -868,17 +958,20 @@ function resetDefaults(){ if(confirm("M/M·고정기간·인원 설정을 기본
 document.querySelectorAll('#viewTabs button').forEach(b=>{
   b.onclick=()=>{ document.querySelectorAll('#viewTabs button').forEach(x=>x.classList.remove('active'));
     b.classList.add('active');
-    document.getElementById('view-gantt').style.display = b.dataset.view==='gantt'?'block':'none';
-    document.getElementById('view-capacity').style.display = b.dataset.view==='capacity'?'block':'none';
+    ['gantt','capacity','people'].forEach(v=>{
+      document.getElementById('view-'+v).style.display = b.dataset.view===v?'block':'none'; });
     refreshPreview();
   };
 });
-function refreshPreview(){ renderGantt(); renderCapacity(); }
+function refreshPreview(){ renderGantt(); renderCapacity(); renderPeople(); }
 
 /* ---------- helpers ---------- */
 function esc(s){ return String(s==null?"":s).replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 function sel(opts,val,handler){ return `<select onchange="${handler}">`+opts.map(o=>
   `<option ${o===val?'selected':''} value="${esc(o)}">${esc(o||'—')}</option>`).join('')+'</select>'; }
+function sizeSel(val,idx){ const cls=SIZES.includes(val)?('sz-'+val):'';
+  return `<select class="${cls}" onchange="upd(${idx},'size',this.value)">`+SIZES.map(o=>
+  `<option ${o===val?'selected':''} value="${esc(o)}">${esc(o)}</option>`).join('')+'</select>'; }
 
 /* ---------- 컬럼 관리: 숨김/보임 (활성 뷰) ---------- */
 function buildColMenuHTML(){
@@ -1187,6 +1280,8 @@ function exportSettingsCSV(){
   rows.push(["CONFIG","가용인원","",state.capacity].join(","));
   rows.push(["CONFIG","빠듯%","",state.warnPct].join(","));
   rows.push(["CONFIG","초과%","",state.overPct].join(","));
+  rows.push(["CONFIG","정비중%","",Math.round((state.picRatio.lead||0)*100)].join(","));
+  rows.push(["CONFIG","부비중%","",Math.round((state.picRatio.sub||0)*100)].join(","));
   download("소방공사_설정.csv","\uFEFF"+rows.join("\n"));
 }
 function importSettingsCSV(ev){ const f=ev.target.files[0]; if(!f)return; const rd=new FileReader();
@@ -1197,7 +1292,8 @@ function importSettingsCSV(ev){ const f=ev.target.files[0]; if(!f)return; const 
       else if(type==="FIXED"){ if(fm[a])state.fixed[fm[a]]=Number(val)||0; }
       else if(type==="VAR"){ if(a==="접수")state.varRatio.receipt=Number(val)||0; if(a==="시공")state.varRatio.construct=Number(val)||0; }
       else if(type==="CONFIG"){ if(a==="가용인원")state.capacity=Number(val)||0;
-        if(a==="빠듯%")state.warnPct=Number(val)||0; if(a==="초과%")state.overPct=Number(val)||0; } }
+        if(a==="빠듯%")state.warnPct=Number(val)||0; if(a==="초과%")state.overPct=Number(val)||0;
+        if(a==="정비중%")state.picRatio.lead=(Number(val)||0)/100; if(a==="부비중%")state.picRatio.sub=(Number(val)||0)/100; } }
     state.projects.forEach(p=>{ if(parseD(p.start)) autoSplit(p); });
     save(); renderProjects(); renderSettings(); refreshPreview(); alert("설정을 불러왔습니다.");
   }; rd.readAsText(f); ev.target.value=""; }
@@ -1218,7 +1314,7 @@ function serializeState(){
   ]);
   const CC=(state.customCols||[]).map(c=>[c.key,c.label,c.type,c.options||[]]);
   const obj={ v:3, p:P, cc:CC,
-    s:{ mm:state.mm, fx:state.fixed, vr:state.varRatio,
+    s:{ mm:state.mm, fx:state.fixed, vr:state.varRatio, pr:state.picRatio,
         cap:state.capacity, wp:state.warnPct, op:state.overPct } };
   return LZString.compressToEncodedURIComponent(JSON.stringify(obj));
 }
@@ -1297,6 +1393,7 @@ function applyRestored(restored){
   const s=restored.s;
   if(s){
     if(s.mm)state.mm=s.mm; if(s.fx)state.fixed=s.fx; if(s.vr)state.varRatio=s.vr;
+    if(s.pr)state.picRatio=s.pr;
     if(s.cap!=null)state.capacity=s.cap; if(s.wp!=null)state.warnPct=s.wp; if(s.op!=null)state.overPct=s.op;
   }
   // 복원 데이터의 커스텀 컬럼을 현재 뷰 order에 보충
