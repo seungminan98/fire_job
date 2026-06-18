@@ -56,6 +56,9 @@
   select.sz-소{color:var(--muted);font-weight:600}
   select.sz-중{color:#1d5fc4;font-weight:600}
   select.sz-대{color:#c0392b;font-weight:600}
+  /* 구분: 경영계획=보라, 자체공사=초록, 의뢰공사=검정(기본) */
+  select.cat0{color:#7b2fbf;font-weight:600}
+  select.cat2{color:#2f7d4f;font-weight:600}
   /* 완료/hold/drop 행: 회색 처리 (완료/drop은 취소선) */
   tr.row-muted td,tr.row-muted td input,tr.row-muted td select{color:var(--muted)}
   tr.row-strike td,tr.row-strike td input,tr.row-strike td select{text-decoration:line-through}
@@ -80,6 +83,24 @@
     padding:5px 9px;font-size:11.5px;border-right:1.5px solid var(--line-strong)}
   table.gantt td.namecell .meta{color:var(--muted);font-size:10px}
   .cell{min-width:42px;height:34px;display:flex;align-items:center;justify-content:center;font-size:10px}
+  /* 개선된 간트: 단계별 연속 막대 */
+  .gchart{width:max-content;min-width:100%;font-size:11px}
+  .grow{display:flex;align-items:stretch;min-height:30px;border-bottom:1px solid var(--line)}
+  .grow.ghead{position:sticky;top:0;z-index:4;border-bottom:1.5px solid var(--line-strong)}
+  .gname{flex:none;width:160px;padding:5px 9px;position:sticky;left:0;z-index:2;background:#fff;
+    border-right:1.5px solid var(--line-strong);font-size:11.5px;line-height:1.35}
+  .ghead .gname{background:var(--soft);font-weight:600;display:flex;align-items:center}
+  .gname .meta{color:var(--muted);font-size:10px}
+  .gtrack{position:relative;flex:none}
+  .ghead .gtrack{display:flex;background:var(--soft)}
+  .gmonth{flex:none;text-align:center;padding:5px 0;font-size:10px;color:#333;white-space:nowrap;
+    border-right:1px solid var(--line)}
+  .gbody{position:relative}
+  .gbar{position:absolute;top:50%;transform:translateY(-50%);height:19px;display:flex;align-items:center;
+    justify-content:center;color:#fff;font-size:9.5px;font-weight:600;border-radius:3px;overflow:hidden;
+    white-space:nowrap;box-shadow:0 0 0 1px rgba(255,255,255,.35) inset}
+  .gtoday{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed #c0392b;z-index:1;pointer-events:none}
+  .gtoday .lbl{position:absolute;top:1px;left:2px;font-size:8.5px;color:#c0392b;font-weight:600;background:#fff;padding:0 2px}
   .seg{height:22px;display:flex;align-items:center;justify-content:center;color:#fff;
     font-size:9.5px;font-weight:600;border-radius:2px;margin:0 1px;min-width:0;overflow:hidden}
   .legend{display:flex;gap:13px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin:0 0 12px}
@@ -199,7 +220,7 @@
           <div id="view-gantt">
             <div class="legend" id="ganttLegend"></div>
             <div class="gantt-scroll"><div id="ganttArea"></div></div>
-            <p class="hint">셀 = 그 달 진행 단계(회색 농도 구분) + 투입 M/M. 한 달에 여러 단계가 겹치면 비중대로 나눠 표시.</p>
+            <p class="hint">막대 = 각 단계의 실제 기간(색=단계). 막대에 마우스를 올리면 기간·투입 M/M가 보입니다. 빨간 점선 = 오늘.</p>
           </div>
           <div id="view-capacity" style="display:none">
             <div class="legend">
@@ -374,8 +395,11 @@ function activeView(){
   if(!v.hidden)v.hidden={}; if(!v.width)v.width={};
   if(!v.sort)v.sort=[];
   if(!v.order||!v.order.length) v.order=allColumns().map(c=>c.key);
-  // 새 컬럼이 정의에 추가됐는데 order에 없으면 뒤에 보충
-  allColumns().forEach(c=>{ if(!v.order.includes(c.key)) v.order.push(c.key); });
+  // 새 컬럼이 정의에 추가됐는데 order에 없으면 보충 (종료일은 착수일 바로 뒤에)
+  allColumns().forEach(c=>{ if(!v.order.includes(c.key)){
+    if(c.key==='end' && v.order.includes('start')) v.order.splice(v.order.indexOf('start')+1,0,'end');
+    else v.order.push(c.key);
+  }});
   // 정의에서 사라진 키는 제거
   v.order=v.order.filter(k=>allColumns().some(c=>c.key===k));
   // 정의에서 사라진 정렬 키 제거
@@ -407,6 +431,15 @@ function migrate(){
   state.views.forEach(v=>{ if(!v.sort) v.sort=[]; });
   if(!Array.isArray(state.customCols)) state.customCols=[];
   if(!Array.isArray(state.expanded)) state.expanded=[];
+  // 종료일(end) 컬럼을 착수일(start) 바로 뒤로 재배치 (1회)
+  if(!state.endPositioned){
+    state.views.forEach(v=>{ if(!v.order) return;
+      const hadStart=v.order.includes('start');
+      v.order=v.order.filter(k=>k!=='end');
+      if(hadStart) v.order.splice(v.order.indexOf('start')+1,0,'end'); else v.order.push('end');
+    });
+    state.endPositioned=true;
+  }
   (state.projects||[]).forEach(p=>{ if(p.contract==null)p.contract="입찰"; if(!p.custom)p.custom={}; });
 }
 function save(){
@@ -533,7 +566,7 @@ function cellHTML(c, p, idx){
   const v = p[c.key];
   switch(c.type){
     case "size":   return sizeSel(v,idx);
-    case "cat":    return sel(CATS,v,`upd(${idx},'cat',this.value)`);
+    case "cat":    return catSel(v,idx);
     case "status": return sel(STATUSES,v,`upd(${idx},'status',this.value)`);
     case "contract": return sel(CONTRACTS,v,`updContract(${idx},this.value)`);
     case "current":return sel(["",...STAGES],v,`upd(${idx},'current',this.value)`);
@@ -754,7 +787,9 @@ function onHeaderClick(ev,key){
 }
 function clearSort(){ activeView().sort=[]; save(); renderProjects(); }
 
-/* ---------- render: gantt ---------- */
+/* ---------- render: gantt (단계별 연속 막대) ---------- */
+function monthStart(ym){ const [y,m]=ym.split('-').map(Number); return new Date(y,m-1,1); }
+function monthEnd(ym){ const [y,m]=ym.split('-').map(Number); return new Date(y,m,0); }
 function renderGantt(){
   const area=document.getElementById('ganttArea');
   const months=allMonths();
@@ -765,27 +800,50 @@ function renderGantt(){
   const hasUnit = state.projects.some(p=>p.status!=="drop" && p.contract==="단가");
   let legendHTML = STAGES.map((s,i)=>
     `<span><span class="sw" style="background:${STAGE_COLORS[i]}"></span>${s}</span>`).join("");
+  legendHTML += `<span style="color:var(--muted)"><span class="sw" style="border-left:2px dashed #c0392b;width:0;border-radius:0"></span>오늘</span>`;
   if(hasUnit) legendHTML += `<span style="color:var(--muted)">※ 단가계약은 ‘계약 → 내역검토’</span>`;
   document.getElementById('ganttLegend').innerHTML=legendHTML;
-  let h='<table class="gantt"><thead><tr><th class="namehdr">공사명</th>';
-  months.forEach(m=> h+=`<th class="mhdr">${m.slice(2)}</th>`); h+='</tr></thead><tbody>';
-  // 간트도 좌측 표와 같은 정렬 순서로 표시
+
+  const CW=46;                                  // 월별 칸 너비(px)
+  const t0=monthStart(months[0]);
+  const tEnd=monthEnd(months[months.length-1]);
+  const span=Math.round((tEnd-t0)/86400000)+1;  // 전체 일수
+  const trackW=months.length*CW;
+  const grad=`repeating-linear-gradient(to right,transparent 0,transparent ${CW-1}px,var(--line) ${CW-1}px,var(--line) ${CW}px)`;
+  const xOf=d=>Math.round((d-t0)/86400000)/span*trackW;
+
+  let h='<div class="gchart">';
+  // 헤더(월)
+  h+='<div class="grow ghead"><div class="gname">공사명</div><div class="gtrack" style="width:'+trackW+'px">';
+  months.forEach(m=> h+=`<div class="gmonth" style="width:${CW}px">${m.slice(2)}</div>`);
+  h+='</div></div>';
+  // 본문
+  h+='<div class="gbody">';
   sortedIndices().forEach(idx=>{ const p=state.projects[idx]; if(p.status==="drop")return;
-    const mm=projectMonthlyMM(p);
-    h+=`<tr><td class="namecell">${esc(p.name||"(이름없음)")}
-        <div class="meta">${p.size||"-"} · ${p.contract||"-"} · <span class="status-tag">${p.status||"-"}</span></div></td>`;
-    months.forEach(m=>{ const cell=mm[m];
-      if(!cell){ h+='<td><div class="cell"></div></td>'; return; }
-      let tot=0,segs=[]; Object.keys(cell).forEach(si=>{tot+=cell[si];segs.push([+si,cell[si]]);});
-      segs.sort((a,b)=>b[1]-a[1]);
-      const segHTML=segs.map(([si,v])=>
-        `<div class="seg" style="background:${STAGE_COLORS[si]};flex:${v}" title="${stageLabel(p,si)} ${v.toFixed(2)}M/M">${stageLabel(p,si).slice(0,2)}</div>`).join("");
-      h+=`<td><div class="cell" style="flex-direction:column;gap:1px;padding:2px 1px">
-        <div style="display:flex;width:100%">${segHTML}</div>
-        <div style="font-size:9px;color:var(--muted)">${tot.toFixed(1)}</div></div></td>`;
+    const muted = (p.status==='완료'||p.status==='hold');
+    h+='<div class="grow"><div class="gname"'+(muted?' style="color:var(--muted)"':'')+'>'+esc(p.name||"(이름없음)")
+      +`<div class="meta">${p.size||"-"} · ${p.contract||"-"} · <span class="status-tag">${p.status||"-"}</span></div></div>`;
+    h+='<div class="gtrack" style="width:'+trackW+'px;background:'+grad+'">';
+    (p.stages||[]).forEach((stg,i)=>{
+      const ss=parseD(stg.start), se=parseD(stg.end); if(!ss||!se||se<ss) return;
+      const cs=ss<t0?t0:ss, ce=se>tEnd?tEnd:se; if(ce<cs) return;
+      const left=xOf(cs);
+      const right=xOf(addDays(ce,1));               // 종료일 끝(다음날 0시)까지
+      const w=Math.max(3, right-left);
+      const mm=(state.mm[p.size]&&state.mm[p.size][i])||0;
+      const lab=stageLabel(p,i);
+      h+=`<div class="gbar" title="${esc(lab)} ${stg.start}~${stg.end}${mm?(' · '+mm.toFixed(2)+'M/M'):''}" `
+        +`style="left:${left.toFixed(1)}px;width:${w.toFixed(1)}px;background:${STAGE_COLORS[i]}${muted?';opacity:.4':''}">`
+        +`${w>24?esc(lab):''}</div>`;
     });
-    h+='</tr>'; });
-  h+='</tbody></table>'; area.innerHTML=h;
+    h+='</div></div>';
+  });
+  // 오늘 표시선
+  const now=new Date(); now.setHours(0,0,0,0);
+  if(now>=t0 && now<=tEnd){ const off=160+xOf(now);
+    h+=`<div class="gtoday" style="left:${off.toFixed(1)}px"><span class="lbl">오늘</span></div>`; }
+  h+='</div></div>';
+  area.innerHTML=h;
 }
 
 /* ---------- render: capacity ---------- */
@@ -915,7 +973,7 @@ function upd(i,k,v){ state.projects[i][k]=v; save();
   if(k==='status'||k==='size'){refreshPreview();}
   if(k==='pic1'||k==='pic2'){refreshPreview();}   // 인원별 요약/캐파 갱신
   // 규모는 색상 갱신을 위해, 정렬 키 변경 시 정렬 갱신을 위해 재렌더
-  if(k==='size'||k==='status'||activeView().sort.some(s=>s.key===k)) renderProjects();
+  if(k==='size'||k==='status'||k==='cat'||activeView().sort.some(s=>s.key===k)) renderProjects();
 }
 function updContract(i,v){
   state.projects[i].contract=v; save();
@@ -976,6 +1034,9 @@ function sel(opts,val,handler){ return `<select onchange="${handler}">`+opts.map
   `<option ${o===val?'selected':''} value="${esc(o)}">${esc(o||'—')}</option>`).join('')+'</select>'; }
 function sizeSel(val,idx){ const cls=SIZES.includes(val)?('sz-'+val):'';
   return `<select class="${cls}" onchange="upd(${idx},'size',this.value)">`+SIZES.map(o=>
+  `<option ${o===val?'selected':''} value="${esc(o)}">${esc(o)}</option>`).join('')+'</select>'; }
+function catSel(val,idx){ const i=CATS.indexOf(val); const cls=i>=0?('cat'+i):'';
+  return `<select class="${cls}" onchange="upd(${idx},'cat',this.value)">`+CATS.map(o=>
   `<option ${o===val?'selected':''} value="${esc(o)}">${esc(o)}</option>`).join('')+'</select>'; }
 
 /* ---------- 컬럼 관리: 숨김/보임 (활성 뷰) ---------- */
