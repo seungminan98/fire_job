@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>소방공사 일정 · M/M 캐파 관리</title>
+<title>소방공사 일정 · M/M Capacity 관리</title>
 <style>
   :root{
     --bg:#ffffff; --ink:#1a1a1a; --muted:#6b6b6b; --line:#e2e2e2;
@@ -169,7 +169,7 @@
 <div class="wrap">
   <header>
     <div>
-      <h1>소방공사 일정 · M/M 캐파 관리</h1>
+      <h1>소방공사 일정 · M/M Capacity 관리</h1>
       <div class="sub">접수 · 기획 · 설계 · 계약 · 시공 · 정산 · 인수인계 / 월별 인원 풀 점검</div>
     </div>
     <div class="sub" id="saveState"></div>
@@ -212,7 +212,7 @@
           <div class="spacer"></div>
           <div class="seg-tabs" id="viewTabs">
             <button class="active" data-view="gantt">간트차트</button>
-            <button data-view="capacity">캐파 / Pull</button>
+            <button data-view="capacity">Capacity / Pull</button>
             <button data-view="people">인원별</button>
           </div>
         </div>
@@ -223,25 +223,27 @@
             <p class="hint">막대 = 각 단계의 실제 기간(색=단계). 막대에 마우스를 올리면 기간·투입 M/M가 보입니다. 빨간 점선 = 오늘.</p>
           </div>
           <div id="view-capacity" style="display:none">
+            <div class="gantt-scroll" style="margin-bottom:10px"><div id="capChart"></div></div>
             <div class="legend">
               <span><span class="sw" style="background:var(--ok-bg);border:1px solid var(--ok)"></span>가능</span>
               <span><span class="sw" style="background:var(--warn-bg);border:1px solid var(--warn)"></span>빠듯</span>
               <span><span class="sw" style="background:var(--over-bg);border:1px solid var(--over)"></span>초과(pull 불가)</span>
             </div>
             <div class="gantt-scroll"><div id="capArea"></div></div>
-            <p class="hint">월별 필요 M/M 합계 vs 가용 인원. 가용·임계% 는 아래 설정에서 조정.</p>
+            <p class="hint">선차트의 점선 = 가용 인원(budget). 월별 필요 M/M 합계 vs 가용 인원. 가용·임계% 는 아래 설정에서 조정.</p>
           </div>
           <div id="view-people" style="display:none">
             <div style="font-size:12px;font-weight:600;margin-bottom:8px">담당자 요약 (정/부 공사 수)</div>
             <div class="gantt-scroll"><div id="peopleSummary"></div></div>
-            <div style="font-size:12px;font-weight:600;margin:16px 0 8px">인원별 월 캐파 (M/M)</div>
+            <div style="font-size:12px;font-weight:600;margin:16px 0 8px">인원별 월 Capacity (M/M)</div>
+            <div class="gantt-scroll" style="margin-bottom:10px"><div id="peopleCapChart"></div></div>
             <div class="legend">
               <span><span class="sw" style="background:var(--ok-bg);border:1px solid var(--ok)"></span>여유</span>
               <span><span class="sw" style="background:var(--warn-bg);border:1px solid var(--warn)"></span>빠듯</span>
               <span><span class="sw" style="background:var(--over-bg);border:1px solid var(--over)"></span>초과</span>
             </div>
             <div class="gantt-scroll"><div id="peopleCap"></div></div>
-            <p class="hint">한 사람의 한 달 풀(full) 부담을 <b>1.0 M/M</b>로 봅니다. 정은 100%, 부는 70% 비중으로 합산(설정에서 조정). 임계%는 아래 ‘가용 인원·판정 기준’의 빠듯/초과 %를 1인 기준으로 적용.</p>
+            <p class="hint">선차트의 점선 = <b>1.0 M/M</b>(1인 풀, budget). 정은 100%, 부는 70% 비중으로 합산(설정에서 조정). 임계%는 아래 ‘가용 인원·판정 기준’의 빠듯/초과 %를 1인 기준으로 적용.</p>
           </div>
         </div>
       </div>
@@ -295,7 +297,7 @@
           <br>
           <div class="field">정 비중(%)<input type="number" step="5" min="0" id="leadPct" oninput="onSettingChange()"></div>
           <div class="field">부 비중(%)<input type="number" step="5" min="0" id="subPct" oninput="onSettingChange()"></div>
-          <p class="hint">인원별 캐파에서 한 공사의 M/M를 정·부에게 나눠 합산하는 비중입니다.</p>
+          <p class="hint">인원별 Capacity에서 한 공사의 M/M를 정·부에게 나눠 합산하는 비중입니다.</p>
 
           <div class="toolbar" style="margin-top:6px">
             <button class="btn" onclick="exportSettingsCSV()">설정 내보내기</button>
@@ -846,16 +848,57 @@ function renderGantt(){
   area.innerHTML=h;
 }
 
+/* ---------- 선차트 (SVG) ---------- */
+const PERSON_COLORS=['#2b6cb0','#c0392b','#2f7d4f','#b7791f','#6b46c1','#0e7490','#be185d','#475569','#d97706','#0f766e'];
+function personColor(i){ return PERSON_COLORS[i%PERSON_COLORS.length]; }
+function lineChart(months, series, budgets){
+  if(!months.length) return '';
+  const step=54, padL=42, padR=16, padT=14, padB=22;
+  const n=months.length;
+  const iw=Math.max(step*(n-1), step);
+  const ih=130, W=padL+iw+padR, H=padT+ih+padB;
+  let maxV=0;
+  series.forEach(s=>s.values.forEach(v=>{ if(v>maxV)maxV=v; }));
+  (budgets||[]).forEach(b=>{ if(b.value>maxV)maxV=b.value; });
+  maxV = maxV<=0 ? 1 : maxV*1.15;
+  const X=i=> padL + (n<=1 ? iw/2 : i/(n-1)*iw);
+  const Y=v=> padT + ih - (v/maxV)*ih;
+  let s='<svg width="'+W+'" height="'+H+'" style="font-family:inherit">';
+  // y 그리드
+  [0,0.5,1].forEach(f=>{ const val=maxV*f, y=Y(val);
+    s+='<line x1="'+padL+'" y1="'+y.toFixed(1)+'" x2="'+(padL+iw)+'" y2="'+y.toFixed(1)+'" stroke="var(--line)"/>';
+    s+='<text x="'+(padL-5)+'" y="'+(y+3).toFixed(1)+'" text-anchor="end" font-size="9" fill="var(--muted)">'+val.toFixed(1)+'</text>'; });
+  // x 라벨
+  months.forEach((m,i)=> s+='<text x="'+X(i).toFixed(1)+'" y="'+(padT+ih+14)+'" text-anchor="middle" font-size="9" fill="var(--muted)">'+m.slice(2)+'</text>');
+  // budget 선
+  (budgets||[]).forEach(b=>{ const y=Y(b.value), c=b.color||'#c0392b';
+    s+='<line x1="'+padL+'" y1="'+y.toFixed(1)+'" x2="'+(padL+iw)+'" y2="'+y.toFixed(1)+'" stroke="'+c+'" stroke-width="1.3" stroke-dasharray="5 3"/>';
+    s+='<text x="'+(padL+iw)+'" y="'+(y-3).toFixed(1)+'" text-anchor="end" font-size="9" font-weight="600" fill="'+c+'">'+esc(b.label)+'</text>'; });
+  // 시리즈 라인 + 점
+  series.forEach(se=>{
+    const pts=se.values.map((v,i)=>X(i).toFixed(1)+','+Y(v).toFixed(1)).join(' ');
+    s+='<polyline points="'+pts+'" fill="none" stroke="'+se.color+'" stroke-width="1.8"/>';
+    se.values.forEach((v,i)=> s+='<circle cx="'+X(i).toFixed(1)+'" cy="'+Y(v).toFixed(1)+'" r="2.2" fill="'+se.color+'"/>');
+  });
+  s+='</svg>';
+  return s;
+}
+
 /* ---------- render: capacity ---------- */
 function renderCapacity(){
   const area=document.getElementById('capArea'); const months=allMonths();
-  if(months.length===0){ area.innerHTML='<div class="empty">데이터가 없습니다.</div>'; return; }
+  const chart=document.getElementById('capChart');
+  if(months.length===0){ area.innerHTML='<div class="empty">데이터가 없습니다.</div>'; if(chart)chart.innerHTML=''; return; }
   const cap=Number(state.capacity)||0;
   const warn=cap*(Number(state.warnPct)||0)/100, over=cap*(Number(state.overPct)||0)/100;
   const totals={}; months.forEach(m=>totals[m]=0);
   state.projects.forEach(p=>{ if(p.status==="drop")return;
     const mm=projectMonthlyMM(p);
     Object.keys(mm).forEach(m=>{ let t=0; Object.values(mm[m]).forEach(v=>t+=v); totals[m]+=t; }); });
+  // 선차트: 필요 M/M 라인 + 가용(budget) 점선
+  if(chart) chart.innerHTML=lineChart(months,
+    [{name:'필요 M/M', color:'#2b2b2b', values:months.map(m=>totals[m])}],
+    [{value:cap, label:'가용 '+cap.toFixed(1), color:'var(--ok)'}]);
   let h='<table class="gantt cap"><thead><tr><th class="namehdr">구분</th>';
   months.forEach(m=>h+=`<th class="mhdr">${m.slice(2)}</th>`); h+='</tr></thead><tbody>';
   h+='<tr><td class="namecell" style="font-weight:600">필요 M/M</td>';
@@ -875,7 +918,7 @@ function renderCapacity(){
   h+='</tr></tbody></table>'; area.innerHTML=h;
 }
 
-/* ---------- render: 인원별 (담당자 요약 + 캐파) ---------- */
+/* ---------- render: 인원별 (담당자 요약 + Capacity) ---------- */
 function projectMonthlyTotal(p){
   const mm=projectMonthlyMM(p); const out={};
   Object.keys(mm).forEach(m=>{ let t=0; Object.values(mm[m]).forEach(v=>t+=v); out[m]=t; });
@@ -899,12 +942,13 @@ function peopleData(){
 function renderPeople(){
   const sumArea=document.getElementById('peopleSummary');
   const capArea=document.getElementById('peopleCap');
+  const chart=document.getElementById('peopleCapChart');
   if(!sumArea||!capArea) return;
   const map=peopleData();
   const names=Object.keys(map).sort((a,b)=>(map[b].lead+map[b].sub)-(map[a].lead+map[a].sub)||a.localeCompare(b,'ko'));
   if(!names.length){
     sumArea.innerHTML='<div class="empty">담당자(정/부)가 입력된 공사가 없습니다.</div>';
-    capArea.innerHTML=''; return;
+    capArea.innerHTML=''; if(chart)chart.innerHTML=''; return;
   }
   // 요약 피벗
   let s='<table class="gantt cap"><thead><tr><th class="namehdr">담당자</th>'
@@ -916,10 +960,16 @@ function renderPeople(){
       +`<td style="padding:5px;font-weight:600">${o.projSet.size}</td></tr>`; });
   s+='</tbody></table>'; sumArea.innerHTML=s;
 
-  // 인원별 월 캐파 (1.0 M/M = 1인 풀)
+  // 인원별 월 Capacity (1.0 M/M = 1인 풀)
   const months=allMonths();
-  if(!months.length){ capArea.innerHTML='<div class="empty">일정이 입력된 공사가 없습니다.</div>'; return; }
+  if(!months.length){ capArea.innerHTML='<div class="empty">일정이 입력된 공사가 없습니다.</div>'; if(chart)chart.innerHTML=''; return; }
   const warn=(Number(state.warnPct)||0)/100, over=(Number(state.overPct)||0)/100; // 1인 기준 비율
+  // 선차트: 인원별 라인 + 1.0(budget) 점선 + 색상 범례
+  if(chart){
+    const leg='<div class="legend">'+names.map((n,i)=>`<span><span class="sw" style="background:${personColor(i)}"></span>${esc(n)}</span>`).join('')+'</div>';
+    const series=names.map((n,i)=>({name:n, color:personColor(i), values:months.map(m=>map[n].monthly[m]||0)}));
+    chart.innerHTML=leg+lineChart(months, series, [{value:1, label:'1.0 (1인 풀)', color:'#c0392b'}]);
+  }
   let h='<table class="gantt cap"><thead><tr><th class="namehdr">담당자</th>';
   months.forEach(m=>h+=`<th class="mhdr">${m.slice(2)}</th>`); h+='</tr></thead><tbody>';
   names.forEach(n=>{ const mo=map[n].monthly;
@@ -971,7 +1021,7 @@ function delProject(i){ if(confirm("이 공사를 삭제할까요?")){
   save(); renderProjects(); refreshPreview(); } }
 function upd(i,k,v){ state.projects[i][k]=v; save();
   if(k==='status'||k==='size'){refreshPreview();}
-  if(k==='pic1'||k==='pic2'){refreshPreview();}   // 인원별 요약/캐파 갱신
+  if(k==='pic1'||k==='pic2'){refreshPreview();}   // 인원별 요약/Capacity 갱신
   // 규모는 색상 갱신을 위해, 정렬 키 변경 시 정렬 갱신을 위해 재렌더
   if(k==='size'||k==='status'||k==='cat'||activeView().sort.some(s=>s.key===k)) renderProjects();
 }
@@ -1371,15 +1421,22 @@ function download(name,content){ const blob=new Blob([content],{type:"text/csv;c
    ─ 공사 1건당 [name,start, sizeIdx,catIdx,conIdx,stsIdx, area,floors, currentIdx,
                  mech,elec,pic1,pic2,note, custom] */
 function serializeState(){
+  // 단계 종료일을 착수일로부터의 '일수 오프셋'으로 저장 → 직접 수정한 날짜가 그대로 보존됨
+  const endOffsets=p=>{
+    const s=parseD(p.start);
+    if(!s||!p.stages||!p.stages.some(x=>x.end)) return 0;
+    return p.stages.map(stg=>{ const e=parseD(stg.end); return e?Math.round((e-s)/86400000):-1; });
+  };
   const P=state.projects.map(p=>[
     p.name||'', p.start||'',
     SIZES.indexOf(p.size), CATS.indexOf(p.cat), CONTRACTS.indexOf(p.contract), STATUSES.indexOf(p.status),
     p.area||'', p.floors||'', STAGES.indexOf(p.current||''),
     p.mech||'', p.elec||'', p.pic1||'', p.pic2||'', p.note||'',
-    (p.custom&&Object.keys(p.custom).length)?p.custom:0
+    (p.custom&&Object.keys(p.custom).length)?p.custom:0,
+    endOffsets(p)
   ]);
   const CC=(state.customCols||[]).map(c=>[c.key,c.label,c.type,c.options||[]]);
-  const obj={ v:3, p:P, cc:CC,
+  const obj={ v:4, p:P, cc:CC,
     s:{ mm:state.mm, fx:state.fixed, vr:state.varRatio, pr:state.picRatio,
         cap:state.capacity, wp:state.warnPct, op:state.overPct } };
   return LZString.compressToEncodedURIComponent(JSON.stringify(obj));
@@ -1388,7 +1445,7 @@ function deserializeState(data){
   const json=LZString.decompressFromEncodedURIComponent(data);
   if(!json) throw new Error("복원 실패: 손상된 데이터");
   const obj=JSON.parse(json);
-  if(!obj||obj.v!==3) throw new Error("지원하지 않는 형식(버전 불일치)");
+  if(!obj||(obj.v!==3&&obj.v!==4)) throw new Error("지원하지 않는 형식(버전 불일치)");
   const projects=obj.p.map(a=>{
     const p={ id:0, name:a[0], start:a[1],
       size:SIZES[a[2]]||"중", cat:CATS[a[3]]||"의뢰공사",
@@ -1397,6 +1454,18 @@ function deserializeState(data){
       mech:a[9]||"", elec:a[10]||"", pic1:a[11]||"", pic2:a[12]||"", note:a[13]||"",
       custom:(a[14]&&typeof a[14]==='object')?a[14]:{},
       end:"", stages:STAGES.map(()=>({start:"",end:""})) };
+    // v4: 저장된 단계 종료일 오프셋으로 단계 일정 복원(직접 수정값 유지)
+    const off=a[15], s=parseD(p.start);
+    if(Array.isArray(off)&&s){
+      let prevEnd=null;
+      p.stages=off.map((o,i)=>{
+        const start = i===0 ? p.start : (prevEnd?fmtD(addDays(prevEnd,1)):"");
+        let end="";
+        if(o>=0){ const e=addDays(s,o); end=fmtD(e); prevEnd=e; }
+        return {start,end};
+      });
+      p.end=p.stages[6]?p.stages[6].end:"";
+    }
     return p;
   });
   const customCols=(obj.cc||[]).map(a=>({key:a[0],label:a[1],type:a[2],options:a[3]||[],w:100,custom:true}));
@@ -1448,9 +1517,12 @@ function checkShareHash(){
   return true;
 }
 function applyRestored(restored){
-  // id 재발급, 단계 재계산
+  // id 재발급. 복원된 단계 일정이 있으면 그대로 유지, 없을 때만 착수일로 재계산
   let seq=1;
-  restored.projects.forEach(p=>{ p.id=seq++; if(parseD(p.start)) autoSplit(p); });
+  restored.projects.forEach(p=>{ p.id=seq++;
+    const hasStages = p.stages && p.stages.some(x=>x.start||x.end);
+    if(!hasStages && parseD(p.start)) autoSplit(p);
+  });
   state.projects=restored.projects;
   state.customCols=restored.customCols||[];
   state.expanded=[]; // 복원 데이터는 기본 접힘
