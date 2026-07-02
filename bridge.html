@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 자료 밀어넣기 · 소방 훅업 공정표 브리지</title>
+<style>
+  :root{
+    --bg:#ffffff; --ink:#1a1a1a; --muted:#6b6b6b; --line:#e2e2e2;
+    --line-strong:#c9c9c9; --soft:#f7f7f7; --softer:#fafafa;
+    --ok:#2f6f4f; --ok-bg:#e8f3ed; --warn:#8a6d1a; --warn-bg:#f6efd9; --over:#9a3434; --over-bg:#f6e4e4;
+    --mech:#c0392b; --elec:#1d5fc4; --supv:#2f7d4f; --perm:#7b2fbf; --etc:#6b6b6b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1100px;margin:0 auto;padding:18px 18px 60px}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+    border-bottom:1.5px solid var(--ink);padding-bottom:10px;margin-bottom:14px}
+  h1{font-size:17px;font-weight:650;letter-spacing:-.01em;margin:0}
+  .sub{color:var(--muted);font-size:12px}
+  .sub a{color:var(--muted)}
+
+  .card{border:1px solid var(--line);border-radius:7px;margin-bottom:14px;overflow:hidden}
+  .card-h{display:flex;align-items:center;gap:8px;padding:9px 13px;background:var(--soft);
+    border-bottom:1px solid var(--line);font-size:13px;font-weight:600;flex-wrap:wrap}
+  .card-h .step{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;
+    border-radius:50%;background:var(--ink);color:#fff;font-size:11px;flex:none}
+  .card-h .spacer{flex:1}
+  .card-b{padding:12px 13px}
+
+  button.btn{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line-strong);
+    color:var(--ink);padding:6px 11px;border-radius:5px;font-size:12px;cursor:pointer;font-family:inherit}
+  button.btn:hover{background:var(--soft)}
+  button.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  button.btn.primary:hover{background:#000}
+  button.btn.big{padding:9px 18px;font-size:13px;font-weight:600}
+  button.btn:disabled{opacity:.45;cursor:not-allowed}
+  button.btn.sm{padding:3px 8px;font-size:11px}
+  .toolbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  .file-in{display:none}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:9px;line-height:1.6}
+  .hint code{background:var(--soft);padding:1px 5px;border-radius:3px;font-size:11px}
+
+  .field-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  .field{min-width:0}
+  .field label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}
+  .field input[type=password],.field input[type=text],.field select{
+    border:1px solid var(--line-strong);border-radius:5px;padding:6px 9px;font-family:inherit;font-size:12.5px;width:100%}
+  .chk{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding-bottom:7px}
+
+  .drop{border:1.7px dashed var(--line-strong);border-radius:8px;padding:26px 16px;text-align:center;
+    color:var(--muted);cursor:pointer;transition:background .12s,border-color .12s}
+  .drop.hover{background:var(--soft);border-color:var(--ink);color:var(--ink)}
+  .drop b{color:var(--ink)}
+  .att-list{display:flex;gap:9px;flex-wrap:wrap;margin-top:11px}
+  .att{border:1px solid var(--line);border-radius:6px;padding:7px 9px;font-size:11.5px;display:flex;
+    align-items:center;gap:8px;background:var(--softer);max-width:100%}
+  .att img{width:44px;height:34px;object-fit:cover;border-radius:4px;border:1px solid var(--line)}
+  .att .icn{font-size:19px}
+  .att .nm{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .att .meta{color:var(--muted);font-size:10.5px}
+  .att .rm{cursor:pointer;color:var(--muted);border:none;background:none;font-size:13px;padding:0 2px}
+  .att .rm:hover{color:var(--over)}
+  textarea.extra{width:100%;min-height:64px;border:1px solid var(--line-strong);border-radius:5px;
+    padding:8px 10px;font-family:inherit;font-size:12.5px;line-height:1.6;resize:vertical;margin-top:10px}
+
+  .status-box{margin-top:11px;padding:9px 12px;border-radius:6px;font-size:12px;line-height:1.6;display:none}
+  .status-box.show{display:block}
+  .status-box.info{background:var(--soft);border:1px solid var(--line)}
+  .status-box.err{background:var(--over-bg);border:1px solid var(--over);color:var(--over)}
+  .status-box.ok{background:var(--ok-bg);border:1px solid var(--ok);color:var(--ok)}
+  .spin{display:inline-block;width:11px;height:11px;border:2px solid var(--line-strong);
+    border-top-color:var(--ink);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px;margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  table{border-collapse:collapse;width:100%;font-size:12px}
+  th,td{border:1px solid var(--line);padding:4px 7px;text-align:left;vertical-align:middle;white-space:nowrap}
+  th{background:var(--soft);font-weight:600;color:#333}
+  tbody tr:hover{background:var(--softer)}
+  .proj-scroll{overflow-x:auto}
+  .disc-tag{display:inline-block;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600;color:#fff}
+  td input{border:none;background:transparent;font-family:inherit;font-size:12px;color:var(--ink);
+    padding:2px 0;min-width:60px;width:100%}
+  td input:focus{outline:1.5px solid var(--ink);outline-offset:1px;border-radius:3px;background:#fff}
+  td input[type=checkbox]{width:auto;min-width:0}
+  .proj-summary{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;margin-bottom:10px;
+    background:var(--softer);border:1px solid var(--line);border-radius:6px;padding:8px 12px}
+  .proj-summary b{font-weight:650}
+  .usage{font-size:11px;color:var(--muted);margin-top:9px}
+
+  .push-row{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:12.5px}
+  .push-row label{display:inline-flex;align-items:center;gap:6px}
+  .push-row select{border:1px solid var(--line-strong);border-radius:5px;padding:5px 8px;
+    font-family:inherit;font-size:12px;max-width:240px}
+
+  footer{margin-top:26px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);
+    font-size:11.5px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>AI 자료 밀어넣기 <span style="font-weight:400;color:var(--muted)">— 훅업 공정표 브리지</span></h1>
+      <div class="sub">PPT·이미지·텍스트를 Claude API가 읽고 → 소방 훅업 공정표 데이터로 변환 → <a href="hookup.html">훅업 공정표</a>에 자동 입력</div>
+    </div>
+    <div class="sub"><a href="hookup.html">훅업 공정표 →</a> · <a href="index.html">전체 일정 →</a></div>
+  </header>
+
+  <!-- STEP 1: API 키 -->
+  <div class="card">
+    <div class="card-h"><span class="step">1</span> Claude API 연결</div>
+    <div class="card-b">
+      <div class="field-row">
+        <div class="field" style="flex:1;min-width:260px">
+          <label>Anthropic API 키 (sk-ant-…)</label>
+          <input type="password" id="apiKey" placeholder="sk-ant-api03-..." autocomplete="off">
+        </div>
+        <label class="chk"><input type="checkbox" id="saveKey"> 이 브라우저에 키 저장</label>
+      </div>
+      <div class="hint">
+        키는 <b>이 브라우저에서 Anthropic API로 직접 전송</b>될 뿐, 다른 서버로 가지 않습니다.
+        키 발급: <code>console.anthropic.com → API Keys</code>. 공유 URL/CSV/백업에는 키가 포함되지 않습니다.
+        사용 모델: <code>claude-opus-4-8</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: 자료 첨부 -->
+  <div class="card">
+    <div class="card-h"><span class="step">2</span> 자료 첨부 (PPT / 이미지 / 텍스트)</div>
+    <div class="card-b">
+      <div class="drop" id="drop" onclick="document.getElementById('fileIn').click()">
+        <b>클릭</b>하거나 파일을 <b>끌어다 놓으세요</b><br>
+        <span style="font-size:11.5px">.pptx (공정표·주간보고 슬라이드) · 이미지(jpg/png/webp/gif — 공정표 캡처, 화이트보드 사진 등)</span>
+      </div>
+      <input type="file" id="fileIn" class="file-in" multiple
+        accept=".pptx,image/png,image/jpeg,image/webp,image/gif" onchange="addFiles(this.files);this.value=''">
+      <div class="att-list" id="attList"></div>
+      <textarea class="extra" id="extraText" placeholder="(선택) 붙여넣을 텍스트나 추가 지시사항 — 예: 공사명은 'OO물류센터 소방공사'로, 감리사는 OO기술사사무소. 8월 일정은 무시해줘."></textarea>
+    </div>
+  </div>
+
+  <!-- STEP 3: 분석 -->
+  <div class="card">
+    <div class="card-h"><span class="step">3</span> AI 분석 실행</div>
+    <div class="card-b">
+      <button class="btn primary big" id="runBtn" onclick="runExtract()">▶ 자료 읽고 공정표 데이터 만들기</button>
+      <div class="status-box" id="statusBox"></div>
+    </div>
+  </div>
+
+  <!-- STEP 4: 미리보기 -->
+  <div class="card" id="previewCard" style="display:none">
+    <div class="card-h"><span class="step">4</span> 추출 결과 확인·수정
+      <div class="spacer"></div>
+      <span class="sub" id="pvCount"></span>
+    </div>
+    <div class="card-b">
+      <div class="proj-summary" id="pvProject"></div>
+      <div class="proj-scroll"><table id="pvTable"></table></div>
+      <div class="hint">체크 해제한 행은 밀어넣기에서 제외됩니다. 셀은 여기서 바로 수정할 수 있고, 상세 편집은 밀어넣은 뒤 훅업 공정표에서 하면 됩니다.</div>
+      <div class="usage" id="usageInfo"></div>
+      <div class="status-box info show" id="aiNotes" style="margin-top:10px;display:none"></div>
+    </div>
+  </div>
+
+  <!-- STEP 5: 밀어넣기 -->
+  <div class="card" id="pushCard" style="display:none">
+    <div class="card-h"><span class="step">5</span> 훅업 공정표에 밀어넣기</div>
+    <div class="card-b">
+      <div class="push-row">
+        <label><input type="radio" name="pushMode" value="new" checked onchange="renderPushTargets()"> 새 공사로 만들기</label>
+        <label><input type="radio" name="pushMode" value="append" onchange="renderPushTargets()"> 기존 공사에 작업 추가</label>
+        <select id="pushTarget" style="display:none"></select>
+        <button class="btn primary" onclick="pushData()">⇩ 밀어넣기</button>
+      </div>
+      <div class="status-box" id="pushStatus"></div>
+    </div>
+  </div>
+
+  <footer>
+    동작 방식: 이 페이지가 브라우저 안에서 .pptx 압축을 풀어 슬라이드 텍스트를 뽑고, 이미지는 그대로 Claude에 보여준 뒤
+    <b>구조화 출력(JSON Schema)</b>으로 훅업 공정표 형식의 데이터만 받도록 강제합니다.
+    결과는 이 브라우저의 localStorage(훅업 공정표와 동일 저장소)에 기록됩니다 — 서버·DB 없음.<br>
+    ※ 회사망/프록시 환경에서 API 호출이 차단되면 네트워크 관리자에게 <code>api.anthropic.com</code> 허용을 요청하세요.
+  </footer>
+</div>
+
+<script>
+/* ══════════════ 공통 (hookup.html과 동일 데이터 모델) ══════════════ */
+const DISCS = ["소방기계","소방전기","감리","인허가","공통"];
+const DISC_COLORS = ["#c0392b","#1d5fc4","#2f7d4f","#7b2fbf","#6b6b6b"];
+const STATUSES = ["예정","진행중","완료","지연","보류"];
+const LS_KEY = "fireHookup.v1";
+const KEY_LS = "fireHookup.apiKey";
+const MODEL = "claude-opus-4-8";
+
+function uid(){ return Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function fdToday(){ const t=new Date(); return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0"); }
+function validDate(s){ return /^\d{4}-\d{2}-\d{2}$/.test(s||"") ? s : ""; }
+
+/* API 키 저장/복원 */
+(function(){
+  try{
+    const k=localStorage.getItem(KEY_LS);
+    if(k){ document.getElementById("apiKey").value=k; document.getElementById("saveKey").checked=true; }
+  }catch(e){}
+})();
+document.getElementById("saveKey").addEventListener("change",function(){
+  try{
+    if(!this.checked) localStorage.removeItem(KEY_LS);
+    else localStorage.setItem(KEY_LS, document.getElementById("apiKey").value.trim());
+  }catch(e){}
+});
+document.getElementById("apiKey").addEventListener("input",function(){
+  try{ if(document.getElementById("saveKey").checked) localStorage.setItem(KEY_LS,this.value.trim()); }catch(e){}
+});
+
+/* ══════════════ 첨부 파일 ══════════════ */
+let attachments = []; // {kind:'pptx'|'image', name, slides?:[{n,text}], src?:dataURL, mediaType?}
+
+const drop=document.getElementById("drop");
+["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("hover");}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("hover");}));
+drop.addEventListener("drop",e=>addFiles(e.dataTransfer.files));
+
+async function addFiles(fileList){
+  const files=[...fileList]; // FileList는 라이브 객체 — input 초기화 전에 스냅샷
+  for(const f of files){
+    try{
+      if(/\.pptx$/i.test(f.name)){
+        setStatus("info",'<span class="spin"></span>PPT 텍스트 추출 중: '+esc(f.name));
+        const slides = await extractPptx(f);
+        attachments.push({kind:"pptx", name:f.name, slides});
+        setStatus("ok","PPT 추출 완료: "+esc(f.name)+" ("+slides.length+"개 슬라이드)");
+      }else if(/^image\//.test(f.type)){
+        const img = await resizeImage(f, 2000, 0.85);
+        attachments.push({kind:"image", name:f.name, src:img.dataUrl, mediaType:img.mediaType});
+      }else{
+        setStatus("err","지원하지 않는 형식: "+esc(f.name)+" (.pptx 또는 이미지만 가능. .ppt는 .pptx로 다시 저장해 주세요)");
+      }
+    }catch(e){
+      setStatus("err",esc(f.name)+" 처리 실패: "+esc(e.message||e));
+    }
+  }
+  renderAtts();
+}
+function rmAtt(i){ attachments.splice(i,1); renderAtts(); }
+function renderAtts(){
+  document.getElementById("attList").innerHTML = attachments.map((a,i)=>
+    '<div class="att">'+
+      (a.kind==="image" ? '<img src="'+a.src+'" alt="">' : '<span class="icn">📊</span>')+
+      '<div><div class="nm">'+esc(a.name)+'</div><div class="meta">'+
+        (a.kind==="pptx" ? a.slides.length+"개 슬라이드 텍스트" : "이미지 (AI가 직접 봄)")+'</div></div>'+
+      '<button class="rm" onclick="rmAtt('+i+')" title="제거">✕</button>'+
+    '</div>').join("");
+}
+
+/* 이미지 리사이즈 → base64 */
+function resizeImage(file, maxEdge, q){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onerror=()=>rej(new Error("파일 읽기 실패"));
+    r.onload=()=>{
+      const img=new Image();
+      img.onerror=()=>rej(new Error("이미지 해석 실패"));
+      img.onload=()=>{
+        let w=img.width,h=img.height;
+        if(Math.max(w,h)>maxEdge){ const k=maxEdge/Math.max(w,h); w=Math.round(w*k); h=Math.round(h*k); }
+        const cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+        const ctx=cv.getContext("2d");
+        ctx.fillStyle="#fff"; ctx.fillRect(0,0,w,h); // 투명 PNG 배경 보정
+        ctx.drawImage(img,0,0,w,h);
+        res({dataUrl:cv.toDataURL("image/jpeg",q), mediaType:"image/jpeg"});
+      };
+      img.src=r.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+/* ══════════════ PPTX 파서 (의존성 0: ZIP 직접 해석 + 네이티브 inflate) ══════════════ */
+async function extractPptx(file){
+  if(typeof DecompressionStream==="undefined")
+    throw new Error("이 브라우저는 압축 해제를 지원하지 않습니다(크롬/엣지/사파리 최신 버전 필요). PPT를 이미지로 캡처해서 첨부해 주세요.");
+  const buf = await file.arrayBuffer();
+  const dv = new DataView(buf);
+  // EOCD(End of Central Directory) 탐색
+  let eocd=-1;
+  for(let i=buf.byteLength-22;i>=Math.max(0,buf.byteLength-22-65536);i--){
+    if(dv.getUint32(i,true)===0x06054b50){ eocd=i; break; }
+  }
+  if(eocd<0) throw new Error("올바른 .pptx(ZIP) 파일이 아닙니다");
+  const count=dv.getUint16(eocd+10,true);
+  let ptr=dv.getUint32(eocd+16,true);
+  const entries=[];
+  const td=new TextDecoder("utf-8");
+  for(let i=0;i<count;i++){
+    if(dv.getUint32(ptr,true)!==0x02014b50) break;
+    const method=dv.getUint16(ptr+10,true);
+    const csize=dv.getUint32(ptr+20,true);
+    const nlen=dv.getUint16(ptr+28,true), elen=dv.getUint16(ptr+30,true), clen=dv.getUint16(ptr+32,true);
+    const lho=dv.getUint32(ptr+42,true);
+    const name=td.decode(new Uint8Array(buf,ptr+46,nlen));
+    entries.push({name,method,csize,lho});
+    ptr+=46+nlen+elen+clen;
+  }
+  async function readEntry(e){
+    const lnlen=dv.getUint16(e.lho+26,true), lelen=dv.getUint16(e.lho+28,true);
+    const start=e.lho+30+lnlen+lelen;
+    const slice=buf.slice(start,start+e.csize);
+    if(e.method===0) return td.decode(slice);
+    if(e.method===8){
+      const ds=new DecompressionStream("deflate-raw");
+      const out=await new Response(new Blob([slice]).stream().pipeThrough(ds)).arrayBuffer();
+      return td.decode(out);
+    }
+    throw new Error("지원하지 않는 압축 방식");
+  }
+  const slideEntries = entries
+    .map(e=>({e, m:e.name.match(/^ppt\/slides\/slide(\d+)\.xml$/)}))
+    .filter(x=>x.m)
+    .sort((a,b)=>Number(a.m[1])-Number(b.m[1]));
+  if(!slideEntries.length) throw new Error("슬라이드를 찾지 못했습니다 (.pptx가 맞는지 확인)");
+  const slides=[];
+  for(const {e,m} of slideEntries){
+    const xml=await readEntry(e);
+    const runs=[...xml.matchAll(/<a:t(?:\s[^>]*)?>([\s\S]*?)<\/a:t>/g)].map(x=>decodeXml(x[1]));
+    const text=runs.join(" ").replace(/\s+/g," ").trim();
+    slides.push({n:Number(m[1]), text});
+  }
+  return slides;
+}
+function decodeXml(s){
+  return s.replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"')
+          .replace(/&apos;/g,"'").replace(/&#(\d+);/g,(_,d)=>String.fromCodePoint(+d)).replace(/&amp;/g,"&");
+}
+
+/* ══════════════ Claude API 호출 ══════════════ */
+const SCHEMA = {
+  type:"object", additionalProperties:false,
+  properties:{
+    project:{ type:"object", additionalProperties:false,
+      properties:{
+        name:{type:"string",description:"공사명. 자료에 없으면 빈 문자열"},
+        start:{type:"string",description:"공사 착수일 YYYY-MM-DD, 모르면 빈 문자열"},
+        end:{type:"string",description:"준공(완료) 예정일 YYYY-MM-DD, 모르면 빈 문자열"}
+      }, required:["name","start","end"] },
+    tasks:{ type:"array", items:{
+      type:"object", additionalProperties:false,
+      properties:{
+        disc:{type:"integer",enum:[0,1,2,3,4],description:"공종: 0=소방기계 1=소방전기 2=감리 3=인허가 4=공통"},
+        name:{type:"string",description:"작업명"},
+        company:{type:"string",description:"담당업체명, 없으면 빈 문자열"},
+        owner:{type:"string",description:"담당자/연락처, 없으면 빈 문자열"},
+        planStart:{type:"string",description:"계획 착수일 YYYY-MM-DD, 모르면 빈 문자열"},
+        planEnd:{type:"string",description:"계획 완료일 YYYY-MM-DD, 모르면 빈 문자열"},
+        progress:{type:"integer",description:"진척률 0~100, 모르면 0"},
+        status:{type:"integer",enum:[0,1,2,4],description:"0=예정 1=진행중 2=완료 4=보류 (지연은 자동계산이므로 쓰지 않음)"},
+        milestone:{type:"boolean",description:"착공신고·완공검사 신청·증명서 발급 등 하루짜리 이벤트면 true"},
+        memo:{type:"string",description:"자료에 있던 비고·특이사항. 없으면 빈 문자열"}
+      },
+      required:["disc","name","company","owner","planStart","planEnd","progress","status","milestone","memo"]
+    }},
+    notes:{type:"string",description:"불확실했던 점, 자료에서 읽지 못한 부분, 확인이 필요한 사항을 한국어로 간단히"}
+  },
+  required:["project","tasks","notes"]
+};
+
+const SYSTEM = `당신은 한국 소방시설공사 현장의 공정관리 담당자를 돕는 데이터 추출 도우미입니다.
+사용자가 주는 자료(공정표 PPT 텍스트, 공정표/화이트보드/보고서 이미지, 메모)를 읽고,
+소방공사 훅업(Hook-up) 공정표 형식의 JSON으로 변환합니다.
+
+공종(disc) 분류 기준:
+- 0 소방기계: 배관(입상·주배관·가지배관), 스프링클러 헤드, 소화펌프·수조, 옥내소화전, 소화기구, 제연설비(덕트·댐퍼·송풍기), 가스계 소화설비, 수압시험, 펌프 시운전
+- 1 소방전기: 자동화재탐지설비(자탐), 감지기, 수신기(P형/R형), 발신기·경종·시각경보기, 유도등·비상조명등, 비상방송, 비상전원 결선, 연동시험
+- 2 감리: 감리자 지정신고, 감리원 배치통보, 시공 검측(은폐 전 검측 포함), 성능시험 입회, 감리결과보고서
+- 3 인허가: 소방시설공사 착공신고, 착공신고 수리·보완, 완공검사 신청, 소방서 현장확인, 완공검사증명서 발급, 관할 소방서 관련 업무
+- 4 공통: 위 어디에도 속하지 않는 것(가설, 안전, 회의 등)
+
+규칙:
+- 날짜는 반드시 YYYY-MM-DD. 연도가 없으면 자료의 문맥으로 추정하되, 추정 근거가 전혀 없으면 빈 문자열("")로 두고 notes에 적으세요. "6월 둘째주" 같은 표현은 해당 주 월요일~금요일로 환산하세요.
+- 진척률이 "완료"로 표기되면 progress=100, status=2. 퍼센트 표기가 있으면 그대로.
+- 같은 작업이 여러 자료에 겹쳐 나오면 하나로 합치세요.
+- 작업명은 업계 용어를 유지하되 간결하게 정리하세요.
+- 자료에 없는 내용을 지어내지 마세요. 불확실하면 notes에 남기세요.`;
+
+let extracted = null; // {project, tasks:[...], notes}
+let lastUsage = null;
+
+function setStatus(kind,msg){
+  const b=document.getElementById("statusBox");
+  b.className="status-box show "+kind;
+  b.innerHTML=msg;
+}
+
+async function runExtract(){
+  const key=document.getElementById("apiKey").value.trim();
+  if(!key){ setStatus("err","1단계에서 API 키를 입력해 주세요."); return; }
+  const extra=document.getElementById("extraText").value.trim();
+  if(!attachments.length && !extra){ setStatus("err","분석할 자료가 없습니다 — 파일을 첨부하거나 텍스트를 붙여넣어 주세요."); return; }
+
+  // 사용자 콘텐츠 구성: 이미지 블록들 + 텍스트 블록
+  const content=[];
+  let textParts=[];
+  attachments.forEach(a=>{
+    if(a.kind==="image"){
+      content.push({type:"image",source:{type:"base64",media_type:a.mediaType,data:a.src.split(",")[1]}});
+      textParts.push("[첨부 이미지: "+a.name+"]");
+    }else{
+      textParts.push("=== PPT 파일: "+a.name+" ===\n"+
+        a.slides.map(s=>"[슬라이드 "+s.n+"] "+(s.text||"(텍스트 없음)")).join("\n"));
+    }
+  });
+  if(extra) textParts.push("=== 사용자 메모/지시 ===\n"+extra);
+  textParts.push("오늘 날짜: "+fdToday()+"\n위 자료를 훅업 공정표 JSON으로 변환해 주세요.");
+  content.push({type:"text",text:textParts.join("\n\n")});
+
+  const btn=document.getElementById("runBtn");
+  btn.disabled=true;
+  setStatus("info",'<span class="spin"></span>Claude가 자료를 읽는 중… (수십 초 걸릴 수 있습니다)');
+  try{
+    const resp=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{
+        "content-type":"application/json",
+        "x-api-key":key,
+        "anthropic-version":"2023-06-01",
+        "anthropic-dangerous-direct-browser-access":"true"
+      },
+      body:JSON.stringify({
+        model:MODEL,
+        max_tokens:16000,
+        system:SYSTEM,
+        messages:[{role:"user",content}],
+        output_config:{format:{type:"json_schema",schema:SCHEMA}}
+      })
+    });
+    const data=await resp.json().catch(()=>null);
+    if(!resp.ok){
+      const msg=(data&&data.error&&data.error.message)||("HTTP "+resp.status);
+      throw new Error(resp.status===401?"API 키가 올바르지 않습니다.":
+                      resp.status===429?"요청 한도 초과 — 잠시 후 다시 시도해 주세요.":msg);
+    }
+    if(data.stop_reason==="refusal") throw new Error("모델이 이 요청 처리를 거부했습니다. 자료 내용을 확인해 주세요.");
+    const textBlock=(data.content||[]).find(b=>b.type==="text");
+    if(!textBlock) throw new Error("응답에서 결과를 찾지 못했습니다.");
+    let out;
+    try{ out=JSON.parse(textBlock.text); }
+    catch(e){ throw new Error("결과 JSON 해석 실패"+(data.stop_reason==="max_tokens"?" (출력이 잘렸습니다 — 자료를 나눠서 시도해 보세요)":"")); }
+    if(data.stop_reason==="max_tokens") setStatus("err","⚠ 출력이 길어 잘렸을 수 있습니다 — 결과를 꼭 확인하세요.");
+    lastUsage=data.usage||null;
+    extracted=sanitize(out);
+    setStatus("ok","분석 완료 — 작업 "+extracted.tasks.length+"건 추출. 아래에서 확인 후 밀어넣으세요.");
+    renderPreview();
+  }catch(e){
+    let m=e.message||String(e);
+    if(/Failed to fetch|NetworkError|load failed/i.test(m))
+      m="API 서버에 연결하지 못했습니다 — 인터넷 연결 또는 회사 프록시의 api.anthropic.com 차단 여부를 확인해 주세요.";
+    setStatus("err","실패: "+esc(m));
+  }finally{
+    btn.disabled=false;
+  }
+}
+
+function sanitize(out){
+  const p=out.project||{};
+  const tasks=(Array.isArray(out.tasks)?out.tasks:[]).map(t=>({
+    include:true,
+    disc:[0,1,2,3,4].includes(t.disc)?t.disc:4,
+    name:String(t.name||"").trim(),
+    company:String(t.company||"").trim(),
+    owner:String(t.owner||"").trim(),
+    planStart:validDate(t.planStart),
+    planEnd:validDate(t.planEnd),
+    progress:Math.max(0,Math.min(100,Math.round(Number(t.progress)||0))),
+    status:[0,1,2,4].includes(t.status)?t.status:0,
+    milestone:!!t.milestone,
+    memo:String(t.memo||"").trim()
+  })).filter(t=>t.name);
+  tasks.forEach(t=>{ if(t.planStart&&t.planEnd&&t.planEnd<t.planStart) t.planEnd=t.planStart; });
+  return {
+    project:{name:String(p.name||"").trim(), start:validDate(p.start), end:validDate(p.end)},
+    tasks, notes:String(out.notes||"").trim()
+  };
+}
+
+/* ══════════════ 미리보기 ══════════════ */
+function renderPreview(){
+  if(!extracted) return;
+  document.getElementById("previewCard").style.display="";
+  document.getElementById("pushCard").style.display="";
+  const p=extracted.project;
+  document.getElementById("pvProject").innerHTML=
+    '<span>공사명: <b>'+esc(p.name||"(미확인)")+'</b></span>'+
+    '<span>착수일: <b>'+esc(p.start||"—")+'</b></span>'+
+    '<span>준공일: <b>'+esc(p.end||"—")+'</b></span>'+
+    DISCS.map((d,i)=>{ const n=extracted.tasks.filter(t=>t.disc===i).length;
+      return n?'<span style="color:'+DISC_COLORS[i]+'">'+d+' <b>'+n+'</b></span>':""; }).join("");
+  document.getElementById("pvCount").textContent="작업 "+extracted.tasks.length+"건";
+
+  let html='<thead><tr><th>포함</th><th>공종</th><th style="min-width:200px">작업명</th><th>담당업체</th>'+
+    '<th>계획 착수</th><th>계획 완료</th><th>진척률</th><th>상태</th><th>M/S</th><th>메모</th></tr></thead><tbody>';
+  extracted.tasks.forEach((t,i)=>{
+    html+='<tr>'+
+      '<td style="text-align:center"><input type="checkbox"'+(t.include?" checked":"")+' onchange="pvSet('+i+',\'include\',this.checked)"></td>'+
+      '<td><span class="disc-tag" style="background:'+DISC_COLORS[t.disc]+'">'+DISCS[t.disc]+'</span></td>'+
+      '<td><input value="'+esc(t.name)+'" oninput="pvSet('+i+',\'name\',this.value)"></td>'+
+      '<td><input value="'+esc(t.company)+'" oninput="pvSet('+i+',\'company\',this.value)"></td>'+
+      '<td><input type="date" value="'+t.planStart+'" onchange="pvSet('+i+',\'planStart\',this.value)"></td>'+
+      '<td><input type="date" value="'+t.planEnd+'" onchange="pvSet('+i+',\'planEnd\',this.value)"></td>'+
+      '<td><input type="number" min="0" max="100" value="'+t.progress+'" style="width:52px" onchange="pvSet('+i+',\'progress\',this.value)"></td>'+
+      '<td>'+STATUSES[t.status]+'</td>'+
+      '<td style="text-align:center">'+(t.milestone?"◆":"")+'</td>'+
+      '<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis" title="'+esc(t.memo)+'">'+esc(t.memo)+'</td></tr>';
+  });
+  document.getElementById("pvTable").innerHTML=html+'</tbody>';
+
+  const u=lastUsage;
+  document.getElementById("usageInfo").innerHTML = u ?
+    "토큰 사용: 입력 "+(u.input_tokens||0).toLocaleString()+" · 출력 "+(u.output_tokens||0).toLocaleString()+
+    " (약 $"+(((u.input_tokens||0)*5+(u.output_tokens||0)*25)/1e6).toFixed(3)+")" : "";
+  const notes=document.getElementById("aiNotes");
+  if(extracted.notes){ notes.style.display="block"; notes.innerHTML="🤖 <b>AI 확인 요청:</b> "+esc(extracted.notes); }
+  else notes.style.display="none";
+
+  renderPushTargets();
+}
+function pvSet(i,f,v){
+  const t=extracted.tasks[i]; if(!t) return;
+  if(f==="progress") v=Math.max(0,Math.min(100,Number(v)||0));
+  if(f==="include") v=!!v;
+  t[f]=v;
+}
+
+/* ══════════════ 밀어넣기 ══════════════ */
+function loadHookupState(){
+  try{
+    const raw=localStorage.getItem(LS_KEY);
+    if(raw){ const s=JSON.parse(raw); if(s&&Array.isArray(s.projects)) return s; }
+  }catch(e){}
+  return {projects:[],activeId:null};
+}
+function renderPushTargets(){
+  const mode=document.querySelector('input[name="pushMode"]:checked').value;
+  const sel=document.getElementById("pushTarget");
+  if(mode==="append"){
+    const st=loadHookupState();
+    sel.innerHTML=st.projects.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join("")
+      ||'<option value="">(기존 공사 없음)</option>';
+    sel.style.display="";
+  }else sel.style.display="none";
+}
+function newTaskFrom(t){
+  return { id:uid(), disc:t.disc, name:t.name, company:t.company, owner:t.owner,
+    planStart:t.planStart, planEnd:t.planEnd||t.planStart, actStart:"", actEnd:"",
+    progress:t.progress, status:t.status, pred:"", milestone:t.milestone,
+    memo:t.memo, images:[] };
+}
+function pushData(){
+  const box=document.getElementById("pushStatus");
+  const show=(k,m)=>{ box.className="status-box show "+k; box.innerHTML=m; };
+  if(!extracted){ show("err","먼저 3단계 분석을 실행해 주세요."); return; }
+  const picked=extracted.tasks.filter(t=>t.include);
+  if(!picked.length){ show("err","포함(체크)된 작업이 없습니다."); return; }
+  const st=loadHookupState();
+  const mode=document.querySelector('input[name="pushMode"]:checked').value;
+  let target;
+  if(mode==="new"){
+    const p=extracted.project;
+    target={ id:uid(), name:p.name||("가져온 공사 "+fdToday()), start:p.start, end:p.end, tasks:[] };
+    st.projects.push(target);
+    st.activeId=target.id;
+  }else{
+    target=st.projects.find(x=>x.id===document.getElementById("pushTarget").value);
+    if(!target){ show("err","대상 공사를 선택해 주세요 (없으면 '새 공사로 만들기')."); return; }
+    st.activeId=target.id;
+  }
+  // 중복(공종+작업명 동일) 스킵
+  let added=0, skipped=0;
+  picked.forEach(t=>{
+    if(target.tasks.some(x=>x.disc===t.disc && (x.name||"").trim()===t.name.trim())) { skipped++; return; }
+    target.tasks.push(newTaskFrom(t)); added++;
+  });
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(st)); }
+  catch(e){ show("err","저장 실패(브라우저 저장 불가 환경이거나 용량 초과)."); return; }
+  show("ok","완료! <b>"+esc(target.name)+"</b>에 작업 "+added+"건 추가"+(skipped?" (중복 "+skipped+"건 건너뜀)":"")+
+    ' — <a href="hookup.html"><b>훅업 공정표 열기 →</b></a>');
+}
+</script>
+</body>
+</html>
