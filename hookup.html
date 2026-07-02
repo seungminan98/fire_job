@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>소방공사 훅업(Hook-up) 공정 일정 · 간트차트</title>
+<style>
+  :root{
+    --bg:#ffffff; --ink:#1a1a1a; --muted:#6b6b6b; --line:#e2e2e2;
+    --line-strong:#c9c9c9; --soft:#f7f7f7; --softer:#fafafa;
+    --ok:#2f6f4f; --ok-bg:#e8f3ed; --warn:#8a6d1a; --warn-bg:#f6efd9; --over:#9a3434; --over-bg:#f6e4e4;
+    --mech:#c0392b; --elec:#1d5fc4; --supv:#2f7d4f; --perm:#7b2fbf; --etc:#6b6b6b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1500px;margin:0 auto;padding:18px 18px 60px}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+    border-bottom:1.5px solid var(--ink);padding-bottom:10px;margin-bottom:14px}
+  h1{font-size:17px;font-weight:650;letter-spacing:-.01em;margin:0}
+  .sub{color:var(--muted);font-size:12px}
+  .sub a{color:var(--muted)}
+  .saved-flag{font-size:11px;color:var(--ok)}
+
+  .card{border:1px solid var(--line);border-radius:7px;margin-bottom:14px;overflow:hidden}
+  .card-h{display:flex;align-items:center;gap:8px;padding:9px 13px;background:var(--soft);
+    border-bottom:1px solid var(--line);font-size:13px;font-weight:600;flex-wrap:wrap}
+  .card-h .spacer{flex:1}
+  .card-b{padding:12px 13px}
+  .card-b.flush{padding:0}
+
+  button.btn{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line-strong);
+    color:var(--ink);padding:6px 11px;border-radius:5px;font-size:12px;cursor:pointer;font-family:inherit}
+  button.btn:hover{background:var(--soft)}
+  button.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  button.btn.primary:hover{background:#000}
+  button.btn.sm{padding:3px 8px;font-size:11px}
+  button.btn.danger{color:var(--over);border-color:var(--over)}
+  .toolbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  select.big{border:1px solid var(--line-strong);border-radius:5px;padding:5px 8px;font-family:inherit;
+    font-size:12.5px;font-weight:600;max-width:280px}
+  .file-in{display:none}
+
+  /* ── 요약 스탯 ─────────────────────────── */
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .stat{flex:1;min-width:130px;border:1px solid var(--line);border-radius:7px;padding:9px 13px;background:#fff}
+  .stat .k{font-size:11px;color:var(--muted)}
+  .stat .v{font-size:18px;font-weight:650;font-variant-numeric:tabular-nums}
+  .stat .v small{font-size:11px;font-weight:400;color:var(--muted)}
+  .bar-wrap{height:7px;background:var(--soft);border-radius:4px;overflow:hidden;margin-top:5px}
+  .bar{height:100%;border-radius:4px;background:var(--ink)}
+
+  /* ── 공정표(테이블) ─────────────────────── */
+  .proj-scroll{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;font-size:12px}
+  th,td{border:1px solid var(--line);padding:4px 7px;text-align:left;vertical-align:middle;white-space:nowrap}
+  th{background:var(--soft);font-weight:600;color:#333}
+  tbody tr:hover{background:var(--softer)}
+  td input,td select{width:100%;border:none;background:transparent;font-family:inherit;font-size:12px;
+    color:var(--ink);padding:2px 0;min-width:50px}
+  td input:focus,td select:focus{outline:1.5px solid var(--ink);outline-offset:1px;border-radius:3px;background:#fff}
+  td.num input{text-align:right}
+  td input[type=date]{min-width:118px}
+  tr.grp td{background:var(--soft);font-weight:650;border-top:1.5px solid var(--line-strong)}
+  tr.grp td .cnt{font-weight:400;color:var(--muted);font-size:11px}
+  td.wbs{font-variant-numeric:tabular-nums;color:var(--muted);font-size:11px;text-align:center;width:44px}
+  tr.done td, tr.done td input, tr.done td select{color:var(--muted)}
+  tr.done td .tname input{text-decoration:line-through}
+  select.d0{color:var(--mech);font-weight:600} select.d1{color:var(--elec);font-weight:600}
+  select.d2{color:var(--supv);font-weight:600} select.d3{color:var(--perm);font-weight:600}
+  select.d4{color:var(--etc);font-weight:600}
+  .pill{display:inline-block;padding:1px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+  .pill.s0{background:var(--soft);color:var(--muted)}          /* 예정 */
+  .pill.s1{background:#e7eefb;color:var(--elec)}               /* 진행중 */
+  .pill.s2{background:var(--ok-bg);color:var(--ok)}            /* 완료 */
+  .pill.s3{background:var(--over-bg);color:var(--over)}        /* 지연 */
+  .pill.s4{background:var(--warn-bg);color:var(--warn)}        /* 보류 */
+  .late-dot{color:var(--over);font-weight:700;cursor:help}
+  .row-del{cursor:pointer;color:var(--muted);width:24px;text-align:center;padding:0}
+  .row-del:hover{color:var(--over)}
+  .detail-btn{cursor:pointer;font-size:11px;border:1px solid var(--line-strong);border-radius:4px;
+    background:#fff;padding:2px 7px;font-family:inherit}
+  .detail-btn:hover{background:var(--soft)}
+  .att-badge{font-size:10px;color:var(--muted);margin-left:4px}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:9px;line-height:1.6}
+  .hint code{background:var(--soft);padding:1px 5px;border-radius:3px;font-size:11px}
+  .legend{display:flex;gap:13px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin:0 0 10px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:12px;height:12px;border-radius:3px;display:inline-block;flex:none}
+
+  /* ── 간트 ──────────────────────────────── */
+  .hscroll{overflow-x:auto;border:1px solid var(--line);border-radius:6px;position:relative}
+  .hchart{width:max-content;min-width:100%;font-size:11px;position:relative}
+  .hrow{display:flex;align-items:stretch;min-height:30px;border-bottom:1px solid var(--line);position:relative}
+  .hrow.hhead{position:sticky;top:0;z-index:5;border-bottom:1.5px solid var(--line-strong)}
+  .hname{flex:none;width:230px;padding:5px 9px;position:sticky;left:0;z-index:3;background:#fff;
+    border-right:1.5px solid var(--line-strong);font-size:11.5px;line-height:1.35;overflow:hidden}
+  .hhead .hname{background:var(--soft);font-weight:600;display:flex;align-items:center}
+  .hname .meta{color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hname .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+  .hname .nm:hover{text-decoration:underline}
+  .hrow.hgrp{min-height:24px;background:var(--soft)}
+  .hrow.hgrp .hname{background:var(--soft);font-weight:650;display:flex;align-items:center;gap:6px}
+  .htrack{position:relative;flex:none}
+  .hhead .htrack{display:flex;background:var(--soft)}
+  .hmonth{flex:none;text-align:center;padding:5px 0;font-size:10px;color:#333;white-space:nowrap;
+    border-right:1px solid var(--line);overflow:hidden}
+  .hbar{position:absolute;top:50%;transform:translateY(-50%);height:18px;border-radius:3px;cursor:pointer;
+    overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.4) inset;display:flex;align-items:center}
+  .hbar:hover{filter:brightness(1.12);box-shadow:0 0 0 1.5px var(--ink)}
+  .hbar .fill{position:absolute;left:0;top:0;bottom:0;background:rgba(0,0,0,.32)}
+  .hbar .lbl{position:relative;color:#fff;font-size:9.5px;font-weight:600;padding:0 5px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+  .hbar.late{outline:1.5px solid var(--over);outline-offset:1px}
+  .hms{position:absolute;top:50%;width:13px;height:13px;transform:translate(-50%,-50%) rotate(45deg);
+    cursor:pointer;border-radius:2px;box-shadow:0 0 0 1px rgba(255,255,255,.5) inset}
+  .hms:hover{box-shadow:0 0 0 1.5px var(--ink)}
+  .hms-lbl{position:absolute;top:50%;transform:translateY(-50%);font-size:9px;color:var(--muted);
+    white-space:nowrap;pointer-events:none;padding-left:10px}
+  .hgrid{position:absolute;top:0;bottom:0;width:0;pointer-events:none}
+  .hgrid.month{border-left:1px solid var(--line-strong);z-index:1}
+  .hgrid.week{border-left:1px solid var(--line);z-index:0}
+  .htoday{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed #c0392b;z-index:2;pointer-events:none}
+  .htoday .lbl{position:absolute;top:1px;left:2px;font-size:8.5px;color:#c0392b;font-weight:600;background:#fff;padding:0 2px}
+  .undated{padding:6px 9px;font-size:11px;color:var(--muted)}
+
+  /* ── 상세 모달 ─────────────────────────── */
+  .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:50;display:none;
+    align-items:flex-start;justify-content:center;padding:34px 14px;overflow-y:auto}
+  .modal-back.show{display:flex}
+  .modal{background:#fff;border-radius:9px;width:100%;max-width:720px;box-shadow:0 10px 40px rgba(0,0,0,.22)}
+  .modal-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .modal-h .ttl{font-size:14px;font-weight:650;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .modal-h .x{cursor:pointer;border:none;background:none;font-size:17px;color:var(--muted);padding:2px 6px}
+  .modal-h .x:hover{color:var(--ink)}
+  .modal-b{padding:14px 16px 18px}
+  .fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:9px 14px;margin-bottom:12px}
+  .fgrid label{display:block;font-size:11px;color:var(--muted);margin-bottom:2px}
+  .fgrid input,.fgrid select{width:100%;border:1px solid var(--line-strong);border-radius:4px;
+    padding:5px 7px;font-family:inherit;font-size:12px}
+  .fgrid .chk{display:flex;align-items:center;gap:6px;font-size:12px;padding-top:17px}
+  .fgrid .chk input{width:auto}
+  .sec-t{font-size:12px;font-weight:650;margin:14px 0 6px;padding-top:11px;border-top:1px solid var(--line)}
+  textarea.memo{width:100%;min-height:110px;border:1px solid var(--line-strong);border-radius:5px;
+    padding:8px 10px;font-family:inherit;font-size:12.5px;line-height:1.6;resize:vertical}
+  .img-grid{display:flex;gap:9px;flex-wrap:wrap;margin-top:8px}
+  .img-card{width:118px}
+  .img-card .thumb{width:118px;height:88px;object-fit:cover;border:1px solid var(--line);border-radius:5px;
+    cursor:zoom-in;display:block;background:var(--soft)}
+  .img-card .cap{width:100%;border:none;border-bottom:1px dashed var(--line);font-family:inherit;
+    font-size:10.5px;padding:2px 1px;color:var(--muted)}
+  .img-card .cap:focus{outline:none;border-bottom-color:var(--ink);color:var(--ink)}
+  .img-card .rm{display:block;text-align:right;font-size:10px;color:var(--muted);cursor:pointer;border:none;
+    background:none;padding:1px 0;margin-left:auto;font-family:inherit}
+  .img-card .rm:hover{color:var(--over)}
+  .storage{font-size:11px;color:var(--muted);margin-top:8px}
+  .storage b.overq{color:var(--over)}
+
+  .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:60;display:none;
+    align-items:center;justify-content:center;cursor:zoom-out;flex-direction:column;gap:10px}
+  .lightbox.show{display:flex}
+  .lightbox img{max-width:92vw;max-height:86vh;border-radius:5px}
+  .lightbox .cap{color:#eee;font-size:12px}
+
+  /* ── 새 공사 모달 ──────────────────────── */
+  .np-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+  .np-grid .full{grid-column:1/-1}
+  .np-grid label{display:block;font-size:11px;color:var(--muted);margin-bottom:2px}
+  .np-grid input{width:100%;border:1px solid var(--line-strong);border-radius:4px;padding:6px 8px;
+    font-family:inherit;font-size:12.5px}
+  .np-tpl{grid-column:1/-1;display:flex;align-items:flex-start;gap:8px;font-size:12px;background:var(--soft);
+    border-radius:6px;padding:9px 11px;line-height:1.55}
+  .np-tpl input{width:auto;margin-top:2px}
+
+  footer{margin-top:26px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);
+    font-size:11.5px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>소방공사 훅업(Hook-up) 공정 일정</h1>
+      <div class="sub">소방기계 · 소방전기 · 감리 · 인허가 — 공사별 공정표 + 간트차트 (막대 클릭 → 상세 메모/사진)</div>
+    </div>
+    <div style="text-align:right">
+      <div class="sub"><a href="index.html">← 전체 공사 일정·M/M 관리</a></div>
+      <div class="sub" id="saveState"></div>
+    </div>
+  </header>
+
+  <div id="storageWarn" style="display:none;margin-bottom:14px;padding:10px 13px;border-radius:7px;
+    background:var(--over-bg);border:1px solid var(--over);color:var(--over);font-size:12px;line-height:1.6">
+    ⚠ <b>이 환경에서는 자동 저장이 작동하지 않습니다.</b> 새로고침하면 입력 내용이 사라질 수 있어요.
+    작업 후 <b>“JSON 백업”</b> 또는 <b>“공유 URL 복사”</b>로 보관하세요.
+  </div>
+
+  <!-- 공사 선택/관리 -->
+  <div class="card">
+    <div class="card-h">
+      공사 선택
+      <select class="big" id="projSel" onchange="switchProject(this.value)"></select>
+      <button class="btn sm" onclick="renameProject()">이름변경</button>
+      <button class="btn sm danger" onclick="deleteProject()">삭제</button>
+      <div class="spacer"></div>
+      <div class="toolbar">
+        <button class="btn primary" onclick="openNewProject()">＋ 새 공사</button>
+        <button class="btn" onclick="copyShareURL()">공유 URL 복사</button>
+        <button class="btn" onclick="exportJSON()">JSON 백업</button>
+        <button class="btn" onclick="document.getElementById('jsonIn').click()">JSON 불러오기</button>
+        <input type="file" id="jsonIn" class="file-in" accept=".json" onchange="importJSON(event)">
+        <button class="btn" onclick="exportCSV()">공정표 CSV</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <!-- 간트차트 -->
+  <div class="card">
+    <div class="card-h">
+      간트차트
+      <div class="spacer"></div>
+      <span class="sub">배율</span>
+      <select class="big" style="max-width:90px" id="zoomSel" onchange="setZoom(this.value)">
+        <option value="2">좁게</option>
+        <option value="4" selected>보통</option>
+        <option value="8">넓게</option>
+      </select>
+    </div>
+    <div class="card-b">
+      <div class="legend" id="legend"></div>
+      <div class="hscroll"><div class="hchart" id="gantt"></div></div>
+      <div class="hint">막대(또는 좌측 작업명)를 <b>클릭하면 상세 창</b>이 열립니다 — 실제 착수/완료, 메모, 현장 사진을 기록하세요.
+        막대 안 어두운 부분은 <b>진척률</b>, 빨간 점선은 <b>오늘</b>, ◆는 <b>마일스톤</b>, 빨간 테두리는 <b>지연</b>(계획완료 경과 &amp; 미완료)입니다.</div>
+    </div>
+  </div>
+
+  <!-- 공정표 -->
+  <div class="card">
+    <div class="card-h">
+      훅업 공정표
+      <div class="spacer"></div>
+      <div class="toolbar">
+        <select class="big" style="max-width:130px" id="newDisc">
+          <option value="0">소방기계</option><option value="1">소방전기</option>
+          <option value="2">감리</option><option value="3">인허가</option><option value="4">공통</option>
+        </select>
+        <button class="btn primary" onclick="addTask()">＋ 작업 추가</button>
+      </div>
+    </div>
+    <div class="card-b flush">
+      <div class="proj-scroll"><table id="taskTable"></table></div>
+    </div>
+  </div>
+  <div class="hint" style="margin-top:-6px">
+    표는 <b>공종 → 계획착수일</b> 순으로 자동 정렬됩니다. 기간(일)은 계획 착수~완료로 자동 계산.
+    선행 칸에는 선행 작업의 코드(<code>M-3</code>, <code>E-1</code> 등)를 적어두면 순서 파악에 좋습니다.
+  </div>
+
+  <footer>
+    데이터는 이 브라우저(localStorage)에 자동 저장됩니다. 업로드한 사진은 자동 압축(긴 변 1280px, JPEG)되어 함께 저장되며,
+    <b>JSON 백업</b>에는 사진까지 포함, <b>공유 URL</b>에는 용량 문제로 업로드 사진은 제외(URL로 넣은 이미지는 포함)됩니다.<br>
+    용어 기준: 소방시설공사업법 — 착공신고 · 감리자 지정신고 · 감리원 배치통보 · 완공검사 · 감리결과보고서.
+  </footer>
+</div>
+
+<!-- 작업 상세 모달 -->
+<div class="modal-back" id="detailBack" onclick="if(event.target===this)closeDetail()">
+  <div class="modal">
+    <div class="modal-h">
+      <span class="ttl" id="dTitle"></span>
+      <button class="x" onclick="closeDetail()">✕</button>
+    </div>
+    <div class="modal-b" id="dBody"></div>
+  </div>
+</div>
+
+<!-- 새 공사 모달 -->
+<div class="modal-back" id="npBack" onclick="if(event.target===this)closeNewProject()">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-h"><span class="ttl">새 공사 만들기</span>
+      <button class="x" onclick="closeNewProject()">✕</button></div>
+    <div class="modal-b">
+      <div class="np-grid">
+        <div class="full"><label>공사명 *</label><input id="npName" placeholder="예: ○○물류센터 신축공사 소방공사"></div>
+        <div><label>착수일 *</label><input type="date" id="npStart"></div>
+        <div><label>준공(완료) 예정일 *</label><input type="date" id="npEnd"></div>
+        <div><label>소방기계 업체</label><input id="npMech" placeholder="예: ○○소방(주)"></div>
+        <div><label>소방전기 업체</label><input id="npElec" placeholder="예: ○○이엔지"></div>
+        <div><label>감리사</label><input id="npSupv" placeholder="예: ○○소방기술사사무소"></div>
+        <div><label>관할 소방서</label><input id="npPerm" placeholder="예: ○○소방서"></div>
+        <label class="np-tpl"><input type="checkbox" id="npTpl" checked>
+          <span><b>표준 훅업 템플릿으로 시작</b> — 착공신고부터 완공검사증명서 발급까지
+          23개 표준 작업이 착수~준공 기간에 맞춰 자동 배치됩니다. (생성 후 자유롭게 수정/삭제)</span></label>
+      </div>
+      <div class="toolbar" style="margin-top:14px;justify-content:flex-end">
+        <button class="btn" onclick="closeNewProject()">취소</button>
+        <button class="btn primary" onclick="createProject()">만들기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('show')">
+  <img id="lbImg" alt=""><div class="cap" id="lbCap"></div>
+</div>
+
+<script>
+/* === LZ-String (MIT License, by pieroxy) — URL-safe 압축. 외부 의존 없이 인라인 === */
+var LZString=function(){var r=String.fromCharCode,o="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",n="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$",e={};function t(r,o){if(!e[r]){e[r]={};for(var n=0;n<r.length;n++)e[r][r.charAt(n)]=n}return e[r][o]}var i={compressToBase64:function(r){if(null==r)return"";var n=i._compress(r,6,function(r){return o.charAt(r)});switch(n.length%4){default:case 0:return n;case 1:return n+"===";case 2:return n+"==";case 3:return n+"="}},decompressFromBase64:function(r){return null==r?"":""==r?null:i._decompress(r.length,32,function(n){return t(o,r.charAt(n))})},compressToUTF16:function(o){return null==o?"":i._compress(o,15,function(o){return r(o+32)})+" "},decompressFromUTF16:function(r){return null==r?"":""==r?null:i._decompress(r.length,16384,function(o){return r.charCodeAt(o)-32})},compressToUint8Array:function(r){for(var o=i.compress(r),n=new Uint8Array(2*o.length),e=0,t=o.length;e<t;e++){var s=o.charCodeAt(e);n[2*e]=s>>>8,n[2*e+1]=s%256}return n},decompressFromUint8Array:function(o){if(null==o)return i.decompress(o);for(var n=new Array(o.length/2),e=0,t=n.length;e<t;e++)n[e]=256*o[2*e]+o[2*e+1];var s=[];return n.forEach(function(o){s.push(r(o))}),i.decompress(s.join(""))},compressToEncodedURIComponent:function(r){return null==r?"":i._compress(r,6,function(r){return n.charAt(r)})},decompressFromEncodedURIComponent:function(r){return null==r?"":""==r?null:(r=r.replace(/ /g,"+"),i._decompress(r.length,32,function(o){return t(n,r.charAt(o))}))},compress:function(o){return i._compress(o,16,function(o){return r(o)})},_compress:function(r,o,n){if(null==r)return"";var e,t,i,s={},u={},a="",p="",c="",l=2,f=3,h=2,d=[],m=0,v=0;for(i=0;i<r.length;i+=1)if(a=r.charAt(i),Object.prototype.hasOwnProperty.call(s,a)||(s[a]=f++,u[a]=!0),p=c+a,Object.prototype.hasOwnProperty.call(s,p))c=p;else{if(Object.prototype.hasOwnProperty.call(u,c)){if(c.charCodeAt(0)<256){for(e=0;e<h;e++)m<<=1,v==o-1?(v=0,d.push(n(m)),m=0):v++;for(t=c.charCodeAt(0),e=0;e<8;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;e<h;e++)m=m<<1|t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=c.charCodeAt(0),e=0;e<16;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}0==--l&&(l=Math.pow(2,h),h++),delete u[c]}else for(t=s[c],e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;0==--l&&(l=Math.pow(2,h),h++),s[p]=f++,c=String(a)}if(""!==c){if(Object.prototype.hasOwnProperty.call(u,c)){if(c.charCodeAt(0)<256){for(e=0;e<h;e++)m<<=1,v==o-1?(v=0,d.push(n(m)),m=0):v++;for(t=c.charCodeAt(0),e=0;e<8;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;e<h;e++)m=m<<1|t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=c.charCodeAt(0),e=0;e<16;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}0==--l&&(l=Math.pow(2,h),h++),delete u[c]}else for(t=s[c],e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;0==--l&&(l=Math.pow(2,h),h++)}for(t=2,e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;for(;;){if(m<<=1,v==o-1){d.push(n(m));break}v++}return d.join("")},decompress:function(r){return null==r?"":""==r?null:i._decompress(r.length,32768,function(o){return r.charCodeAt(o)})},_decompress:function(o,n,e){var t,i,s,u,a,p,c,l=[],f=4,h=4,d=3,m="",v=[],g={val:e(0),position:n,index:1};for(t=0;t<3;t+=1)l[t]=t;for(s=0,a=Math.pow(2,2),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;switch(s){case 0:for(s=0,a=Math.pow(2,8),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;c=r(s);break;case 1:for(s=0,a=Math.pow(2,16),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;c=r(s);break;case 2:return""}for(l[3]=c,i=c,v.push(c);;){if(g.index>o)return"";for(s=0,a=Math.pow(2,d),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;switch(c=s){case 0:for(s=0,a=Math.pow(2,8),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;l[h++]=r(s),c=h-1,f--;break;case 1:for(s=0,a=Math.pow(2,16),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;l[h++]=r(s),c=h-1,f--;break;case 2:return v.join("")}if(0==f&&(f=Math.pow(2,d),d++),l[c])m=l[c];else{if(c!==h)return null;m=i+i.charAt(0)}v.push(m),l[h++]=i+m.charAt(0),i=m,0==--f&&(f=Math.pow(2,d),d++)}}};return i}();
+/* === /LZ-String === */
+
+/* ══════════════ 상수 ══════════════ */
+const DISCS = ["소방기계","소방전기","감리","인허가","공통"];
+const DISC_CODES = ["M","E","S","P","C"];
+const DISC_COLORS = ["#c0392b","#1d5fc4","#2f7d4f","#7b2fbf","#6b6b6b"];
+const STATUSES = ["예정","진행중","완료","지연","보류"];
+const LS_KEY = "fireHookup.v1";
+const MAX_LS = 5*1024*1024; // localStorage 대략 한도
+
+/* 표준 훅업 템플릿: [공종, 작업명, 시작비율, 종료비율, 마일스톤] */
+const TEMPLATE = [
+  [3,"소방시설공사 착공신고",0.00,0.02,true ],
+  [3,"착공신고 수리·보완 대응",0.02,0.05,false],
+  [2,"소방공사감리자 지정신고",0.00,0.02,true ],
+  [2,"감리원 배치통보",0.02,0.04,false],
+  [0,"입상·주배관 설치(옥내소화전/SP 주관)",0.05,0.35,false],
+  [0,"소화수조·소화펌프(주/충압) 설치",0.25,0.45,false],
+  [0,"스프링클러 가지배관·헤드 설치",0.30,0.65,false],
+  [0,"옥내소화전함·소화기구 설치",0.50,0.70,false],
+  [0,"제연설비(덕트·댐퍼·송풍기) 설치",0.45,0.70,false],
+  [0,"배관 수압시험",0.65,0.72,false],
+  [0,"소화펌프 시운전",0.72,0.78,false],
+  [1,"자탐 배관·입선(감지기 회로)",0.30,0.60,false],
+  [1,"수신기(R형/P형) 설치·결선",0.55,0.65,false],
+  [1,"감지기·발신기·경보장치 설치",0.60,0.78,false],
+  [1,"유도등·비상조명등 설치",0.65,0.80,false],
+  [1,"비상방송·비상전원 결선",0.70,0.82,false],
+  [1,"자동화재탐지설비 연동시험",0.80,0.88,false],
+  [2,"시공 검측(은폐 전 배관 검측 포함)",0.10,0.85,false],
+  [2,"성능시험 입회",0.85,0.90,false],
+  [2,"소방공사 감리결과보고서 제출",0.92,0.97,false],
+  [3,"소방시설 완공검사 신청",0.90,0.91,true ],
+  [3,"소방서 현장확인",0.93,0.95,false],
+  [3,"완공검사증명서 발급",0.98,1.00,true ],
+];
+
+/* ══════════════ 상태 ══════════════ */
+let state = { projects: [], activeId: null };
+let ppd = 4;           // px per day
+let canStore = true;
+let saveTimer = null;
+
+function uid(){ return Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
+function activeProj(){ return state.projects.find(p=>p.id===state.activeId) || null; }
+function newTask(disc){
+  return { id:uid(), disc:disc||0, name:"", company:"", owner:"",
+    planStart:"", planEnd:"", actStart:"", actEnd:"",
+    progress:0, status:0, pred:"", milestone:false, memo:"", images:[] };
+}
+
+/* ══════════════ 날짜 유틸 ══════════════ */
+const DAY = 86400000;
+function pd(s){ if(!s) return null; const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
+function fd(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function addD(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function diffD(a,b){ return Math.round((b-a)/DAY); }
+function today0(){ const t=new Date(); return new Date(t.getFullYear(),t.getMonth(),t.getDate()); }
+function fmtShort(s){ return s ? s.slice(2).replace(/-/g,".") : ""; }
+
+/* ══════════════ 저장/불러오기 ══════════════ */
+function detectStorage(){
+  try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); canStore=true; }
+  catch(e){ canStore=false; document.getElementById("storageWarn").style.display="block"; }
+}
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    if(!canStore){ flag("저장 불가 환경"); return; }
+    try{
+      localStorage.setItem(LS_KEY, JSON.stringify(state));
+      flag("저장됨 · "+new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}));
+    }catch(e){ flag("⚠ 저장 실패(용량 초과 가능) — 사진 정리 또는 JSON 백업 권장"); }
+  },250);
+}
+function flag(msg){ document.getElementById("saveState").innerHTML='<span class="saved-flag">'+esc(msg)+'</span>'; }
+function load(){
+  if(!canStore) return;
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){ const s=JSON.parse(raw); if(s && Array.isArray(s.projects)) state=s; }
+  }catch(e){}
+}
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+/* ══════════════ 공사 관리 ══════════════ */
+function openNewProject(){
+  const t=today0();
+  document.getElementById("npStart").value = fd(t);
+  document.getElementById("npEnd").value = fd(addD(t,180));
+  document.getElementById("npBack").classList.add("show");
+  document.getElementById("npName").focus();
+}
+function closeNewProject(){ document.getElementById("npBack").classList.remove("show"); }
+function createProject(){
+  const name = document.getElementById("npName").value.trim();
+  const s = pd(document.getElementById("npStart").value);
+  const e = pd(document.getElementById("npEnd").value);
+  if(!name){ alert("공사명을 입력하세요."); return; }
+  if(!s || !e || e<=s){ alert("착수일/준공일을 확인하세요. (준공일이 착수일 이후여야 합니다)"); return; }
+  const comp = [
+    document.getElementById("npMech").value.trim(),
+    document.getElementById("npElec").value.trim(),
+    document.getElementById("npSupv").value.trim(),
+    document.getElementById("npPerm").value.trim(), "" ];
+  const p = { id:uid(), name, start:fd(s), end:fd(e), tasks:[] };
+  if(document.getElementById("npTpl").checked){
+    const total = diffD(s,e);
+    TEMPLATE.forEach(([disc,tname,f0,f1,ms])=>{
+      const t = newTask(disc);
+      t.name = tname; t.milestone = ms; t.company = comp[disc]||"";
+      t.planStart = fd(addD(s, Math.round(total*f0)));
+      t.planEnd   = fd(addD(s, Math.max(Math.round(total*f0), Math.round(total*f1)-(f1<1?0:0))));
+      if(pd(t.planEnd) < pd(t.planStart)) t.planEnd = t.planStart;
+      p.tasks.push(t);
+    });
+  }
+  state.projects.push(p);
+  state.activeId = p.id;
+  ["npName","npMech","npElec","npSupv","npPerm"].forEach(id=>document.getElementById(id).value="");
+  closeNewProject(); save(); render();
+}
+function switchProject(id){ state.activeId=id; save(); render(); }
+function renameProject(){
+  const p=activeProj(); if(!p) return;
+  const n=prompt("공사명 변경", p.name);
+  if(n && n.trim()){ p.name=n.trim(); save(); render(); }
+}
+function deleteProject(){
+  const p=activeProj(); if(!p) return;
+  if(!confirm('공사 "'+p.name+'" 를 삭제할까요? (작업·메모·사진 모두 삭제)')) return;
+  state.projects = state.projects.filter(x=>x.id!==p.id);
+  state.activeId = state.projects.length ? state.projects[0].id : null;
+  save(); render();
+}
+
+/* ══════════════ 작업 관리 ══════════════ */
+function addTask(){
+  const p=activeProj();
+  if(!p){ alert("먼저 '새 공사'를 만들어 주세요."); return; }
+  const t = newTask(Number(document.getElementById("newDisc").value));
+  if(p.start) t.planStart = p.start;
+  p.tasks.push(t); save(); render();
+  openDetail(t.id);
+}
+function delTask(id){
+  const p=activeProj(); if(!p) return;
+  const t=p.tasks.find(x=>x.id===id);
+  if(!confirm('작업 "'+(t&&t.name||"(무제)")+'" 삭제?')) return;
+  p.tasks = p.tasks.filter(x=>x.id!==id);
+  save(); render();
+}
+function setField(id, field, val){
+  const p=activeProj(); if(!p) return;
+  const t=p.tasks.find(x=>x.id===id); if(!t) return;
+  if(field==="progress"){ val=Math.max(0,Math.min(100,Number(val)||0)); if(val===100 && t.status!==2) t.status=2; }
+  if(field==="disc"||field==="status") val=Number(val);
+  if(field==="milestone") val=!!val;
+  t[field]=val;
+  if(field==="status" && val===2 && t.progress<100) t.progress=100;
+  save(); renderStats(); renderGantt();
+  if(field==="disc"||field==="planStart"||field==="status") renderTable();
+}
+/* 공종 → 계획착수 → 이름 순 정렬 + 공종별 WBS 코드 부여 */
+function sortedTasks(p){
+  const arr=[...p.tasks].sort((a,b)=>{
+    if(a.disc!==b.disc) return a.disc-b.disc;
+    const da=a.planStart||"9999", db=b.planStart||"9999";
+    if(da!==db) return da<db?-1:1;
+    return (a.name||"").localeCompare(b.name||"","ko");
+  });
+  const cnt={};
+  arr.forEach(t=>{ cnt[t.disc]=(cnt[t.disc]||0)+1; t._wbs=DISC_CODES[t.disc]+"-"+cnt[t.disc]; });
+  return arr;
+}
+function isLate(t){
+  if(t.status===2) return false;
+  const e=pd(t.planEnd);
+  return !!(e && e<today0() && (t.progress||0)<100);
+}
+function statusIdx(t){ return isLate(t) && t.status!==4 ? 3 : t.status; }
+
+/* ══════════════ 렌더 ══════════════ */
+function render(){ renderProjSel(); renderStats(); renderTable(); renderGantt(); renderLegend(); }
+
+function renderProjSel(){
+  const sel=document.getElementById("projSel");
+  sel.innerHTML = state.projects.map(p=>
+    '<option value="'+p.id+'"'+(p.id===state.activeId?" selected":"")+'>'+esc(p.name)+'</option>').join("")
+    || '<option value="">— 공사 없음 (＋ 새 공사) —</option>';
+}
+
+function renderStats(){
+  const box=document.getElementById("stats");
+  const p=activeProj();
+  if(!p){ box.innerHTML=""; return; }
+  const tasks=p.tasks;
+  let wsum=0, psum=0;
+  tasks.forEach(t=>{
+    const s=pd(t.planStart), e=pd(t.planEnd);
+    const w = (s&&e) ? Math.max(1,diffD(s,e)+1) : 1;
+    wsum+=w; psum+=w*(t.progress||0);
+  });
+  const prog = wsum ? Math.round(psum/wsum) : 0;
+  const done = tasks.filter(t=>statusIdx(t)===2).length;
+  const late = tasks.filter(isLate).length;
+  const run  = tasks.filter(t=>statusIdx(t)===1).length;
+  const end = pd(p.end);
+  const dday = end ? diffD(today0(), end) : null;
+  box.innerHTML =
+    '<div class="stat"><div class="k">전체 공정률(기간 가중)</div><div class="v">'+prog+'<small> %</small></div>'+
+      '<div class="bar-wrap"><div class="bar" style="width:'+prog+'%"></div></div></div>'+
+    '<div class="stat"><div class="k">작업</div><div class="v">'+done+'<small> / '+tasks.length+' 완료</small></div></div>'+
+    '<div class="stat"><div class="k">진행중</div><div class="v">'+run+'<small> 건</small></div></div>'+
+    '<div class="stat"><div class="k">지연</div><div class="v" style="color:'+(late?"var(--over)":"inherit")+'">'+late+'<small> 건</small></div></div>'+
+    '<div class="stat"><div class="k">준공까지</div><div class="v">'+(dday==null?"—":(dday>=0?"D-"+dday:'<span style="color:var(--over)">D+'+(-dday)+"</span>"))+
+      '<small> ('+esc(fmtShort(p.end))+')</small></div></div>';
+}
+
+function renderLegend(){
+  document.getElementById("legend").innerHTML =
+    DISCS.map((d,i)=>'<span><span class="sw" style="background:'+DISC_COLORS[i]+'"></span>'+d+'</span>').join("")+
+    '<span><span class="sw" style="background:#555;position:relative"><span style="position:absolute;inset:3px;background:rgba(0,0,0,.4)"></span></span>진척률(어두운 부분)</span>';
+}
+
+function renderTable(){
+  const tbl=document.getElementById("taskTable");
+  const p=activeProj();
+  if(!p){ tbl.innerHTML='<tbody><tr><td style="padding:14px;color:var(--muted)">공사를 먼저 만들어 주세요.</td></tr></tbody>'; return; }
+  const arr=sortedTasks(p);
+  let html='<thead><tr><th>코드</th><th>공종</th><th style="min-width:210px">작업명</th><th>담당업체</th><th>담당자</th>'+
+    '<th>계획 착수</th><th>계획 완료</th><th>기간(일)</th><th>진척률(%)</th><th>상태</th><th>선행</th><th>M/S</th><th>상세</th><th></th></tr></thead><tbody>';
+  let lastDisc=-1;
+  arr.forEach(t=>{
+    if(t.disc!==lastDisc){
+      lastDisc=t.disc;
+      const n=arr.filter(x=>x.disc===t.disc).length;
+      html+='<tr class="grp"><td colspan="14" style="color:'+DISC_COLORS[t.disc]+'">'+
+        '■ '+esc(DISCS[t.disc])+' <span class="cnt">('+n+'건)</span></td></tr>';
+    }
+    const s=pd(t.planStart), e=pd(t.planEnd);
+    const dur=(s&&e&&e>=s)?(diffD(s,e)+1):"";
+    const si=statusIdx(t);
+    const att=(t.memo?"📝":"")+((t.images&&t.images.length)?" 🖼"+t.images.length:"");
+    html+='<tr class="'+(si===2?"done":"")+'">'+
+      '<td class="wbs">'+t._wbs+'</td>'+
+      '<td><select class="d'+t.disc+'" onchange="setField(\''+t.id+'\',\'disc\',this.value)">'+
+        DISCS.map((d,i)=>'<option value="'+i+'"'+(i===t.disc?" selected":"")+'>'+d+'</option>').join("")+'</select></td>'+
+      '<td class="tname"><input value="'+esc(t.name)+'" placeholder="작업명" oninput="setField(\''+t.id+'\',\'name\',this.value)"></td>'+
+      '<td><input value="'+esc(t.company)+'" oninput="setField(\''+t.id+'\',\'company\',this.value)"></td>'+
+      '<td><input value="'+esc(t.owner)+'" style="min-width:60px" oninput="setField(\''+t.id+'\',\'owner\',this.value)"></td>'+
+      '<td><input type="date" value="'+t.planStart+'" onchange="setField(\''+t.id+'\',\'planStart\',this.value)"></td>'+
+      '<td><input type="date" value="'+t.planEnd+'" onchange="setField(\''+t.id+'\',\'planEnd\',this.value)"></td>'+
+      '<td class="num" style="text-align:right;color:var(--muted)">'+dur+'</td>'+
+      '<td class="num"><input type="number" min="0" max="100" value="'+(t.progress||0)+'" style="width:52px" onchange="setField(\''+t.id+'\',\'progress\',this.value)"></td>'+
+      '<td><span class="pill s'+si+'">'+STATUSES[si]+'</span>'+(isLate(t)&&t.status!==2?' <span class="late-dot" title="계획완료일 경과">!</span>':"")+
+        ' <select style="width:20px" onchange="setField(\''+t.id+'\',\'status\',this.value)" title="상태 변경">'+
+        STATUSES.map((sName,i)=>i===3?"":'<option value="'+i+'"'+(i===t.status?" selected":"")+'>'+sName+'</option>').join("")+'</select></td>'+
+      '<td><input value="'+esc(t.pred)+'" style="min-width:42px" placeholder="-" oninput="setField(\''+t.id+'\',\'pred\',this.value)"></td>'+
+      '<td style="text-align:center"><input type="checkbox"'+(t.milestone?" checked":"")+' onchange="setField(\''+t.id+'\',\'milestone\',this.checked)"></td>'+
+      '<td><button class="detail-btn" onclick="openDetail(\''+t.id+'\')">열기</button><span class="att-badge">'+att+'</span></td>'+
+      '<td class="row-del" onclick="delTask(\''+t.id+'\')" title="삭제">✕</td></tr>';
+  });
+  html+='</tbody>';
+  tbl.innerHTML=html;
+}
+
+function setZoom(v){ ppd=Number(v); renderGantt(); }
+
+function renderGantt(){
+  const el=document.getElementById("gantt");
+  const p=activeProj();
+  if(!p){ el.innerHTML='<div class="undated">공사를 먼저 만들어 주세요.</div>'; return; }
+  const arr=sortedTasks(p);
+  const dated=arr.filter(t=>t.planStart&&t.planEnd&&pd(t.planEnd)>=pd(t.planStart));
+  let rs,re;
+  if(dated.length){
+    rs = dated.reduce((m,t)=>pd(t.planStart)<m?pd(t.planStart):m, pd(dated[0].planStart));
+    re = dated.reduce((m,t)=>pd(t.planEnd)>m?pd(t.planEnd):m, pd(dated[0].planEnd));
+  }else{
+    rs = pd(p.start)||today0(); re = pd(p.end)||addD(rs,120);
+  }
+  rs=addD(rs,-7); re=addD(re,10);
+  const total=diffD(rs,re)+1;
+  const NAMEW=230;
+
+  /* 월 헤더 */
+  let mh="", d=new Date(rs.getFullYear(),rs.getMonth(),1);
+  const monthLines=[];
+  while(d<=re){
+    const mEnd=new Date(d.getFullYear(),d.getMonth()+1,0);
+    const from=d<rs?rs:d, to=mEnd>re?re:mEnd;
+    const w=(diffD(from,to)+1)*ppd;
+    const lbl=w>=40 ? d.getFullYear()+"."+String(d.getMonth()+1).padStart(2,"0") : "";
+    mh+='<div class="hmonth" style="width:'+w+'px">'+lbl+'</div>';
+    if(d>rs) monthLines.push(diffD(rs,d)*ppd);
+    d=new Date(d.getFullYear(),d.getMonth()+1,1);
+  }
+  /* 주(월요일) 라인 */
+  const weekLines=[];
+  let wd=addD(rs,(8-rs.getDay())%7||7);
+  while(wd<=re){ weekLines.push(diffD(rs,wd)*ppd); wd=addD(wd,7); }
+
+  let html='<div class="hrow hhead"><div class="hname">작업 / 기간</div>'+
+    '<div class="htrack" style="width:'+(total*ppd)+'px">'+mh+'</div></div>';
+
+  let lastDisc=-1;
+  arr.forEach(t=>{
+    if(t.disc!==lastDisc){
+      lastDisc=t.disc;
+      html+='<div class="hrow hgrp"><div class="hname" style="color:'+DISC_COLORS[t.disc]+'">■ '+esc(DISCS[t.disc])+'</div>'+
+        '<div class="htrack" style="width:'+(total*ppd)+'px"></div></div>';
+    }
+    const s=pd(t.planStart), e=pd(t.planEnd);
+    const ok = s&&e&&e>=s;
+    let barHtml="";
+    if(ok){
+      const x=diffD(rs,s)*ppd, w=Math.max(ppd,(diffD(s,e)+1)*ppd);
+      const col=DISC_COLORS[t.disc];
+      const tip=esc(t.name)+" | "+fmtShort(t.planStart)+"~"+fmtShort(t.planEnd)+" ("+(diffD(s,e)+1)+"일) · "+(t.progress||0)+"%"
+        +(t.company?" · "+esc(t.company):"");
+      if(t.milestone){
+        barHtml='<div class="hms" style="left:'+(x+ppd/2)+'px;background:'+col+'" title="'+tip+'" onclick="openDetail(\''+t.id+'\')"></div>'+
+          '<div class="hms-lbl" style="left:'+(x+ppd/2+4)+'px">'+esc(t.name)+'</div>';
+      }else{
+        barHtml='<div class="hbar'+(isLate(t)?" late":"")+'" style="left:'+x+'px;width:'+w+'px;background:'+col+'" title="'+tip+'" onclick="openDetail(\''+t.id+'\')">'+
+          '<div class="fill" style="width:'+(t.progress||0)+'%"></div>'+
+          (w>46?'<span class="lbl">'+esc(t.name)+'</span>':"")+'</div>';
+      }
+    }
+    const meta=[t._wbs, t.company||"", ok?fmtShort(t.planStart)+"~"+fmtShort(t.planEnd):"날짜 미정"].filter(Boolean).join(" · ");
+    const att=(t.memo?" 📝":"")+((t.images&&t.images.length)?" 🖼":"");
+    html+='<div class="hrow"><div class="hname">'+
+      '<div class="nm" onclick="openDetail(\''+t.id+'\')">'+esc(t.name||"(무제)")+att+'</div>'+
+      '<div class="meta">'+esc(meta)+'</div></div>'+
+      '<div class="htrack" style="width:'+(total*ppd)+'px">'+barHtml+'</div></div>';
+  });
+  if(!arr.length) html+='<div class="undated">작업이 없습니다 — “＋ 작업 추가” 또는 새 공사에서 템플릿을 사용하세요.</div>';
+
+  /* 그리드/오늘 오버레이 */
+  let overlay="";
+  weekLines.forEach(x=>overlay+='<div class="hgrid week" style="left:'+(NAMEW+x)+'px"></div>');
+  monthLines.forEach(x=>overlay+='<div class="hgrid month" style="left:'+(NAMEW+x)+'px"></div>');
+  const t0=today0();
+  if(t0>=rs&&t0<=re){
+    overlay+='<div class="htoday" style="left:'+(NAMEW+diffD(rs,t0)*ppd)+'px"><span class="lbl">오늘</span></div>';
+  }
+  el.innerHTML=html+overlay;
+}
+
+/* ══════════════ 상세 모달 ══════════════ */
+let detailId=null;
+function openDetail(id){
+  detailId=id;
+  renderDetail();
+  document.getElementById("detailBack").classList.add("show");
+}
+function closeDetail(){ detailId=null; document.getElementById("detailBack").classList.remove("show"); render(); }
+function dSet(field,val){ if(detailId) setField(detailId,field,val); refreshDetailTitle(); }
+function curTask(){ const p=activeProj(); return p? p.tasks.find(x=>x.id===detailId) : null; }
+function refreshDetailTitle(){
+  const t=curTask(); if(!t) return;
+  document.getElementById("dTitle").textContent =
+    "["+DISCS[t.disc]+"] "+(t.name||"(무제)");
+}
+function renderDetail(){
+  const t=curTask(); if(!t) return;
+  refreshDetailTitle();
+  const body=document.getElementById("dBody");
+  body.innerHTML =
+  '<div class="fgrid">'+
+    '<div style="grid-column:1/-1"><label>작업명</label><input value="'+esc(t.name)+'" oninput="dSet(\'name\',this.value)"></div>'+
+    '<div><label>공종</label><select onchange="dSet(\'disc\',this.value)">'+
+      DISCS.map((d,i)=>'<option value="'+i+'"'+(i===t.disc?" selected":"")+'>'+d+'</option>').join("")+'</select></div>'+
+    '<div><label>담당업체</label><input value="'+esc(t.company)+'" oninput="dSet(\'company\',this.value)"></div>'+
+    '<div><label>담당자 / 연락처</label><input value="'+esc(t.owner)+'" oninput="dSet(\'owner\',this.value)"></div>'+
+    '<div><label>선행 작업(코드)</label><input value="'+esc(t.pred)+'" placeholder="예: M-3" oninput="dSet(\'pred\',this.value)"></div>'+
+    '<div><label>계획 착수</label><input type="date" value="'+t.planStart+'" onchange="dSet(\'planStart\',this.value)"></div>'+
+    '<div><label>계획 완료</label><input type="date" value="'+t.planEnd+'" onchange="dSet(\'planEnd\',this.value)"></div>'+
+    '<div><label>실제 착수</label><input type="date" value="'+(t.actStart||"")+'" onchange="dSet(\'actStart\',this.value)"></div>'+
+    '<div><label>실제 완료</label><input type="date" value="'+(t.actEnd||"")+'" onchange="dSet(\'actEnd\',this.value)"></div>'+
+    '<div><label>진척률(%)</label><input type="number" min="0" max="100" value="'+(t.progress||0)+'" onchange="dSet(\'progress\',this.value)"></div>'+
+    '<div><label>상태</label><select onchange="dSet(\'status\',this.value)">'+
+      STATUSES.map((s,i)=>i===3?"":'<option value="'+i+'"'+(i===t.status?" selected":"")+'>'+s+'</option>').join("")+'</select></div>'+
+    '<label class="chk"><input type="checkbox"'+(t.milestone?" checked":"")+' onchange="dSet(\'milestone\',this.checked)"> 마일스톤(◆)</label>'+
+  '</div>'+
+  '<div class="sec-t">메모 (검측 결과, 지적사항, 협의 내용 등)</div>'+
+  '<textarea class="memo" placeholder="예) 6/12 감리 검측 — 3층 SP 가지배관 행거 간격 보완 지시, 6/14 재검측 예정" oninput="dSet(\'memo\',this.value)">'+esc(t.memo)+'</textarea>'+
+  '<div class="sec-t">현장 사진 / 도면</div>'+
+  '<div class="toolbar">'+
+    '<button class="btn sm" onclick="document.getElementById(\'imgIn\').click()">📷 사진 업로드</button>'+
+    '<input type="file" id="imgIn" class="file-in" accept="image/*" multiple onchange="addImageFiles(event)">'+
+    '<button class="btn sm" onclick="addImageUrl()">🔗 이미지 URL 추가</button>'+
+    '<span class="sub">업로드 시 자동 압축(긴 변 1280px) 후 브라우저에 저장</span>'+
+  '</div>'+
+  '<div class="img-grid" id="imgGrid"></div>'+
+  '<div class="storage" id="storageMeter"></div>';
+  renderImages();
+}
+function renderImages(){
+  const t=curTask(); if(!t) return;
+  const g=document.getElementById("imgGrid");
+  g.innerHTML=(t.images||[]).map((im,i)=>
+    '<div class="img-card">'+
+      '<img class="thumb" src="'+esc(im.src)+'" alt="" loading="lazy" onclick="openLightbox('+i+')" onerror="this.style.opacity=.25;this.title=\'이미지를 불러올 수 없음\'">'+
+      '<input class="cap" value="'+esc(im.cap||"")+'" placeholder="설명…" oninput="setImgCap('+i+',this.value)">'+
+      '<button class="rm" onclick="rmImage('+i+')">삭제</button>'+
+    '</div>').join("") || '<span class="sub">등록된 사진이 없습니다.</span>';
+  renderStorageMeter();
+}
+function renderStorageMeter(){
+  const used=new Blob([JSON.stringify(state)]).size;
+  const pct=Math.round(used/MAX_LS*100);
+  document.getElementById("storageMeter").innerHTML=
+    '브라우저 저장 사용량 약 <b class="'+(pct>80?"overq":"")+'">'+(used/1024/1024).toFixed(2)+' MB / 5 MB ('+pct+'%)</b>'+
+    (pct>80?' — 용량 임박: 오래된 사진을 정리하거나 JSON 백업 후 삭제하세요.':"");
+}
+function addImageFiles(ev){
+  const t=curTask(); if(!t) return;
+  const files=[...ev.target.files]; ev.target.value="";
+  files.forEach(f=>{
+    const r=new FileReader();
+    r.onload=()=>{
+      const img=new Image();
+      img.onload=()=>{
+        const MAX=1280;
+        let w=img.width,h=img.height;
+        if(Math.max(w,h)>MAX){ const k=MAX/Math.max(w,h); w=Math.round(w*k); h=Math.round(h*k); }
+        const cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+        cv.getContext("2d").drawImage(img,0,0,w,h);
+        t.images=t.images||[];
+        t.images.push({src:cv.toDataURL("image/jpeg",0.75), cap:f.name.replace(/\.[^.]+$/,""), up:1});
+        save(); renderImages();
+      };
+      img.src=r.result;
+    };
+    r.readAsDataURL(f);
+  });
+}
+function addImageUrl(){
+  const t=curTask(); if(!t) return;
+  const u=prompt("이미지 URL을 붙여넣으세요 (https://…)");
+  if(!u||!u.trim()) return;
+  t.images=t.images||[];
+  t.images.push({src:u.trim(), cap:"", up:0});
+  save(); renderImages();
+}
+function setImgCap(i,v){ const t=curTask(); if(t&&t.images[i]){ t.images[i].cap=v; save(); } }
+function rmImage(i){
+  const t=curTask(); if(!t) return;
+  if(!confirm("사진을 삭제할까요?")) return;
+  t.images.splice(i,1); save(); renderImages();
+}
+function openLightbox(i){
+  const t=curTask(); if(!t||!t.images[i]) return;
+  document.getElementById("lbImg").src=t.images[i].src;
+  document.getElementById("lbCap").textContent=t.images[i].cap||"";
+  document.getElementById("lightbox").classList.add("show");
+}
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){
+    const lb=document.getElementById("lightbox");
+    if(lb.classList.contains("show")){ lb.classList.remove("show"); return; }
+    if(document.getElementById("detailBack").classList.contains("show")) closeDetail();
+    if(document.getElementById("npBack").classList.contains("show")) closeNewProject();
+  }
+});
+
+/* ══════════════ 공유 URL / 백업 ══════════════ */
+function copyShareURL(){
+  /* 업로드(base64) 이미지는 제외하고 URL형 이미지만 포함 */
+  const slim={ activeId:state.activeId, projects: state.projects.map(p=>({
+    ...p, tasks: p.tasks.map(t=>({ ...t, images:(t.images||[]).filter(im=>!im.up) }))
+  }))};
+  const hash=LZString.compressToEncodedURIComponent(JSON.stringify(slim));
+  const url=location.origin+location.pathname+"#h="+hash;
+  const droppedImgs = state.projects.reduce((n,p)=>n+p.tasks.reduce((m,t)=>m+(t.images||[]).filter(im=>im.up).length,0),0);
+  navigator.clipboard.writeText(url).then(()=>{
+    alert("공유 URL을 복사했습니다."+(droppedImgs?"\n※ 업로드된 사진 "+droppedImgs+"장은 용량 문제로 URL에서 제외됩니다(JSON 백업에는 포함).":"")+
+      (url.length>6000?"\n⚠ URL이 매우 깁니다 — 일부 메신저에서 잘릴 수 있으니 JSON 백업도 함께 보관하세요.":""));
+  },()=>{ prompt("복사가 차단되었습니다. 아래 URL을 직접 복사하세요.", url); });
+}
+function tryRestoreFromHash(){
+  const m=location.hash.match(/#h=(.+)/);
+  if(!m) return;
+  try{
+    const json=LZString.decompressFromEncodedURIComponent(m[1]);
+    const s=JSON.parse(json);
+    if(s && Array.isArray(s.projects)){
+      if(!state.projects.length || confirm("공유받은 데이터를 불러올까요?\n(확인 = 현재 데이터를 대체)")){
+        state=s; save();
+      }
+    }
+  }catch(e){ alert("공유 URL 해석에 실패했습니다."); }
+  history.replaceState(null,"",location.pathname+location.search);
+}
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(state,null,1)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="소방훅업일정_백업_"+fd(today0())+".json";
+  a.click(); URL.revokeObjectURL(a.href);
+}
+function importJSON(ev){
+  const f=ev.target.files[0]; ev.target.value="";
+  if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const s=JSON.parse(r.result);
+      if(!s || !Array.isArray(s.projects)) throw 0;
+      if(!confirm("현재 데이터를 백업 파일 내용으로 대체할까요?")) return;
+      state=s;
+      if(!state.projects.find(p=>p.id===state.activeId)) state.activeId=state.projects[0]?state.projects[0].id:null;
+      save(); render();
+    }catch(e){ alert("JSON 파일을 해석할 수 없습니다."); }
+  };
+  r.readAsText(f);
+}
+function exportCSV(){
+  const p=activeProj(); if(!p){ alert("공사가 없습니다."); return; }
+  const head=["코드","공종","작업명","담당업체","담당자","계획착수","계획완료","기간(일)","실제착수","실제완료","진척률(%)","상태","선행","마일스톤","메모"];
+  const q=s=>'"'+String(s==null?"":s).replace(/"/g,'""')+'"';
+  const rows=[head.map(q).join(",")];
+  sortedTasks(p).forEach(t=>{
+    const s=pd(t.planStart),e=pd(t.planEnd);
+    rows.push([t._wbs,DISCS[t.disc],t.name,t.company,t.owner,t.planStart,t.planEnd,
+      (s&&e&&e>=s)?diffD(s,e)+1:"",t.actStart||"",t.actEnd||"",t.progress||0,
+      STATUSES[statusIdx(t)],t.pred,t.milestone?"◆":"",t.memo].map(q).join(","));
+  });
+  const blob=new Blob(["﻿"+rows.join("\r\n")],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=p.name.replace(/[\\/:*?"<>|]/g,"_")+"_훅업공정표_"+fd(today0())+".csv";
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+/* ══════════════ 시작 ══════════════ */
+detectStorage();
+load();
+tryRestoreFromHash();
+if(!state.projects.length) flag("＋ 새 공사로 시작하세요");
+else flag("불러옴");
+render();
+</script>
+</body>
+</html>
