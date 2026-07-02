@@ -89,6 +89,32 @@
   .legend span{display:inline-flex;align-items:center;gap:6px}
   .sw{width:12px;height:12px;border-radius:3px;display:inline-block;flex:none}
 
+  /* ── 공종(그룹) 편집 · 머터리얼 컬러 피커 ── */
+  .grp-rows{display:flex;flex-direction:column;gap:7px;margin-bottom:8px}
+  .grow2{display:flex;gap:7px;align-items:center}
+  .grow2 input{flex:1;border:1px solid var(--line-strong);border-radius:4px;padding:6px 8px;
+    font-family:inherit;font-size:12.5px;min-width:0}
+  .grow2 input.gname2{flex:0 0 130px;font-weight:600}
+  .grow2 .mv{cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:4px;
+    padding:3px 5px;font-size:10px;color:var(--muted);font-family:inherit}
+  .grow2 .mv:hover{color:var(--ink);border-color:var(--line-strong)}
+  .grow2 .rm2{cursor:pointer;border:none;background:none;color:var(--muted);font-size:14px;padding:0 3px}
+  .grow2 .rm2:hover{color:var(--over)}
+  .swbtn{width:28px;height:28px;border-radius:6px;border:1px solid rgba(0,0,0,.15);cursor:pointer;
+    padding:0;flex:none;box-shadow:0 0 0 1px rgba(255,255,255,.4) inset}
+  .swbtn:hover{outline:2px solid var(--ink);outline-offset:1px}
+  .matpop{position:fixed;z-index:80;background:#fff;border:1px solid var(--line-strong);border-radius:9px;
+    box-shadow:0 8px 28px rgba(0,0,0,.2);padding:11px;display:none}
+  .matpop.show{display:block}
+  .matpop .mgrid{display:grid;grid-template-columns:repeat(7,27px);gap:6px}
+  .matpop .mgrid button{width:27px;height:27px;border-radius:6px;border:1px solid rgba(0,0,0,.13);
+    cursor:pointer;padding:0}
+  .matpop .mgrid button:hover{outline:2px solid var(--ink);outline-offset:1px}
+  .matpop .mgrid button.cur{outline:2.5px solid var(--ink);outline-offset:1px}
+  .matpop .mttl{font-size:11px;color:var(--muted);margin-bottom:7px}
+  .shade-demo{display:inline-flex;gap:2px;vertical-align:middle}
+  .shade-demo i{width:11px;height:11px;border-radius:2px;display:inline-block}
+
   /* ── 간트 ──────────────────────────────── */
   .hscroll{overflow-x:auto;border:1px solid var(--line);border-radius:6px;position:relative}
   .hchart{width:max-content;min-width:100%;font-size:11px;position:relative}
@@ -182,7 +208,7 @@
   <header>
     <div>
       <h1>소방공사 훅업(Hook-up) 공정 일정</h1>
-      <div class="sub">소방기계 · 소방전기 · 감리 · 인허가 — 공사별 공정표 + 간트차트 (막대 클릭 → 상세 메모/사진)</div>
+      <div class="sub">공종을 직접 구성하고(전기·기계·인허가·감리 등) 머터리얼 테마색 지정 — 공사별 공정표 + 간트차트 (막대 클릭 → 상세 메모/사진)</div>
     </div>
     <div style="text-align:right">
       <div class="sub"><a href="bridge.html">🤖 AI 자료 밀어넣기</a> · <a href="index.html">전체 공사 일정·M/M →</a></div>
@@ -243,10 +269,8 @@
       훅업 공정표
       <div class="spacer"></div>
       <div class="toolbar">
-        <select class="big" style="max-width:130px" id="newDisc">
-          <option value="0">소방기계</option><option value="1">소방전기</option>
-          <option value="2">감리</option><option value="3">인허가</option><option value="4">공통</option>
-        </select>
+        <button class="btn" onclick="openGroupModal()">🎨 공종·색상 관리</button>
+        <select class="big" style="max-width:150px" id="newGid"></select>
         <button class="btn primary" onclick="addTask()">＋ 작업 추가</button>
       </div>
     </div>
@@ -256,7 +280,7 @@
   </div>
   <div class="hint" style="margin-top:-6px">
     표는 <b>공종 → 계획착수일</b> 순으로 자동 정렬됩니다. 기간(일)은 계획 착수~완료로 자동 계산.
-    선행 칸에는 선행 작업의 코드(<code>M-3</code>, <code>E-1</code> 등)를 적어두면 순서 파악에 좋습니다.
+    코드는 공종명 첫 글자+순번(<code>기-3</code>, <code>전-1</code> 등)으로 자동 부여되며, 선행 칸에 적어두면 순서 파악에 좋습니다.
   </div>
 
   <footer>
@@ -287,13 +311,16 @@
         <div class="full"><label>공사명 *</label><input id="npName" placeholder="예: ○○물류센터 신축공사 소방공사"></div>
         <div><label>착수일 *</label><input type="date" id="npStart"></div>
         <div><label>준공(완료) 예정일 *</label><input type="date" id="npEnd"></div>
-        <div><label>소방기계 업체</label><input id="npMech" placeholder="예: ○○소방(주)"></div>
-        <div><label>소방전기 업체</label><input id="npElec" placeholder="예: ○○이엔지"></div>
-        <div><label>감리사</label><input id="npSupv" placeholder="예: ○○소방기술사사무소"></div>
-        <div><label>관할 소방서</label><input id="npPerm" placeholder="예: ○○소방서"></div>
+        <div class="full">
+          <label>공종 구성 — 이름 · <b>테마색(클릭해서 선택)</b> · 담당업체</label>
+          <div class="grp-rows" id="npGroups"></div>
+          <button class="btn sm" onclick="npAddGroup()">＋ 공종 추가</button>
+          <div class="hint" style="margin-top:6px">같은 공종의 작업은 위에서 아래로 갈수록 테마색이
+            <span class="shade-demo" id="npShadeDemo"></span> 처럼 점점 옅어집니다 (700→600→500…).</div>
+        </div>
         <label class="np-tpl"><input type="checkbox" id="npTpl" checked>
           <span><b>표준 훅업 템플릿으로 시작</b> — 착공신고부터 완공검사증명서 발급까지
-          23개 표준 작업이 착수~준공 기간에 맞춰 자동 배치됩니다. (생성 후 자유롭게 수정/삭제)</span></label>
+          23개 표준 작업이 착수~준공 기간에 맞춰 자동 배치됩니다. (기본 4개 공종에 매핑, 생성 후 자유롭게 수정/삭제)</span></label>
       </div>
       <div class="toolbar" style="margin-top:14px;justify-content:flex-end">
         <button class="btn" onclick="closeNewProject()">취소</button>
@@ -301,6 +328,32 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- 공종·색상 관리 모달 -->
+<div class="modal-back" id="grpBack" onclick="if(event.target===this)closeGroupModal()">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-h"><span class="ttl">공종·색상 관리</span>
+      <button class="x" onclick="closeGroupModal()">✕</button></div>
+    <div class="modal-b">
+      <div class="grp-rows" id="grpRows"></div>
+      <div class="toolbar">
+        <button class="btn sm" onclick="grpAdd()">＋ 공종 추가</button>
+      </div>
+      <div class="hint">색상 버튼을 누르면 머터리얼 컬러에서 고를 수 있습니다.
+        같은 공종의 작업은 아래로 갈수록 700→600→500… 순으로 톤이 옅어집니다.
+        공종을 삭제하면 그 공종의 작업은 첫 번째 공종으로 옮겨집니다.</div>
+      <div class="toolbar" style="margin-top:12px;justify-content:flex-end">
+        <button class="btn primary" onclick="closeGroupModal()">완료</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 머터리얼 컬러 팔레트 팝오버 -->
+<div class="matpop" id="matPop">
+  <div class="mttl">머터리얼 컬러 선택</div>
+  <div class="mgrid" id="matGrid"></div>
 </div>
 
 <div class="lightbox" id="lightbox" onclick="this.classList.remove('show')">
@@ -313,12 +366,43 @@ var LZString=function(){var r=String.fromCharCode,o="ABCDEFGHIJKLMNOPQRSTUVWXYZa
 /* === /LZ-String === */
 
 /* ══════════════ 상수 ══════════════ */
-const DISCS = ["소방기계","소방전기","감리","인허가","공통"];
-const DISC_CODES = ["M","E","S","P","C"];
-const DISC_COLORS = ["#c0392b","#1d5fc4","#2f7d4f","#7b2fbf","#6b6b6b"];
 const STATUSES = ["예정","진행중","완료","지연","보류"];
 const LS_KEY = "fireHookup.v1";
 const MAX_LS = 5*1024*1024; // localStorage 대략 한도
+
+/* ── 머터리얼 컬러 팔레트 (800~200 셰이드) ── */
+const MAT = {
+  red:       {label:"레드",       s:{800:"#c62828",700:"#d32f2f",600:"#e53935",500:"#f44336",400:"#ef5350",300:"#e57373",200:"#ef9a9a"}},
+  pink:      {label:"핑크",       s:{800:"#ad1457",700:"#c2185b",600:"#d81b60",500:"#e91e63",400:"#ec407a",300:"#f06292",200:"#f48fb1"}},
+  purple:    {label:"퍼플",       s:{800:"#6a1b9a",700:"#7b1fa2",600:"#8e24aa",500:"#9c27b0",400:"#ab47bc",300:"#ba68c8",200:"#ce93d8"}},
+  deepPurple:{label:"딥퍼플",     s:{800:"#4527a0",700:"#512da8",600:"#5e35b1",500:"#673ab7",400:"#7e57c2",300:"#9575cd",200:"#b39ddb"}},
+  indigo:    {label:"인디고",     s:{800:"#283593",700:"#303f9f",600:"#3949ab",500:"#3f51b5",400:"#5c6bc0",300:"#7986cb",200:"#9fa8da"}},
+  blue:      {label:"블루",       s:{800:"#1565c0",700:"#1976d2",600:"#1e88e5",500:"#2196f3",400:"#42a5f5",300:"#64b5f6",200:"#90caf9"}},
+  lightBlue: {label:"라이트블루", s:{800:"#0277bd",700:"#0288d1",600:"#039be5",500:"#03a9f4",400:"#29b6f6",300:"#4fc3f7",200:"#81d4fa"}},
+  cyan:      {label:"시안",       s:{800:"#00838f",700:"#0097a7",600:"#00acc1",500:"#00bcd4",400:"#26c6da",300:"#4dd0e1",200:"#80deea"}},
+  teal:      {label:"틸",         s:{800:"#00695c",700:"#00796b",600:"#00897b",500:"#009688",400:"#26a69a",300:"#4db6ac",200:"#80cbc4"}},
+  green:     {label:"그린",       s:{800:"#2e7d32",700:"#388e3c",600:"#43a047",500:"#4caf50",400:"#66bb6a",300:"#81c784",200:"#a5d6a7"}},
+  lightGreen:{label:"라이트그린", s:{800:"#558b2f",700:"#689f38",600:"#7cb342",500:"#8bc34a",400:"#9ccc65",300:"#aed581",200:"#c5e1a5"}},
+  lime:      {label:"라임",       s:{800:"#9e9d24",700:"#afb42b",600:"#c0ca33",500:"#cddc39",400:"#d4e157",300:"#dce775",200:"#e6ee9c"}},
+  yellow:    {label:"옐로",       s:{800:"#f9a825",700:"#fbc02d",600:"#fdd835",500:"#ffeb3b",400:"#ffee58",300:"#fff176",200:"#fff59d"}},
+  amber:     {label:"앰버",       s:{800:"#ff8f00",700:"#ffa000",600:"#ffb300",500:"#ffc107",400:"#ffca28",300:"#ffd54f",200:"#ffe082"}},
+  orange:    {label:"오렌지",     s:{800:"#ef6c00",700:"#f57c00",600:"#fb8c00",500:"#ff9800",400:"#ffa726",300:"#ffb74d",200:"#ffcc80"}},
+  deepOrange:{label:"딥오렌지",   s:{800:"#d84315",700:"#e64a19",600:"#f4511e",500:"#ff5722",400:"#ff7043",300:"#ff8a65",200:"#ffab91"}},
+  brown:     {label:"브라운",     s:{800:"#4e342e",700:"#5d4037",600:"#6d4c41",500:"#795548",400:"#8d6e63",300:"#a1887f",200:"#bcaaa4"}},
+  grey:      {label:"그레이",     s:{800:"#424242",700:"#616161",600:"#757575",500:"#9e9e9e",400:"#bdbdbd",300:"#e0e0e0",200:"#eeeeee"}},
+  blueGrey:  {label:"블루그레이", s:{800:"#37474f",700:"#455a64",600:"#546e7a",500:"#607d8b",400:"#78909c",300:"#90a4ae",200:"#b0bec5"}}
+};
+const MAT_KEYS = Object.keys(MAT);
+const SHADE_STEPS = [700,600,500,400,300,200]; // 그룹 내 작업 순서별 톤 (내려갈수록 흐리게)
+function matS(color){ return (MAT[color]||MAT.grey).s; }
+function gBase(g){ return matS(g.color)[700]; }                     // 그룹 대표색 = 700
+function taskShade(g,i){ return matS(g.color)[SHADE_STEPS[Math.min(i,SHADE_STEPS.length-1)]]; }
+function textOn(hex){ const r=parseInt(hex.slice(1,3),16),gg=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return (r*299+gg*587+b*114)/1000>=150 ? "#333" : "#fff"; }
+
+/* 구버전(disc 0~4 고정) 마이그레이션 및 브리지 기본 매핑용 */
+const LEGACY_DISCS = ["소방기계","소방전기","감리","인허가","공통"];
+const LEGACY_COLORS = ["red","blue","green","deepPurple","grey"];
 
 /* 표준 훅업 템플릿: [공종, 작업명, 시작비율, 종료비율, 마일스톤] */
 const TEMPLATE = [
@@ -355,10 +439,36 @@ let saveTimer = null;
 
 function uid(){ return Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
 function activeProj(){ return state.projects.find(p=>p.id===state.activeId) || null; }
-function newTask(disc){
-  return { id:uid(), disc:disc||0, name:"", company:"", owner:"",
+function newTask(gid){
+  return { id:uid(), gid:gid||"", name:"", company:"", owner:"",
     planStart:"", planEnd:"", actStart:"", actEnd:"",
     progress:0, status:0, pred:"", milestone:false, memo:"", images:[] };
+}
+function makeGroup(name,color,company){ return { id:uid(), name, color:color||"grey", company:company||"" }; }
+function groupOf(p,gid){ return (p.groups||[]).find(g=>g.id===gid) || null; }
+function firstGroup(p){ return (p.groups&&p.groups[0]) || null; }
+/* 구버전 데이터(t.disc 고정 공종) → 사용자 정의 그룹으로 변환 */
+function migrate(){
+  state.projects.forEach(p=>{
+    if(Array.isArray(p.groups) && p.groups.length){
+      // gid 유실 작업 보정
+      p.tasks.forEach(t=>{ if(!groupOf(p,t.gid)) t.gid=p.groups[0].id; });
+      return;
+    }
+    p.groups=[];
+    const map={};
+    const used=[...new Set(p.tasks.map(t=>{ const d=t.disc; return (d>=0&&d<=4)?d:4; }))].sort();
+    const idxs = used.length ? used : [0,1,2,3];
+    idxs.forEach(i=>{
+      const g=makeGroup(LEGACY_DISCS[i], LEGACY_COLORS[i]);
+      p.groups.push(g); map[i]=g.id;
+    });
+    p.tasks.forEach(t=>{
+      const d=(t.disc>=0&&t.disc<=4)?t.disc:4;
+      t.gid = map[d] || p.groups[0].id;
+      delete t.disc;
+    });
+  });
 }
 
 /* ══════════════ 날짜 유틸 ══════════════ */
@@ -392,45 +502,163 @@ function load(){
     const raw = localStorage.getItem(LS_KEY);
     if(raw){ const s=JSON.parse(raw); if(s && Array.isArray(s.projects)) state=s; }
   }catch(e){}
+  migrate();
 }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
+/* ══════════════ 머터리얼 컬러 피커 (공용 팝오버) ══════════════ */
+let matPopCb=null;
+function openMatPop(anchor, current, cb){
+  matPopCb=cb;
+  const grid=document.getElementById("matGrid");
+  grid.innerHTML=MAT_KEYS.map(k=>
+    '<button type="button" class="'+(k===current?'cur':'')+'" style="background:'+MAT[k].s[600]+
+    '" title="'+MAT[k].label+'" data-mk="'+k+'"></button>').join("");
+  const pop=document.getElementById("matPop");
+  pop.classList.add("show");
+  const r=anchor.getBoundingClientRect();
+  pop.style.left=Math.min(r.left, window.innerWidth-230)+"px";
+  pop.style.top=Math.min(r.bottom+6, window.innerHeight-190)+"px";
+}
+function closeMatPop(){ document.getElementById("matPop").classList.remove("show"); matPopCb=null; }
+document.getElementById("matPop").addEventListener("click",e=>{
+  const b=e.target.closest("[data-mk]"); if(!b) return;
+  if(matPopCb) matPopCb(b.dataset.mk);
+  closeMatPop();
+});
+document.addEventListener("pointerdown",e=>{
+  const pop=document.getElementById("matPop");
+  if(pop.classList.contains("show") && !pop.contains(e.target) && !e.target.closest(".swbtn")) closeMatPop();
+});
+
 /* ══════════════ 공사 관리 ══════════════ */
+/* 새 공사 모달의 공종 편집 목록 — role: 표준 템플릿 매핑(0기계 1전기 2감리 3인허가) */
+let npGroups=[];
 function openNewProject(){
   const t=today0();
   document.getElementById("npStart").value = fd(t);
   document.getElementById("npEnd").value = fd(addD(t,180));
+  npGroups=[
+    {name:"소방기계", color:"red",        company:"", role:0},
+    {name:"소방전기", color:"blue",       company:"", role:1},
+    {name:"감리",     color:"green",      company:"", role:2},
+    {name:"인허가",   color:"deepPurple", company:"관할 소방서", role:3}
+  ];
+  renderNpGroups();
   document.getElementById("npBack").classList.add("show");
   document.getElementById("npName").focus();
 }
 function closeNewProject(){ document.getElementById("npBack").classList.remove("show"); }
+function nextColor(usedList){
+  return MAT_KEYS.find(k=>!usedList.includes(k)) || "grey";
+}
+function renderNpGroups(){
+  const box=document.getElementById("npGroups");
+  box.innerHTML=npGroups.map((g,i)=>
+    '<div class="grow2">'+
+      '<button type="button" class="swbtn" style="background:'+matS(g.color)[700]+'" title="테마색: '+(MAT[g.color]||{}).label+'"'+
+        ' onclick="openMatPop(this,npGroups['+i+'].color,c=>{npGroups['+i+'].color=c;renderNpGroups();})"></button>'+
+      '<input class="gname2" value="'+esc(g.name)+'" placeholder="공종명" oninput="npGroups['+i+'].name=this.value">'+
+      '<input value="'+esc(g.company)+'" placeholder="담당업체 (선택)" oninput="npGroups['+i+'].company=this.value">'+
+      '<button type="button" class="rm2" title="삭제" onclick="npGroups.splice('+i+',1);renderNpGroups()">✕</button>'+
+    '</div>').join("");
+  const demo=document.getElementById("npShadeDemo");
+  const base=npGroups[0]?npGroups[0].color:"blue";
+  demo.innerHTML=SHADE_STEPS.slice(0,4).map(sd=>'<i style="background:'+matS(base)[sd]+'"></i>').join("");
+}
+function npAddGroup(){
+  npGroups.push({name:"", color:nextColor(npGroups.map(g=>g.color)), company:"", role:null});
+  renderNpGroups();
+  const inputs=document.querySelectorAll("#npGroups .gname2");
+  if(inputs.length) inputs[inputs.length-1].focus();
+}
 function createProject(){
   const name = document.getElementById("npName").value.trim();
   const s = pd(document.getElementById("npStart").value);
   const e = pd(document.getElementById("npEnd").value);
   if(!name){ alert("공사명을 입력하세요."); return; }
   if(!s || !e || e<=s){ alert("착수일/준공일을 확인하세요. (준공일이 착수일 이후여야 합니다)"); return; }
-  const comp = [
-    document.getElementById("npMech").value.trim(),
-    document.getElementById("npElec").value.trim(),
-    document.getElementById("npSupv").value.trim(),
-    document.getElementById("npPerm").value.trim(), "" ];
-  const p = { id:uid(), name, start:fd(s), end:fd(e), tasks:[] };
+  const defs=npGroups.filter(g=>g.name.trim());
+  if(!defs.length){ alert("공종을 1개 이상 입력하세요."); return; }
+  const p = { id:uid(), name, start:fd(s), end:fd(e), groups:[], tasks:[] };
+  const roleMap={};
+  defs.forEach(g=>{
+    const grp=makeGroup(g.name.trim(), g.color, g.company.trim());
+    p.groups.push(grp);
+    if(g.role!=null) roleMap[g.role]=grp;
+  });
   if(document.getElementById("npTpl").checked){
     const total = diffD(s,e);
-    TEMPLATE.forEach(([disc,tname,f0,f1,ms])=>{
-      const t = newTask(disc);
-      t.name = tname; t.milestone = ms; t.company = comp[disc]||"";
+    TEMPLATE.forEach(([role,tname,f0,f1,ms])=>{
+      const grp=roleMap[role]; if(!grp) return; // 해당 역할 공종을 지웠으면 그 작업은 생략
+      const t = newTask(grp.id);
+      t.name = tname; t.milestone = ms; t.company = grp.company||"";
       t.planStart = fd(addD(s, Math.round(total*f0)));
-      t.planEnd   = fd(addD(s, Math.max(Math.round(total*f0), Math.round(total*f1)-(f1<1?0:0))));
+      t.planEnd   = fd(addD(s, Math.max(Math.round(total*f0), Math.round(total*f1))));
       if(pd(t.planEnd) < pd(t.planStart)) t.planEnd = t.planStart;
       p.tasks.push(t);
     });
   }
   state.projects.push(p);
   state.activeId = p.id;
-  ["npName","npMech","npElec","npSupv","npPerm"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("npName").value="";
   closeNewProject(); save(); render();
+}
+
+/* ══════════════ 공종·색상 관리 (기존 공사) ══════════════ */
+function openGroupModal(){
+  const p=activeProj();
+  if(!p){ alert("먼저 '새 공사'를 만들어 주세요."); return; }
+  renderGrpRows();
+  document.getElementById("grpBack").classList.add("show");
+}
+function closeGroupModal(){
+  const p=activeProj();
+  if(p) p.groups=p.groups.filter(g=>g.name.trim()); // 빈 이름 정리
+  document.getElementById("grpBack").classList.remove("show");
+  save(); render();
+}
+function renderGrpRows(){
+  const p=activeProj(); if(!p) return;
+  document.getElementById("grpRows").innerHTML=p.groups.map((g,i)=>
+    '<div class="grow2">'+
+      '<button type="button" class="swbtn" style="background:'+gBase(g)+'" title="테마색: '+(MAT[g.color]||{}).label+'"'+
+        ' onclick="openMatPop(this,\''+g.color+'\',c=>grpSet('+i+',\'color\',c))"></button>'+
+      '<input class="gname2" value="'+esc(g.name)+'" placeholder="공종명" oninput="grpSet('+i+',\'name\',this.value,true)">'+
+      '<input value="'+esc(g.company)+'" placeholder="담당업체" oninput="grpSet('+i+',\'company\',this.value,true)">'+
+      '<button type="button" class="mv" '+(i===0?'disabled':'')+' onclick="grpMove('+i+',-1)">▲</button>'+
+      '<button type="button" class="mv" '+(i===p.groups.length-1?'disabled':'')+' onclick="grpMove('+i+',1)">▼</button>'+
+      '<button type="button" class="rm2" title="삭제" onclick="grpDel('+i+')">✕</button>'+
+    '</div>').join("");
+}
+function grpSet(i,f,v,quiet){
+  const p=activeProj(); if(!p||!p.groups[i]) return;
+  p.groups[i][f]=v; save();
+  if(!quiet) renderGrpRows();
+}
+function grpMove(i,d){
+  const p=activeProj(); const j=i+d;
+  if(!p||j<0||j>=p.groups.length) return;
+  [p.groups[i],p.groups[j]]=[p.groups[j],p.groups[i]];
+  save(); renderGrpRows();
+}
+function grpAdd(){
+  const p=activeProj(); if(!p) return;
+  p.groups.push(makeGroup("", nextColor(p.groups.map(g=>g.color)), ""));
+  save(); renderGrpRows();
+  const inputs=document.querySelectorAll("#grpRows .gname2");
+  if(inputs.length) inputs[inputs.length-1].focus();
+}
+function grpDel(i){
+  const p=activeProj(); if(!p) return;
+  if(p.groups.length<=1){ alert("공종은 최소 1개 필요합니다."); return; }
+  const g=p.groups[i];
+  const n=p.tasks.filter(t=>t.gid===g.id).length;
+  if(n && !confirm('"'+g.name+'" 공종에 작업 '+n+'건이 있습니다. 삭제하면 첫 번째 공종으로 옮겨집니다. 계속할까요?')) return;
+  p.groups.splice(i,1);
+  const first=p.groups[0].id;
+  p.tasks.forEach(t=>{ if(t.gid===g.id) t.gid=first; });
+  save(); renderGrpRows();
 }
 function switchProject(id){ state.activeId=id; save(); render(); }
 function renameProject(){
@@ -450,7 +678,11 @@ function deleteProject(){
 function addTask(){
   const p=activeProj();
   if(!p){ alert("먼저 '새 공사'를 만들어 주세요."); return; }
-  const t = newTask(Number(document.getElementById("newDisc").value));
+  const gid=document.getElementById("newGid").value || (firstGroup(p)&&firstGroup(p).id);
+  if(!gid){ alert("공종이 없습니다 — '공종·색상 관리'에서 먼저 추가해 주세요."); return; }
+  const t = newTask(gid);
+  const g=groupOf(p,gid);
+  if(g && g.company) t.company=g.company;
   if(p.start) t.planStart = p.start;
   p.tasks.push(t); save(); render();
   openDetail(t.id);
@@ -466,23 +698,31 @@ function setField(id, field, val){
   const p=activeProj(); if(!p) return;
   const t=p.tasks.find(x=>x.id===id); if(!t) return;
   if(field==="progress"){ val=Math.max(0,Math.min(100,Number(val)||0)); if(val===100 && t.status!==2) t.status=2; }
-  if(field==="disc"||field==="status") val=Number(val);
+  if(field==="status") val=Number(val);
   if(field==="milestone") val=!!val;
   t[field]=val;
   if(field==="status" && val===2 && t.progress<100) t.progress=100;
   save(); renderStats(); renderGantt();
-  if(field==="disc"||field==="planStart"||field==="status") renderTable();
+  if(field==="gid"||field==="planStart"||field==="status") renderTable();
 }
-/* 공종 → 계획착수 → 이름 순 정렬 + 공종별 WBS 코드 부여 */
+/* 공종(그룹 순서) → 계획착수 → 이름 순 정렬 + WBS 코드 + 그룹 내 순번(_gi: 색 톤 계산용) */
 function sortedTasks(p){
+  const gidx={}; (p.groups||[]).forEach((g,i)=>gidx[g.id]=i);
   const arr=[...p.tasks].sort((a,b)=>{
-    if(a.disc!==b.disc) return a.disc-b.disc;
+    const ga=gidx[a.gid]??999, gb=gidx[b.gid]??999;
+    if(ga!==gb) return ga-gb;
     const da=a.planStart||"9999", db=b.planStart||"9999";
     if(da!==db) return da<db?-1:1;
     return (a.name||"").localeCompare(b.name||"","ko");
   });
   const cnt={};
-  arr.forEach(t=>{ cnt[t.disc]=(cnt[t.disc]||0)+1; t._wbs=DISC_CODES[t.disc]+"-"+cnt[t.disc]; });
+  arr.forEach(t=>{
+    cnt[t.gid]=(cnt[t.gid]||0)+1;
+    t._gi=cnt[t.gid]-1; // 그룹 내 0-base 순번 → 700,600,500… 톤
+    const g=groupOf(p,t.gid);
+    const code=g&&g.name?g.name.trim().charAt(0):"?";
+    t._wbs=code+"-"+cnt[t.gid];
+  });
   return arr;
 }
 function isLate(t){
@@ -493,7 +733,7 @@ function isLate(t){
 function statusIdx(t){ return isLate(t) && t.status!==4 ? 3 : t.status; }
 
 /* ══════════════ 렌더 ══════════════ */
-function render(){ renderProjSel(); renderStats(); renderTable(); renderGantt(); renderLegend(); }
+function render(){ renderProjSel(); renderStats(); renderTable(); renderGantt(); renderLegend(); renderNewGid(); }
 
 function renderProjSel(){
   const sel=document.getElementById("projSel");
@@ -530,9 +770,21 @@ function renderStats(){
 }
 
 function renderLegend(){
+  const p=activeProj();
+  const groups=(p&&p.groups)||[];
   document.getElementById("legend").innerHTML =
-    DISCS.map((d,i)=>'<span><span class="sw" style="background:'+DISC_COLORS[i]+'"></span>'+d+'</span>').join("")+
-    '<span><span class="sw" style="background:#555;position:relative"><span style="position:absolute;inset:3px;background:rgba(0,0,0,.4)"></span></span>진척률(어두운 부분)</span>';
+    groups.map(g=>'<span><span class="shade-demo">'+
+      SHADE_STEPS.slice(0,3).map(sd=>'<i style="background:'+matS(g.color)[sd]+'"></i>').join("")+
+      '</span>'+esc(g.name)+'</span>').join("")+
+    '<span style="margin-left:4px">같은 공종은 아래로 갈수록 옅은 톤(700→600→500…)</span>';
+}
+function renderNewGid(){
+  const sel=document.getElementById("newGid");
+  const p=activeProj();
+  const cur=sel.value;
+  sel.innerHTML=((p&&p.groups)||[]).map(g=>'<option value="'+g.id+'">'+esc(g.name)+'</option>').join("")
+    || '<option value="">(공종 없음)</option>';
+  if(cur && p && groupOf(p,cur)) sel.value=cur;
 }
 
 function renderTable(){
@@ -542,22 +794,23 @@ function renderTable(){
   const arr=sortedTasks(p);
   let html='<thead><tr><th>코드</th><th>공종</th><th style="min-width:210px">작업명</th><th>담당업체</th><th>담당자</th>'+
     '<th>계획 착수</th><th>계획 완료</th><th>기간(일)</th><th>진척률(%)</th><th>상태</th><th>선행</th><th>M/S</th><th>상세</th><th></th></tr></thead><tbody>';
-  let lastDisc=-1;
+  let lastGid=null;
   arr.forEach(t=>{
-    if(t.disc!==lastDisc){
-      lastDisc=t.disc;
-      const n=arr.filter(x=>x.disc===t.disc).length;
-      html+='<tr class="grp"><td colspan="14" style="color:'+DISC_COLORS[t.disc]+'">'+
-        '■ '+esc(DISCS[t.disc])+' <span class="cnt">('+n+'건)</span></td></tr>';
+    const g=groupOf(p,t.gid)||{name:"?",color:"grey"};
+    if(t.gid!==lastGid){
+      lastGid=t.gid;
+      const n=arr.filter(x=>x.gid===t.gid).length;
+      html+='<tr class="grp"><td colspan="14" style="color:'+gBase(g)+'">'+
+        '■ '+esc(g.name)+' <span class="cnt">('+n+'건'+(g.company?' · '+esc(g.company):'')+')</span></td></tr>';
     }
     const s=pd(t.planStart), e=pd(t.planEnd);
     const dur=(s&&e&&e>=s)?(diffD(s,e)+1):"";
     const si=statusIdx(t);
     const att=(t.memo?"📝":"")+((t.images&&t.images.length)?" 🖼"+t.images.length:"");
     html+='<tr class="'+(si===2?"done":"")+'">'+
-      '<td class="wbs">'+t._wbs+'</td>'+
-      '<td><select class="d'+t.disc+'" onchange="setField(\''+t.id+'\',\'disc\',this.value)">'+
-        DISCS.map((d,i)=>'<option value="'+i+'"'+(i===t.disc?" selected":"")+'>'+d+'</option>').join("")+'</select></td>'+
+      '<td class="wbs"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:'+taskShade(g,t._gi)+';margin-right:3px"></span>'+t._wbs+'</td>'+
+      '<td><select style="color:'+gBase(g)+';font-weight:600" onchange="setField(\''+t.id+'\',\'gid\',this.value)">'+
+        (p.groups||[]).map(gg=>'<option value="'+gg.id+'"'+(gg.id===t.gid?" selected":"")+'>'+esc(gg.name)+'</option>').join("")+'</select></td>'+
       '<td class="tname"><input value="'+esc(t.name)+'" placeholder="작업명" oninput="setField(\''+t.id+'\',\'name\',this.value)"></td>'+
       '<td><input value="'+esc(t.company)+'" oninput="setField(\''+t.id+'\',\'company\',this.value)"></td>'+
       '<td><input value="'+esc(t.owner)+'" style="min-width:60px" oninput="setField(\''+t.id+'\',\'owner\',this.value)"></td>'+
@@ -616,11 +869,12 @@ function renderGantt(){
   let html='<div class="hrow hhead"><div class="hname">작업 / 기간</div>'+
     '<div class="htrack" style="width:'+(total*ppd)+'px">'+mh+'</div></div>';
 
-  let lastDisc=-1;
+  let lastGid=null;
   arr.forEach(t=>{
-    if(t.disc!==lastDisc){
-      lastDisc=t.disc;
-      html+='<div class="hrow hgrp"><div class="hname" style="color:'+DISC_COLORS[t.disc]+'">■ '+esc(DISCS[t.disc])+'</div>'+
+    const g=groupOf(p,t.gid)||{name:"?",color:"grey"};
+    if(t.gid!==lastGid){
+      lastGid=t.gid;
+      html+='<div class="hrow hgrp"><div class="hname" style="color:'+gBase(g)+'">■ '+esc(g.name)+'</div>'+
         '<div class="htrack" style="width:'+(total*ppd)+'px"></div></div>';
     }
     const s=pd(t.planStart), e=pd(t.planEnd);
@@ -628,7 +882,8 @@ function renderGantt(){
     let barHtml="";
     if(ok){
       const x=diffD(rs,s)*ppd, w=Math.max(ppd,(diffD(s,e)+1)*ppd);
-      const col=DISC_COLORS[t.disc];
+      const col=taskShade(g,t._gi);          // 그룹 내 순번 → 700,600,500… 점점 옅게
+      const txt=textOn(col);
       const tip=esc(t.name)+" | "+fmtShort(t.planStart)+"~"+fmtShort(t.planEnd)+" ("+(diffD(s,e)+1)+"일) · "+(t.progress||0)+"%"
         +(t.company?" · "+esc(t.company):"");
       if(t.milestone){
@@ -637,7 +892,7 @@ function renderGantt(){
       }else{
         barHtml='<div class="hbar'+(isLate(t)?" late":"")+'" style="left:'+x+'px;width:'+w+'px;background:'+col+'" title="'+tip+'" onclick="openDetail(\''+t.id+'\')">'+
           '<div class="fill" style="width:'+(t.progress||0)+'%"></div>'+
-          (w>46?'<span class="lbl">'+esc(t.name)+'</span>':"")+'</div>';
+          (w>46?'<span class="lbl" style="color:'+txt+'">'+esc(t.name)+'</span>':"")+'</div>';
       }
     }
     const meta=[t._wbs, t.company||"", ok?fmtShort(t.planStart)+"~"+fmtShort(t.planEnd):"날짜 미정"].filter(Boolean).join(" · ");
@@ -672,8 +927,10 @@ function dSet(field,val){ if(detailId) setField(detailId,field,val); refreshDeta
 function curTask(){ const p=activeProj(); return p? p.tasks.find(x=>x.id===detailId) : null; }
 function refreshDetailTitle(){
   const t=curTask(); if(!t) return;
+  const p=activeProj();
+  const g=p?groupOf(p,t.gid):null;
   document.getElementById("dTitle").textContent =
-    "["+DISCS[t.disc]+"] "+(t.name||"(무제)");
+    "["+(g?g.name:"?")+"] "+(t.name||"(무제)");
 }
 function renderDetail(){
   const t=curTask(); if(!t) return;
@@ -682,11 +939,11 @@ function renderDetail(){
   body.innerHTML =
   '<div class="fgrid">'+
     '<div style="grid-column:1/-1"><label>작업명</label><input value="'+esc(t.name)+'" oninput="dSet(\'name\',this.value)"></div>'+
-    '<div><label>공종</label><select onchange="dSet(\'disc\',this.value)">'+
-      DISCS.map((d,i)=>'<option value="'+i+'"'+(i===t.disc?" selected":"")+'>'+d+'</option>').join("")+'</select></div>'+
+    '<div><label>공종</label><select onchange="dSet(\'gid\',this.value)">'+
+      ((activeProj()&&activeProj().groups)||[]).map(g=>'<option value="'+g.id+'"'+(g.id===t.gid?" selected":"")+'>'+esc(g.name)+'</option>').join("")+'</select></div>'+
     '<div><label>담당업체</label><input value="'+esc(t.company)+'" oninput="dSet(\'company\',this.value)"></div>'+
     '<div><label>담당자 / 연락처</label><input value="'+esc(t.owner)+'" oninput="dSet(\'owner\',this.value)"></div>'+
-    '<div><label>선행 작업(코드)</label><input value="'+esc(t.pred)+'" placeholder="예: M-3" oninput="dSet(\'pred\',this.value)"></div>'+
+    '<div><label>선행 작업(코드)</label><input value="'+esc(t.pred)+'" placeholder="예: 기-3" oninput="dSet(\'pred\',this.value)"></div>'+
     '<div><label>계획 착수</label><input type="date" value="'+t.planStart+'" onchange="dSet(\'planStart\',this.value)"></div>'+
     '<div><label>계획 완료</label><input type="date" value="'+t.planEnd+'" onchange="dSet(\'planEnd\',this.value)"></div>'+
     '<div><label>실제 착수</label><input type="date" value="'+(t.actStart||"")+'" onchange="dSet(\'actStart\',this.value)"></div>'+
@@ -773,6 +1030,8 @@ document.addEventListener("keydown",e=>{
   if(e.key==="Escape"){
     const lb=document.getElementById("lightbox");
     if(lb.classList.contains("show")){ lb.classList.remove("show"); return; }
+    if(document.getElementById("matPop").classList.contains("show")){ closeMatPop(); return; }
+    if(document.getElementById("grpBack").classList.contains("show")){ closeGroupModal(); return; }
     if(document.getElementById("detailBack").classList.contains("show")) closeDetail();
     if(document.getElementById("npBack").classList.contains("show")) closeNewProject();
   }
@@ -800,7 +1059,7 @@ function tryRestoreFromHash(){
     const s=JSON.parse(json);
     if(s && Array.isArray(s.projects)){
       if(!state.projects.length || confirm("공유받은 데이터를 불러올까요?\n(확인 = 현재 데이터를 대체)")){
-        state=s; save();
+        state=s; migrate(); save();
       }
     }
   }catch(e){ alert("공유 URL 해석에 실패했습니다."); }
@@ -822,7 +1081,7 @@ function importJSON(ev){
       const s=JSON.parse(r.result);
       if(!s || !Array.isArray(s.projects)) throw 0;
       if(!confirm("현재 데이터를 백업 파일 내용으로 대체할까요?")) return;
-      state=s;
+      state=s; migrate();
       if(!state.projects.find(p=>p.id===state.activeId)) state.activeId=state.projects[0]?state.projects[0].id:null;
       save(); render();
     }catch(e){ alert("JSON 파일을 해석할 수 없습니다."); }
@@ -836,7 +1095,8 @@ function exportCSV(){
   const rows=[head.map(q).join(",")];
   sortedTasks(p).forEach(t=>{
     const s=pd(t.planStart),e=pd(t.planEnd);
-    rows.push([t._wbs,DISCS[t.disc],t.name,t.company,t.owner,t.planStart,t.planEnd,
+    const g=groupOf(p,t.gid);
+    rows.push([t._wbs,(g?g.name:""),t.name,t.company,t.owner,t.planStart,t.planEnd,
       (s&&e&&e>=s)?diffD(s,e)+1:"",t.actStart||"",t.actEnd||"",t.progress||0,
       STATUSES[statusIdx(t)],t.pred,t.milestone?"◆":"",t.memo].map(q).join(","));
   });

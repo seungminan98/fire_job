@@ -555,8 +555,20 @@ function renderPushTargets(){
     sel.style.display="";
   }else sel.style.display="none";
 }
-function newTaskFrom(t){
-  return { id:uid(), disc:t.disc, name:t.name, company:t.company, owner:t.owner,
+/* 훅업 공정표의 사용자 정의 공종(그룹) 모델과 호환: disc(0~4) → 그룹 매핑/생성 */
+const DISC_MAT_COLORS = ["red","blue","green","deepPurple","grey"];
+function ensureGroup(project, disc){
+  if(!Array.isArray(project.groups)) project.groups=[];
+  const name=DISCS[disc]||"공통";
+  let g=project.groups.find(x=>(x.name||"").trim()===name);
+  if(!g){
+    g={ id:uid(), name, color:DISC_MAT_COLORS[disc]||"grey", company:"" };
+    project.groups.push(g);
+  }
+  return g;
+}
+function newTaskFrom(t, gid){
+  return { id:uid(), gid:gid, name:t.name, company:t.company, owner:t.owner,
     planStart:t.planStart, planEnd:t.planEnd||t.planStart, actStart:"", actEnd:"",
     progress:t.progress, status:t.status, pred:"", milestone:t.milestone,
     memo:t.memo, images:[] };
@@ -572,7 +584,7 @@ function pushData(){
   let target;
   if(mode==="new"){
     const p=extracted.project;
-    target={ id:uid(), name:p.name||("가져온 공사 "+fdToday()), start:p.start, end:p.end, tasks:[] };
+    target={ id:uid(), name:p.name||("가져온 공사 "+fdToday()), start:p.start, end:p.end, groups:[], tasks:[] };
     st.projects.push(target);
     st.activeId=target.id;
   }else{
@@ -580,11 +592,12 @@ function pushData(){
     if(!target){ show("err","대상 공사를 선택해 주세요 (없으면 '새 공사로 만들기')."); return; }
     st.activeId=target.id;
   }
-  // 중복(공종+작업명 동일) 스킵
+  // 중복(공종+작업명 동일) 스킵 — AI 분류(disc)를 대상 공사의 공종 그룹으로 매핑/생성
   let added=0, skipped=0;
   picked.forEach(t=>{
-    if(target.tasks.some(x=>x.disc===t.disc && (x.name||"").trim()===t.name.trim())) { skipped++; return; }
-    target.tasks.push(newTaskFrom(t)); added++;
+    const g=ensureGroup(target, t.disc);
+    if(target.tasks.some(x=>x.gid===g.id && (x.name||"").trim()===t.name.trim())) { skipped++; return; }
+    target.tasks.push(newTaskFrom(t, g.id)); added++;
   });
   try{ localStorage.setItem(LS_KEY, JSON.stringify(st)); }
   catch(e){ show("err","저장 실패(브라우저 저장 불가 환경이거나 용량 초과)."); return; }
