@@ -37,6 +37,9 @@
   button.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
   button.btn.primary:hover{background:#000}
   button.btn.sm{padding:3px 8px;font-size:11px}
+  button.btn svg{width:13px;height:13px;flex:none}
+  .ico{width:12px;height:12px;vertical-align:-2px}
+  .bico{width:13px;height:13px;vertical-align:-2px;margin-right:4px}
   button.btn.danger{color:var(--over);border-color:var(--over)}
   .toolbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
   select.big{border:1px solid var(--line-strong);border-radius:5px;padding:5px 8px;font-family:inherit;
@@ -219,7 +222,7 @@
   align-items:center;justify-content:center;padding:20px">
   <div style="background:#fff;border:1px solid #c9c9c9;border-radius:10px;padding:30px 28px;
     width:100%;max-width:360px;box-shadow:0 8px 30px rgba(0,0,0,.1);text-align:center">
-    <div style="font-size:30px;margin-bottom:8px">&#128274;</div>
+    <svg width="34" height="34" viewBox="0 0 16 16" fill="none" stroke="#1a1a1a" stroke-width="1.3" style="margin-bottom:8px"><rect x="3" y="7" width="10" height="6.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
     <div style="font-size:15px;font-weight:650;margin-bottom:4px">소방공사 일정 관리</div>
     <div style="font-size:12px;color:#6b6b6b;margin-bottom:16px">접속 암호를 입력하세요</div>
     <input type="password" id="authPw" autocomplete="off" placeholder="암호"
@@ -283,14 +286,14 @@
       <div class="sub">공종을 직접 구성하고(전기·기계·인허가·감리 등) 머터리얼 테마색 지정 — 공사별 공정표 + 간트차트 (막대 클릭 → 상세 메모/사진)</div>
     </div>
     <div style="text-align:right">
-      <div class="sub"><a href="bridge.html">🤖 AI 자료 밀어넣기</a> · <a href="index.html">전체 공사 일정·M/M →</a></div>
+      <div class="sub"><a href="bridge.html">AI 자료 밀어넣기</a> · <a href="index.html">전체 공사 일정·M/M →</a></div>
       <div class="sub" id="saveState"></div>
     </div>
   </header>
 
   <div id="storageWarn" style="display:none;margin-bottom:14px;padding:10px 13px;border-radius:7px;
     background:var(--over-bg);border:1px solid var(--over);color:var(--over);font-size:12px;line-height:1.6">
-    ⚠ <b>이 환경에서는 자동 저장이 작동하지 않습니다.</b> 새로고침하면 입력 내용이 사라질 수 있어요.
+    <svg style="width:13px;height:13px;vertical-align:-2px;margin-right:2px" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2.5 14.5 13.5H1.5Z" stroke-linejoin="round"/><path d="M8 6.5v3.2M8 12.2v.01" stroke-linecap="round"/></svg> <b>이 환경에서는 자동 저장이 작동하지 않습니다.</b> 새로고침하면 입력 내용이 사라질 수 있어요.
     작업 후 <b>“JSON 백업”</b> 또는 <b>“공유 URL 복사”</b>로 보관하세요.
   </div>
 
@@ -341,7 +344,7 @@
       훅업 공정표
       <div class="spacer"></div>
       <div class="toolbar">
-        <button class="btn" onclick="openGroupModal()">🎨 공종·색상 관리</button>
+        <button class="btn" onclick="openGroupModal()"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>공종·색상 관리</button>
         <select class="big" style="max-width:150px" id="newGid"></select>
         <button class="btn primary" onclick="addTask()">＋ 작업 추가</button>
       </div>
@@ -503,6 +506,11 @@ const TEMPLATE = [
   [3,"완공검사증명서 발급",0.98,1.00,true ],
 ];
 
+const ICO_MEMO='<svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="2" width="10" height="12" rx="1.5"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke-linecap="round"/></svg>';
+const ICO_IMG='<svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.3" r="1.1"/><path d="M2.5 10.8 6 7.5l2.8 2.8 2.2-2.2 2.5 2.5" stroke-linejoin="round"/></svg>';
+const ICO_CAM='<svg class="bico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5.5 4.5l1-1.7h3l1 1.7" stroke-linejoin="round"/><rect x="1.5" y="4.5" width="13" height="9" rx="1.5"/><circle cx="8" cy="9" r="2.4"/></svg>';
+const ICO_LINK='<svg class="bico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6.5 9.5l3-3"/><path d="M7.6 4.6l1.1-1.1a2.47 2.47 0 0 1 3.5 3.5L11.1 8.1"/><path d="M8.4 11.4l-1.1 1.1a2.47 2.47 0 0 1-3.5-3.5L4.9 7.9"/></svg>';
+
 /* ══════════════ 상태 ══════════════ */
 let state = { projects: [], activeId: null };
 const PPD = { month:2.2, week:6, day:24 };  // 최소단위별 px/일 (index.html 간트 편집과 동일)
@@ -569,7 +577,7 @@ function save(){
     try{
       localStorage.setItem(LS_KEY, JSON.stringify(state));
       flag("저장됨 · "+new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}));
-    }catch(e){ flag("⚠ 저장 실패(용량 초과 가능) — 사진 정리 또는 JSON 백업 권장"); }
+    }catch(e){ flag("주의: 저장 실패(용량 초과 가능) — 사진 정리 또는 JSON 백업 권장"); }
   },250);
 }
 function flag(msg){ document.getElementById("saveState").innerHTML='<span class="saved-flag">'+esc(msg)+'</span>'; }
@@ -848,7 +856,7 @@ function renderProjSel(){
     || '<option value="">— 공사 없음 (＋ 새 공사) —</option>';
   const imp=importableMain();
   if(imp.length){
-    html+='<optgroup label="⬇ 전체 공사 일정에서 가져오기">'+
+    html+='<optgroup label="전체 공사 일정에서 가져오기">'+
       imp.map(({mp,i})=>'<option value="imp:'+i+'">'+esc(mp.name||"(무제)")+
         (mp.start?' · '+esc(mp.start):'')+'</option>').join("")+'</optgroup>';
   }
@@ -962,7 +970,7 @@ function renderTable(){
     const s=pd(t.planStart), e=pd(t.planEnd);
     const dur=(s&&e&&e>=s)?(diffD(s,e)+1):"";
     const si=statusIdx(t);
-    const att=(t.memo?"📝":"")+((t.images&&t.images.length)?" 🖼"+t.images.length:"");
+    const att=(t.memo?ICO_MEMO:"")+((t.images&&t.images.length)?" "+ICO_IMG+t.images.length:"");
     html+='<tr class="'+(si===2?"done":"")+'">'+
       '<td class="wbs"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:'+taskShade(g,t._gi)+';margin-right:3px"></span>'+t._wbs+'</td>'+
       '<td><select style="color:'+gBase(g)+';font-weight:600" onchange="setField(\''+t.id+'\',\'gid\',this.value)">'+
@@ -1081,7 +1089,7 @@ function renderGantt(){
       }
     }
     const meta=[t._wbs, t.company||"", ok?fmtShort(t.planStart)+"~"+fmtShort(t.planEnd):"날짜 미정"].filter(Boolean).join(" · ");
-    const att=(t.memo?" 📝":"")+((t.images&&t.images.length)?" 🖼":"");
+    const att=(t.memo?" "+ICO_MEMO:"")+((t.images&&t.images.length)?" "+ICO_IMG:"");
     html+='<div class="hrow"><div class="hname">'+
       '<div class="nm" onclick="openDetail(\''+t.id+'\')">'+esc(t.name||"(무제)")+att+'</div>'+
       '<div class="meta">'+esc(meta)+'</div></div>'+
@@ -1142,9 +1150,9 @@ function renderDetail(){
   '<textarea class="memo" placeholder="예) 6/12 감리 검측 — 3층 SP 가지배관 행거 간격 보완 지시, 6/14 재검측 예정" oninput="dSet(\'memo\',this.value)">'+esc(t.memo)+'</textarea>'+
   '<div class="sec-t">현장 사진 / 도면</div>'+
   '<div class="toolbar">'+
-    '<button class="btn sm" onclick="document.getElementById(\'imgIn\').click()">📷 사진 업로드</button>'+
+    '<button class="btn sm" onclick="document.getElementById(\'imgIn\').click()">'+ICO_CAM+'사진 업로드</button>'+
     '<input type="file" id="imgIn" class="file-in" accept="image/*" multiple onchange="addImageFiles(event)">'+
-    '<button class="btn sm" onclick="addImageUrl()">🔗 이미지 URL 추가</button>'+
+    '<button class="btn sm" onclick="addImageUrl()">'+ICO_LINK+'이미지 URL 추가</button>'+
     '<span class="sub">업로드 시 자동 압축(긴 변 1280px) 후 브라우저에 저장</span>'+
   '</div>'+
   '<div class="img-grid" id="imgGrid"></div>'+
@@ -1233,7 +1241,7 @@ function copyShareURL(){
   const droppedImgs = state.projects.reduce((n,p)=>n+p.tasks.reduce((m,t)=>m+(t.images||[]).filter(im=>im.up).length,0),0);
   navigator.clipboard.writeText(url).then(()=>{
     alert("공유 URL을 복사했습니다."+(droppedImgs?"\n※ 업로드된 사진 "+droppedImgs+"장은 용량 문제로 URL에서 제외됩니다(JSON 백업에는 포함).":"")+
-      (url.length>6000?"\n⚠ URL이 매우 깁니다 — 일부 메신저에서 잘릴 수 있으니 JSON 백업도 함께 보관하세요.":""));
+      (url.length>6000?"\n주의: URL이 매우 깁니다 — 일부 메신저에서 잘릴 수 있으니 JSON 백업도 함께 보관하세요.":""));
   },()=>{ prompt("복사가 차단되었습니다. 아래 URL을 직접 복사하세요.", url); });
 }
 function tryRestoreFromHash(){

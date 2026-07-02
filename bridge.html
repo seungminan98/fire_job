@@ -39,6 +39,8 @@
   button.btn.big{padding:9px 18px;font-size:13px;font-weight:600}
   button.btn:disabled{opacity:.45;cursor:not-allowed}
   button.btn.sm{padding:3px 8px;font-size:11px}
+  button.btn svg{width:13px;height:13px;flex:none;margin-right:2px}
+  .icn svg{display:block}
   .toolbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
   .file-in{display:none}
   .hint{font-size:11.5px;color:var(--muted);margin-top:9px;line-height:1.6}
@@ -108,7 +110,7 @@
   align-items:center;justify-content:center;padding:20px">
   <div style="background:#fff;border:1px solid #c9c9c9;border-radius:10px;padding:30px 28px;
     width:100%;max-width:360px;box-shadow:0 8px 30px rgba(0,0,0,.1);text-align:center">
-    <div style="font-size:30px;margin-bottom:8px">&#128274;</div>
+    <svg width="34" height="34" viewBox="0 0 16 16" fill="none" stroke="#1a1a1a" stroke-width="1.3" style="margin-bottom:8px"><rect x="3" y="7" width="10" height="6.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
     <div style="font-size:15px;font-weight:650;margin-bottom:4px">소방공사 일정 관리</div>
     <div style="font-size:12px;color:#6b6b6b;margin-bottom:16px">접속 암호를 입력하세요</div>
     <input type="password" id="authPw" autocomplete="off" placeholder="암호"
@@ -240,7 +242,7 @@
         <label><input type="radio" name="pushMode" value="new" checked onchange="renderPushTargets()"> 새 공사로 만들기</label>
         <label><input type="radio" name="pushMode" value="append" onchange="renderPushTargets()"> 기존 공사에 작업 추가</label>
         <select id="pushTarget" style="display:none"></select>
-        <button class="btn primary" onclick="pushData()">⇩ 밀어넣기</button>
+        <button class="btn primary" onclick="pushData()"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v8M4.5 7.2 8 10.7l3.5-3.5"/><path d="M3 13.5h10"/></svg>밀어넣기</button>
       </div>
       <div class="status-box" id="pushStatus"></div>
     </div>
@@ -318,7 +320,7 @@ function rmAtt(i){ attachments.splice(i,1); renderAtts(); }
 function renderAtts(){
   document.getElementById("attList").innerHTML = attachments.map((a,i)=>
     '<div class="att">'+
-      (a.kind==="image" ? '<img src="'+a.src+'" alt="">' : '<span class="icn">📊</span>')+
+      (a.kind==="image" ? '<img src="'+a.src+'" alt="">' : '<span class="icn"><svg style="width:20px;height:20px" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect x="1.8" y="2.2" width="12.4" height="8.6" rx="1"/><path d="M4.8 8.6V6.8M8 8.6V4.8M11.2 8.6V6"/><path d="M8 10.8v2M5.8 14.2h4.4"/></svg></span>')+
       '<div><div class="nm">'+esc(a.name)+'</div><div class="meta">'+
         (a.kind==="pptx" ? a.slides.length+"개 슬라이드 텍스트" : "이미지 (AI가 직접 봄)")+'</div></div>'+
       '<button class="rm" onclick="rmAtt('+i+')" title="제거">✕</button>'+
@@ -517,7 +519,7 @@ async function runExtract(){
     let out;
     try{ out=JSON.parse(textBlock.text); }
     catch(e){ throw new Error("결과 JSON 해석 실패"+(data.stop_reason==="max_tokens"?" (출력이 잘렸습니다 — 자료를 나눠서 시도해 보세요)":"")); }
-    if(data.stop_reason==="max_tokens") setStatus("err","⚠ 출력이 길어 잘렸을 수 있습니다 — 결과를 꼭 확인하세요.");
+    if(data.stop_reason==="max_tokens") setStatus("err","주의: 출력이 길어 잘렸을 수 있습니다 — 결과를 꼭 확인하세요.");
     lastUsage=data.usage||null;
     extracted=sanitize(out);
     setStatus("ok","분석 완료 — 작업 "+extracted.tasks.length+"건 추출. 아래에서 확인 후 밀어넣으세요.");
@@ -590,7 +592,7 @@ function renderPreview(){
     "토큰 사용: 입력 "+(u.input_tokens||0).toLocaleString()+" · 출력 "+(u.output_tokens||0).toLocaleString()+
     " (약 $"+(((u.input_tokens||0)*5+(u.output_tokens||0)*25)/1e6).toFixed(3)+")" : "";
   const notes=document.getElementById("aiNotes");
-  if(extracted.notes){ notes.style.display="block"; notes.innerHTML="🤖 <b>AI 확인 요청:</b> "+esc(extracted.notes); }
+  if(extracted.notes){ notes.style.display="block"; notes.innerHTML='<svg style="width:12px;height:12px;vertical-align:-1.5px;margin-right:2px" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="4" y="4" width="8" height="8" rx="1.5"/><path d="M6 1.5V4M10 1.5V4M6 12v2.5M10 12v2.5M1.5 6H4M1.5 10H4M12 6h2.5M12 10h2.5"/></svg> <b>AI 확인 요청:</b> '+esc(extracted.notes); }
   else notes.style.display="none";
 
   renderPushTargets();
