@@ -660,7 +660,10 @@ function grpDel(i){
   p.tasks.forEach(t=>{ if(t.gid===g.id) t.gid=first; });
   save(); renderGrpRows();
 }
-function switchProject(id){ state.activeId=id; save(); render(); }
+function switchProject(id){
+  if(id && id.startsWith("imp:")){ importFromMain(Number(id.slice(4))); return; }
+  state.activeId=id; save(); render();
+}
 function renameProject(){
   const p=activeProj(); if(!p) return;
   const n=prompt("공사명 변경", p.name);
@@ -735,11 +738,67 @@ function statusIdx(t){ return isLate(t) && t.status!==4 ? 3 : t.status; }
 /* ══════════════ 렌더 ══════════════ */
 function render(){ renderProjSel(); renderStats(); renderTable(); renderGantt(); renderLegend(); renderNewGid(); }
 
+/* ── 전체 공사 일정(index.html, fireSchedule.v2)과 연동 ── */
+function loadMainProjects(){
+  try{
+    const raw=localStorage.getItem("fireSchedule.v2");
+    if(raw){ const s=JSON.parse(raw); if(s && Array.isArray(s.projects)) return s.projects; }
+  }catch(e){}
+  return [];
+}
+/* 아직 가져오지 않은 전체 일정 공사 (가져온 것은 srcId 또는 동일 이름으로 판정) */
+function importableMain(){
+  const mains=loadMainProjects();
+  return mains.map((mp,i)=>({mp,i})).filter(({mp})=>{
+    const nm=(mp.name||"").trim();
+    return !state.projects.some(p=>p.srcId===mp.id || (nm && (p.name||"").trim()===nm));
+  });
+}
 function renderProjSel(){
   const sel=document.getElementById("projSel");
-  sel.innerHTML = state.projects.map(p=>
+  let html = state.projects.map(p=>
     '<option value="'+p.id+'"'+(p.id===state.activeId?" selected":"")+'>'+esc(p.name)+'</option>').join("")
     || '<option value="">— 공사 없음 (＋ 새 공사) —</option>';
+  const imp=importableMain();
+  if(imp.length){
+    html+='<optgroup label="⬇ 전체 공사 일정에서 가져오기">'+
+      imp.map(({mp,i})=>'<option value="imp:'+i+'">'+esc(mp.name||"(무제)")+
+        (mp.start?' · '+esc(mp.start):'')+'</option>').join("")+'</optgroup>';
+  }
+  document.getElementById("projSel").innerHTML=html;
+}
+/* 전체 일정의 공사를 훅업 공정표 공사로 변환해서 가져오기 */
+function importFromMain(idx){
+  const mp=loadMainProjects()[idx];
+  if(!mp){ alert("전체 공사 일정 데이터를 찾지 못했습니다."); render(); return; }
+  const name=(mp.name||"").trim()||"(무제)";
+  const start=mp.start||"";
+  const end=mp.end || (mp.stages&&mp.stages[6]&&mp.stages[6].end) || "";
+  const p={ id:uid(), srcId:mp.id, name, start, end, groups:[], tasks:[] };
+  const roleMap={};
+  [["소방기계","red",0],["소방전기","blue",1],["감리","green",2],["인허가","deepPurple",3]]
+    .forEach(([nm,color,role])=>{
+      const g=makeGroup(nm,color,role===3?"관할 소방서":"");
+      p.groups.push(g); roleMap[role]=g;
+    });
+  const s=pd(start), e=pd(end);
+  if(s && e && e>s &&
+     confirm('"'+name+'" 를 가져옵니다 ('+start+' ~ '+end+').\n\n표준 훅업 템플릿 23개 작업을 기간에 맞춰 자동 배치할까요?\n(취소 = 빈 공정표로 가져오기)')){
+    const total=diffD(s,e);
+    TEMPLATE.forEach(([role,tname,f0,f1,ms])=>{
+      const grp=roleMap[role]; if(!grp) return;
+      const t=newTask(grp.id);
+      t.name=tname; t.milestone=ms; t.company=grp.company||"";
+      t.planStart=fd(addD(s,Math.round(total*f0)));
+      t.planEnd=fd(addD(s,Math.max(Math.round(total*f0),Math.round(total*f1))));
+      if(pd(t.planEnd)<pd(t.planStart)) t.planEnd=t.planStart;
+      p.tasks.push(t);
+    });
+  }
+  state.projects.push(p);
+  state.activeId=p.id;
+  save(); render();
+  flag('전체 일정에서 가져옴: '+name);
 }
 
 function renderStats(){
