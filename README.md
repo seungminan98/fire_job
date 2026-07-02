@@ -213,6 +213,22 @@ PPT(.pptx)·이미지(공정표 캡처, 화이트보드 사진)·텍스트를 �
 
 ---
 
+## 🔒 접속 암호 게이트
+- 세 페이지(`index.html` / `hookup.html` / `bridge.html`) 진입 시 **접속 암호**를 묻습니다.
+- 인증은 탭 단위로 유지되고(같은 탭에서 페이지 이동 시 재입력 불필요),
+  **"이 브라우저에서 로그인 유지"** 를 체크하면 브라우저에 저장됩니다.
+- 소스에는 암호의 **SHA-256 해시만** 들어 있습니다 (평문 없음).
+- **암호 변경 방법**: 새 암호의 해시를 구해 각 파일 상단 게이트 스크립트의 `HASH`/`FB` 값 교체
+  ```bash
+  node -e 'const c=require("crypto");const pw="새암호";
+    console.log("HASH:",c.createHash("sha256").update(pw,"utf8").digest("hex"));
+    let h=5381;const b=Buffer.from(pw,"utf8");for(const x of b)h=((h*33)^x)>>>0;
+    console.log("FB:",h.toString(16)+"-"+b.length);'
+  ```
+- ⚠️ **한계**: 프론트엔드 전용 간이 잠금입니다. 개발자 도구를 아는 사람은 우회할 수 있으므로
+  (localStorage 데이터도 열람 가능) "지나가는 사람 차단" 용도로만 쓰고,
+  진짜 기밀 데이터라면 백엔드 인증이 필요합니다.
+
 ## ⚠️ 주의사항
 - localStorage는 **브라우저·기기마다 별도**입니다. 다른 PC에서 이어 작업하려면 CSV/URL로 옮기세요.
 - 브라우저 데이터(캐시/사이트 데이터)를 지우면 저장 내용도 사라집니다 → 중요 데이터는 CSV 백업 권장.
