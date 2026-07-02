@@ -129,9 +129,16 @@
   .hrow.hgrp{min-height:24px;background:var(--soft)}
   .hrow.hgrp .hname{background:var(--soft);font-weight:650;display:flex;align-items:center;gap:6px}
   .htrack{position:relative;flex:none}
-  .hhead .htrack{display:flex;background:var(--soft)}
-  .hmonth{flex:none;text-align:center;padding:5px 0;font-size:10px;color:#333;white-space:nowrap;
-    border-right:1px solid var(--line);overflow:hidden}
+  .hhead .htrack{display:block;background:var(--soft)}
+  .hdrow{display:flex}
+  .hcell2{flex:none;text-align:center;font-size:10px;color:#333;border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);background:var(--soft);padding:2px 0;overflow:hidden;white-space:nowrap}
+  .hcell2.yr{font-weight:650;font-size:10.5px}
+  .hcell2.wknd{color:#c0392b}
+  .seg-tabs{display:flex;gap:2px}
+  .seg-tabs button{background:#fff;border:1px solid var(--line);border-radius:5px;padding:4px 11px;
+    font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit}
+  .seg-tabs button.active{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:600}
   .hbar{position:absolute;top:50%;transform:translateY(-50%);height:18px;border-radius:3px;cursor:pointer;
     overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.4) inset;display:flex;align-items:center}
   .hbar:hover{filter:brightness(1.12);box-shadow:0 0 0 1.5px var(--ink)}
@@ -248,12 +255,12 @@
     <div class="card-h">
       간트차트
       <div class="spacer"></div>
-      <span class="sub">배율</span>
-      <select class="big" style="max-width:90px" id="zoomSel" onchange="setZoom(this.value)">
-        <option value="2">좁게</option>
-        <option value="4" selected>보통</option>
-        <option value="8">넓게</option>
-      </select>
+      <span class="sub">최소 단위</span>
+      <div class="seg-tabs" id="zoomTabs">
+        <button data-z="month" onclick="setZoom('month')">월</button>
+        <button data-z="week" class="active" onclick="setZoom('week')">주</button>
+        <button data-z="day" onclick="setZoom('day')">일</button>
+      </div>
     </div>
     <div class="card-b">
       <div class="legend" id="legend"></div>
@@ -433,7 +440,8 @@ const TEMPLATE = [
 
 /* ══════════════ 상태 ══════════════ */
 let state = { projects: [], activeId: null };
-let ppd = 4;           // px per day
+const PPD = { month:2.2, week:6, day:24 };  // 최소단위별 px/일 (index.html 간트 편집과 동일)
+let ppd = PPD.week;
 let canStore = true;
 let saveTimer = null;
 
@@ -479,6 +487,10 @@ function addD(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
 function diffD(a,b){ return Math.round((b-a)/DAY); }
 function today0(){ const t=new Date(); return new Date(t.getFullYear(),t.getMonth(),t.getDate()); }
 function fmtShort(s){ return s ? s.slice(2).replace(/-/g,".") : ""; }
+function weekStartD(d){ const x=new Date(d); x.setDate(x.getDate()-((x.getDay()+6)%7)); return x; } // 월요일
+function weekEndD(d){ return addD(weekStartD(d),6); }
+function monthStartD(d){ return new Date(d.getFullYear(),d.getMonth(),1); }
+function monthEndD(d){ return new Date(d.getFullYear(),d.getMonth()+1,0); }
 
 /* ══════════════ 저장/불러오기 ══════════════ */
 function detectStorage(){
@@ -718,15 +730,25 @@ function sortedTasks(p){
     if(da!==db) return da<db?-1:1;
     return (a.name||"").localeCompare(b.name||"","ko");
   });
+  const codeMap={};
+  (p.groups||[]).forEach(g=>codeMap[g.id]=groupCode(g,p.groups));
   const cnt={};
   arr.forEach(t=>{
     cnt[t.gid]=(cnt[t.gid]||0)+1;
     t._gi=cnt[t.gid]-1; // 그룹 내 0-base 순번 → 700,600,500… 톤
-    const g=groupOf(p,t.gid);
-    const code=g&&g.name?g.name.trim().charAt(0):"?";
-    t._wbs=code+"-"+cnt[t.gid];
+    t._wbs=(codeMap[t.gid]||"?")+"-"+cnt[t.gid];
   });
   return arr;
+}
+/* WBS용 코드 글자: 다른 공종과 이름이 갈라지는 첫 글자 (소방기계/소방전기 → 기/전) */
+function groupCode(g,groups){
+  const name=(g.name||"").trim(); if(!name) return "?";
+  const others=groups.filter(x=>x!==g).map(x=>(x.name||"").trim()).filter(Boolean);
+  for(let i=0;i<name.length;i++){
+    const pref=name.slice(0,i+1);
+    if(!others.some(o=>o.slice(0,i+1)===pref)) return name[i];
+  }
+  return name[0];
 }
 function isLate(t){
   if(t.status===2) return false;
@@ -899,12 +921,20 @@ function renderTable(){
   tbl.innerHTML=html;
 }
 
-function setZoom(v){ ppd=Number(v); renderGantt(); }
+function ganttZoom(){ return (state.ui&&state.ui.ganttZoom)||"week"; }
+function setZoom(z){
+  if(!state.ui) state.ui={};
+  state.ui.ganttZoom=z; save(); syncZoomTabs(); renderGantt();
+}
+function syncZoomTabs(){
+  document.querySelectorAll("#zoomTabs button").forEach(b=>b.classList.toggle("active",b.dataset.z===ganttZoom()));
+}
 
 function renderGantt(){
   const el=document.getElementById("gantt");
   const p=activeProj();
   if(!p){ el.innerHTML='<div class="undated">공사를 먼저 만들어 주세요.</div>'; return; }
+  const zoom=ganttZoom(); ppd=PPD[zoom];
   const arr=sortedTasks(p);
   const dated=arr.filter(t=>t.planStart&&t.planEnd&&pd(t.planEnd)>=pd(t.planStart));
   let rs,re;
@@ -914,26 +944,47 @@ function renderGantt(){
   }else{
     rs = pd(p.start)||today0(); re = pd(p.end)||addD(rs,120);
   }
-  rs=addD(rs,-7); re=addD(re,10);
+  rs=monthStartD(addD(rs,-7)); re=monthEndD(addD(re,10));   // 단위 경계에 맞춰 정렬
   const total=diffD(rs,re)+1;
   const NAMEW=230;
 
-  /* 월 헤더 */
-  let mh="", d=new Date(rs.getFullYear(),rs.getMonth(),1);
+  /* ── 계층 헤더: 년 → 월 → 주 → 일 (index.html 간트 편집과 동일) ── */
+  const yr=[],mo=[],wk=[],dy=[];
+  { let d=new Date(rs);
+    while(d<=re){ const e=new Date(d.getFullYear(),11,31); const to=e>re?re:e;
+      yr.push({label:d.getFullYear()+'년', w:(diffD(d,to)+1)*ppd, cls:'yr'}); d=addD(to,1); } }
   const monthLines=[];
-  while(d<=re){
-    const mEnd=new Date(d.getFullYear(),d.getMonth()+1,0);
-    const from=d<rs?rs:d, to=mEnd>re?re:mEnd;
-    const w=(diffD(from,to)+1)*ppd;
-    const lbl=w>=40 ? d.getFullYear()+"."+String(d.getMonth()+1).padStart(2,"0") : "";
-    mh+='<div class="hmonth" style="width:'+w+'px">'+lbl+'</div>';
-    if(d>rs) monthLines.push(diffD(rs,d)*ppd);
-    d=new Date(d.getFullYear(),d.getMonth()+1,1);
-  }
-  /* 주(월요일) 라인 */
+  { let d=new Date(rs);
+    while(d<=re){ const e=monthEndD(d); const to=e>re?re:e;
+      mo.push({label:(d.getMonth()+1)+'월', w:(diffD(d,to)+1)*ppd});
+      if(d>rs) monthLines.push(diffD(rs,d)*ppd);
+      d=addD(to,1); } }
   const weekLines=[];
-  let wd=addD(rs,(8-rs.getDay())%7||7);
-  while(wd<=re){ weekLines.push(diffD(rs,wd)*ppd); wd=addD(wd,7); }
+  { let wd=addD(rs,(8-rs.getDay())%7||7);
+    while(wd<=re){ weekLines.push(diffD(rs,wd)*ppd); wd=addD(wd,7); } }
+  if(zoom!=="month"){
+    let d=new Date(rs);
+    while(d<=re){
+      const we=weekEndD(d); const to=we>re?re:we;
+      const ws=weekStartD(d);
+      const label = zoom==="day"
+        ? (Math.floor((ws.getDate()-1)/7)+1)+"주"
+        : (ws.getMonth()+1)+"/"+ws.getDate();
+      wk.push({label, w:(diffD(d,to)+1)*ppd});
+      d=addD(to,1);
+    }
+  }
+  if(zoom==="day"){
+    let d=new Date(rs);
+    while(d<=re){ const w=d.getDay();
+      dy.push({label:String(d.getDate()), w:ppd, cls:(w===0||w===6)?"wknd":""});
+      d=addD(d,1); }
+  }
+  const hdRow=cells=>'<div class="hdrow">'+cells.map(c=>
+    '<div class="hcell2'+(c.cls?' '+c.cls:'')+'" style="width:'+c.w+'px">'+(c.w>=17?c.label:'')+'</div>').join('')+'</div>';
+  let mh=hdRow(yr)+hdRow(mo);
+  if(wk.length&&zoom!=="month") mh+=hdRow(wk);
+  if(dy.length) mh+=hdRow(dy);
 
   let html='<div class="hrow hhead"><div class="hname">작업 / 기간</div>'+
     '<div class="htrack" style="width:'+(total*ppd)+'px">'+mh+'</div></div>';
@@ -1182,6 +1233,7 @@ load();
 tryRestoreFromHash();
 if(!state.projects.length) flag("＋ 새 공사로 시작하세요");
 else flag("불러옴");
+syncZoomTabs();
 render();
 </script>
 </body>
