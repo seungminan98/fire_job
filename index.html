@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<style>html{visibility:hidden}</style>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>소방공사 일정 · M/M Capacity 관리</title>
@@ -163,21 +164,131 @@
   .view-add:hover{border-color:var(--ink);color:var(--ink)}
   .view-bar .vb-spacer{flex:1}
   .view-hint{font-size:10.5px;color:var(--muted)}
+
+  /* ===== 간트 편집 모드 ===== */
+  .eg-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 12px;
+    border-bottom:1px solid var(--line);background:var(--softer);font-size:12px}
+  .eg-bar .lbl2{color:var(--muted);font-size:11.5px}
+  .eg-bar select{border:1px solid var(--line-strong);border-radius:4px;padding:3px 6px;font-family:inherit;font-size:11.5px}
+  .eg-hint2{color:var(--muted);font-size:11px;margin-left:auto}
+  .eg-scroll{overflow-x:auto}
+  .eg-chart{width:max-content;min-width:100%;font-size:11px;position:relative;user-select:none}
+  .eg-row{display:flex;align-items:stretch;border-bottom:1px solid var(--line);position:relative;min-height:34px}
+  .eg-row.hd{min-height:0;border-bottom:none}
+  .eg-name{flex:none;width:170px;padding:5px 9px;position:sticky;left:0;z-index:3;background:#fff;
+    border-right:1.5px solid var(--line-strong);font-size:11.5px;line-height:1.35;overflow:hidden}
+  .eg-name .meta{color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .eg-name .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .eg-hd-name{background:var(--soft);display:flex;align-items:flex-end;font-weight:600}
+  .eg-track{position:relative;flex:none}
+  .eg-hdrow{display:flex}
+  .eg-hcell{flex:none;text-align:center;font-size:10px;color:#333;border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);background:var(--soft);padding:2px 0;overflow:hidden;white-space:nowrap}
+  .eg-hcell.yr{font-weight:650;font-size:10.5px}
+  .eg-hcell.wknd{color:#c0392b}
+  .eg-grid{position:absolute;top:0;bottom:0;width:0;pointer-events:none}
+  .eg-grid.m{border-left:1px solid var(--line-strong);z-index:1}
+  .eg-grid.w{border-left:1px solid var(--line);z-index:0}
+  .eg-today{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed #c0392b;z-index:2;pointer-events:none}
+  .eg-today .tlbl{position:absolute;top:0;left:2px;font-size:8.5px;color:#c0392b;font-weight:600;background:#fff;padding:0 2px}
+  .eg-seg{position:absolute;top:50%;transform:translateY(-50%);height:20px;display:flex;align-items:center;
+    justify-content:center;color:#fff;font-size:9.5px;font-weight:600;overflow:hidden;white-space:nowrap;
+    cursor:grab;box-shadow:0 0 0 1px rgba(255,255,255,.35) inset}
+  .eg-seg:active{cursor:grabbing}
+  .eg-seg.s0{border-radius:3px 0 0 3px}
+  .eg-seg.s6{border-radius:0 3px 3px 0}
+  .eg-hnd{position:absolute;top:50%;transform:translate(-50%,-50%);width:9px;height:26px;cursor:col-resize;z-index:4}
+  .eg-hnd::after{content:"";position:absolute;left:50%;top:3px;bottom:3px;width:2px;transform:translateX(-50%);
+    background:#fff;opacity:0;border-radius:1px}
+  .eg-hnd:hover::after,.eg-hnd.on::after{opacity:.9}
+  .eg-seg,.eg-hnd,.eg-edge{touch-action:none}
+  .eg-edge{position:absolute;top:50%;transform:translateY(-50%);width:8px;height:26px;cursor:ew-resize;z-index:4}
+  .eg-edge:hover,.eg-edge.on{background:rgba(0,0,0,.12);border-radius:3px}
+  .eg-empty{align-self:center;padding:0 10px;color:var(--muted);font-size:10.5px}
+  .eg-tip{position:fixed;z-index:99;background:var(--ink);color:#fff;font-size:11px;padding:4px 8px;
+    border-radius:4px;pointer-events:none;white-space:nowrap;display:none}
+  body.eg-dragging{user-select:none;cursor:col-resize}
+  tr.row-muted .eg-seg{opacity:.5}
 </style>
 </head>
 <body>
+<!-- ── 접속 인증 게이트 (공통) ────────────────────────────────
+  주의: 프론트엔드 전용 간이 잠금입니다. 소스에는 비밀번호의 SHA-256 해시만 있지만,
+  코드를 아는 사람이 우회할 수 있으므로 기밀 데이터 보호 용도로는 백엔드 인증이 필요합니다. -->
+<div id="authGate" style="position:fixed;inset:0;z-index:9999;background:#f7f7f7;display:flex;
+  align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border:1px solid #c9c9c9;border-radius:10px;padding:30px 28px;
+    width:100%;max-width:360px;box-shadow:0 8px 30px rgba(0,0,0,.1);text-align:center">
+    <svg width="34" height="34" viewBox="0 0 16 16" fill="none" stroke="#1a1a1a" stroke-width="1.3" style="margin-bottom:8px"><rect x="3" y="7" width="10" height="6.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
+    <div style="font-size:15px;font-weight:650;margin-bottom:4px">소방공사 일정 관리</div>
+    <div style="font-size:12px;color:#6b6b6b;margin-bottom:16px">접속 암호를 입력하세요</div>
+    <input type="password" id="authPw" autocomplete="off" placeholder="암호"
+      style="width:100%;border:1px solid #c9c9c9;border-radius:6px;padding:9px 11px;
+      font-family:inherit;font-size:14px;text-align:center;box-sizing:border-box">
+    <div id="authErr" style="font-size:11.5px;color:#9a3434;min-height:17px;margin-top:6px"></div>
+    <button id="authBtn" style="width:100%;background:#1a1a1a;color:#fff;border:none;border-radius:6px;
+      padding:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:2px">열기</button>
+    <label style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#6b6b6b;margin-top:12px;cursor:pointer">
+      <input type="checkbox" id="authKeep"> 이 브라우저에서 로그인 유지
+    </label>
+  </div>
+</div>
+<script>
+(function(){
+  var HASH="420b78ec6f83cb93315497071fb79d65637187537b50ecd5c36cfc17d889da74"; // SHA-256
+  var FB="74d63e48-18"; // crypto.subtle 불가 환경용 보조 해시
+  var gate=document.getElementById("authGate");
+  function authed(){ try{ return sessionStorage.getItem("fireAuth")==="1"||localStorage.getItem("fireAuth.keep")==="1"; }catch(e){ return false; } }
+  function unlock(){ gate.parentNode.removeChild(gate); document.documentElement.style.visibility="visible"; }
+  if(authed()){ unlock(); return; }
+  document.documentElement.style.visibility="visible";  // 게이트만 보이게 (아래 컨텐츠는 게이트가 가림)
+  function djb2(s){ var h=5381,b=new TextEncoder().encode(s); for(var i=0;i<b.length;i++){ h=((h*33)^b[i])>>>0; } return h.toString(16)+"-"+b.length; }
+  function sha256(s){
+    if(window.crypto&&crypto.subtle&&window.isSecureContext!==false){
+      return crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)).then(function(buf){
+        return Array.from(new Uint8Array(buf)).map(function(x){return x.toString(16).padStart(2,"0");}).join("");
+      });
+    }
+    return Promise.resolve(null);
+  }
+  function tryOpen(){
+    var v=(document.getElementById("authPw").value||"").trim();
+    if(!v) return;
+    sha256(v).then(function(h){
+      var ok = h ? (h===HASH) : (djb2(v)===FB);
+      if(ok){
+        try{
+          sessionStorage.setItem("fireAuth","1");
+          if(document.getElementById("authKeep").checked) localStorage.setItem("fireAuth.keep","1");
+        }catch(e){}
+        unlock();
+      }else{
+        var err=document.getElementById("authErr");
+        err.textContent="암호가 올바르지 않습니다";
+        document.getElementById("authPw").value="";
+        document.getElementById("authPw").focus();
+      }
+    });
+  }
+  document.getElementById("authBtn").addEventListener("click",tryOpen);
+  document.getElementById("authPw").addEventListener("keydown",function(e){ if(e.key==="Enter") tryOpen(); });
+  setTimeout(function(){ document.getElementById("authPw").focus(); },50);
+})();
+</script>
+
 <div class="wrap">
   <header>
     <div>
       <h1>소방공사 일정 · M/M Capacity 관리</h1>
-      <div class="sub">접수 · 기획 · 설계 · 계약 · 시공 · 정산 · 인수인계 / 월별 인원 풀 점검</div>
+      <div class="sub">접수 · 기획 · 설계 · 계약 · 시공 · 정산 · 인수인계 / 월별 인원 풀 점검
+        · <a href="hookup.html" style="color:inherit;font-weight:600">공사별 훅업 공정표 →</a></div>
     </div>
     <div class="sub" id="saveState"></div>
   </header>
 
   <div id="storageWarn" style="display:none;margin-bottom:14px;padding:10px 13px;border-radius:7px;
     background:var(--over-bg);border:1px solid var(--over);color:var(--over);font-size:12px;line-height:1.6">
-    ⚠ <b>이 환경에서는 자동 저장이 작동하지 않습니다.</b> 새로고침하면 입력 내용이 사라질 수 있어요.
+    <svg style="width:13px;height:13px;vertical-align:-2px;margin-right:2px" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2.5 14.5 13.5H1.5Z" stroke-linejoin="round"/><path d="M8 6.5v3.2M8 12.2v.01" stroke-linecap="round"/></svg> <b>이 환경에서는 자동 저장이 작동하지 않습니다.</b> 새로고침하면 입력 내용이 사라질 수 있어요.
     HTML 파일을 직접 열거나 GitHub Pages 등에 올려서 사용하면 자동 저장됩니다.
     당장 보관하려면 <b>“전체 내보내기(백업)”</b> 또는 <b>“공유 URL 복사”</b>를 이용하세요.
   </div>
@@ -188,6 +299,10 @@
       <div class="card">
         <div class="card-h">
           공사 목록
+          <div class="seg-tabs" id="editModeTabs" style="margin-left:6px">
+            <button class="active" data-mode="table" onclick="setEditMode('table')">표 입력</button>
+            <button data-mode="gantt" onclick="setEditMode('gantt')">간트 편집</button>
+          </div>
           <div class="spacer"></div>
           <button class="btn" onclick="toggleColMenu(event)">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12M2 8h12M2 13h12" stroke-linecap="round"/></svg>컬럼</button>
@@ -196,11 +311,28 @@
         </div>
         <div class="view-bar" id="viewBar"></div>
         <div class="card-b flush">
-          <div class="proj-scroll">
+          <div class="proj-scroll" id="projScrollWrap">
             <table id="projTable">
               <thead></thead>
               <tbody id="projBody"></tbody>
             </table>
+          </div>
+          <div id="editGanttWrap" style="display:none">
+            <div class="eg-bar">
+              <span class="lbl2">최소 단위</span>
+              <div class="seg-tabs" id="egZoomTabs">
+                <button data-z="month" onclick="setEgZoom('month')">월</button>
+                <button data-z="week" onclick="setEgZoom('week')">주</button>
+                <button data-z="day" onclick="setEgZoom('day')">일</button>
+              </div>
+              <span class="lbl2">주·월 스냅 기준</span>
+              <select id="egSnapSel" onchange="setEgSnap(this.value)">
+                <option value="last">막날 (주=일요일 · 월=말일)</option>
+                <option value="first">첫날 (주=월요일 · 월=1일)</option>
+              </select>
+              <span class="eg-hint2">막대 몸통 드래그=전체 이동 · 단계 경계 드래그=단계 조절 · 양 끝=착수/종료일</span>
+            </div>
+            <div class="eg-scroll"><div class="eg-chart" id="egChart"></div></div>
           </div>
         </div>
       </div>
@@ -384,7 +516,8 @@ function defaultState(){
     picRatio:{ lead:1.0, sub:0.7 },
     capacity:5, warnPct:80, overPct:100, seq:1,
     customCols:[], expanded:[],
-    views:[ defaultView("기본") ], activeView:0
+    views:[ defaultView("기본") ], activeView:0,
+    ui:{ editMode:'table', ganttZoom:'week', snapMode:'last' }
   };
 }
 function defaultView(name){
@@ -443,6 +576,10 @@ function migrate(){
     state.endPositioned=true;
   }
   (state.projects||[]).forEach(p=>{ if(p.contract==null)p.contract="입찰"; if(!p.custom)p.custom={}; });
+  if(!state.ui) state.ui={};
+  if(!state.ui.editMode) state.ui.editMode='table';
+  if(!state.ui.ganttZoom) state.ui.ganttZoom='week';
+  if(!state.ui.snapMode) state.ui.snapMode='last';
 }
 function save(){
   try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); flagSaved("저장됨"); }
@@ -698,6 +835,7 @@ function renderProjects(){
       td.innerHTML=stageDetailHTML(p,idx); tr2.appendChild(td); tb.appendChild(tr2);
     }
   });
+  if(typeof renderEditGantt==='function' && !egDrag) renderEditGantt(); // 간트 편집 모드 동기화
 }
 /* ---------- 단계 종료일 펼침/접기 ---------- */
 function isExpanded(p){ return (state.expanded||[]).includes(p.id); }
@@ -1066,6 +1204,215 @@ function resetDefaults(){ if(confirm("M/M·고정기간·인원 설정을 기본
   state.capacity=d.capacity; state.warnPct=d.warnPct; state.overPct=d.overPct;
   state.projects.forEach(p=>{ if(parseD(p.start)) autoSplit(p); });
   save(); renderProjects(); renderSettings(); refreshPreview(); } }
+
+/* ========== 간트 편집 모드 (드래그로 일정 조절) ========== */
+const EG_PPD={month:2.2, week:6, day:24}; // 최소단위별 px/일
+function egUI(){ if(!state.ui) state.ui={editMode:'table',ganttZoom:'week',snapMode:'last'}; return state.ui; }
+function setEditMode(mode){ egUI().editMode=mode; save(); applyEditMode(); }
+function applyEditMode(){
+  const mode=egUI().editMode;
+  document.querySelectorAll('#editModeTabs button').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
+  document.getElementById('projScrollWrap').style.display = mode==='table'?'':'none';
+  document.getElementById('editGanttWrap').style.display = mode==='gantt'?'':'none';
+  document.querySelectorAll('#egZoomTabs button').forEach(b=>b.classList.toggle('active',b.dataset.z===egUI().ganttZoom));
+  document.getElementById('egSnapSel').value=egUI().snapMode;
+  if(mode==='gantt') renderEditGantt();
+}
+function setEgZoom(z){ egUI().ganttZoom=z; save(); applyEditMode(); }
+function setEgSnap(v){ egUI().snapMode=v; save(); renderEditGantt(); }
+
+function weekStartD(d){ const x=new Date(d); x.setDate(x.getDate()-((x.getDay()+6)%7)); return x; } // 월요일
+function weekEndD(d){ return addDays(weekStartD(d),6); }                                            // 일요일
+function monthStartD(d){ return new Date(d.getFullYear(),d.getMonth(),1); }
+function monthEndD(d){ return new Date(d.getFullYear(),d.getMonth()+1,0); }
+function dayDiff(a,b){ return Math.round((b-a)/864e5); }
+// 최소단위가 주/월이면 해당 단위의 첫날 또는 막날로 스냅
+function egSnapDate(d,mode){
+  const z=egUI().ganttZoom;
+  if(z==='day') return new Date(d);
+  if(z==='week') return mode==='first'?weekStartD(d):weekEndD(d);
+  return mode==='first'?monthStartD(d):monthEndD(d);
+}
+
+let egRange=null; // {min,max,ppd,W}
+function renderEditGantt(){
+  const wrap=document.getElementById('editGanttWrap');
+  if(!wrap||wrap.style.display==='none') return;
+  const el=document.getElementById('egChart');
+  const z=egUI().ganttZoom, ppd=EG_PPD[z];
+  let min=null,max=null;
+  state.projects.forEach(p=>(p.stages||[]).forEach(s=>{
+    const a=parseD(s.start), b=parseD(s.end);
+    if(a&&(!min||a<min))min=a; if(b&&(!max||b>max))max=b;
+  }));
+  const today=new Date(); today.setHours(0,0,0,0);
+  if(!min||!max){ min=addDays(today,-15); max=addDays(today,170); }
+  min=monthStartD(addDays(min,-8)); max=monthEndD(addDays(max,20));
+  const total=dayDiff(min,max)+1, W=total*ppd;
+  egRange={min,max,ppd,W};
+  const X=d=>dayDiff(min,d)*ppd;
+
+  /* ---- 계층 헤더: 년 → 월 → 주 → 일 (줌에 따라 표시) ---- */
+  const yr=[],mo=[],wk=[],dy=[];
+  { let d=new Date(min);
+    while(d<=max){ const e=new Date(d.getFullYear(),11,31); const to=e>max?max:e;
+      yr.push({label:d.getFullYear()+'년', w:(dayDiff(d,to)+1)*ppd}); d=addDays(to,1); } }
+  { let d=new Date(min);
+    while(d<=max){ const e=monthEndD(d); const to=e>max?max:e;
+      mo.push({label:(d.getMonth()+1)+'월', w:(dayDiff(d,to)+1)*ppd}); d=addDays(to,1); } }
+  if(z!=='month'){
+    let d=new Date(min);
+    while(d<=max){
+      const we=weekEndD(d); const to=we>max?max:we;
+      const ws=weekStartD(d);
+      let label;
+      if(z==='day') label=(Math.floor((ws.getDate()-1)/7)+1)+'주';
+      else { const ref=egUI().snapMode==='first'?ws:we; label=(ref.getMonth()+1)+'/'+ref.getDate(); }
+      wk.push({label, w:(dayDiff(d,to)+1)*ppd});
+      d=addDays(to,1);
+    }
+  }
+  if(z==='day'){
+    let d=new Date(min);
+    while(d<=max){ const wd=d.getDay();
+      dy.push({label:String(d.getDate()), w:ppd, wknd:(wd===0||wd===6)});
+      d=addDays(d,1); }
+  }
+  const hdRow=(cells,cls)=>'<div class="eg-hdrow">'+cells.map(c=>
+    '<div class="eg-hcell '+(cls||'')+(c.wknd?' wknd':'')+'" style="width:'+c.w+'px">'+(c.w>=17?c.label:'')+'</div>').join('')+'</div>';
+  let hdHtml=hdRow(yr,'yr')+hdRow(mo);
+  if(wk.length)hdHtml+=hdRow(wk);
+  if(dy.length)hdHtml+=hdRow(dy);
+
+  let html='<div class="eg-row hd"><div class="eg-name eg-hd-name">공사명</div>'+
+    '<div class="eg-track" style="width:'+W+'px">'+hdHtml+'</div></div>';
+
+  const order=sortedIndices();
+  if(!order.length)
+    html+='<div class="eg-row"><div class="eg-name" style="color:var(--muted)">공사 없음</div>'+
+      '<div class="eg-track eg-empty" style="width:'+W+'px;display:flex;align-items:center">“공사 추가”로 시작하세요.</div></div>';
+  order.forEach(idx=>{
+    const p=state.projects[idx];
+    const muted=(p.status==='완료'||p.status==='hold'||p.status==='drop');
+    html+='<div class="eg-row'+(muted?' row-muted':'')+'">'+
+      '<div class="eg-name"><div class="nm" title="'+esc(p.name)+'">'+esc(p.name||'(무제)')+'</div>'+
+      '<div class="meta" id="egMeta'+idx+'">'+egMetaText(p)+'</div></div>'+
+      '<div class="eg-track" style="width:'+W+'px" id="egTrack'+idx+'">'+egBarHTML(p,idx)+'</div></div>';
+  });
+
+  /* ---- 그리드(월=진하게, 주=연하게) + 오늘 ---- */
+  let overlay=''; const NAMEW=170;
+  { let d=addDays(monthEndD(min),1);
+    while(d<=max){ overlay+='<div class="eg-grid m" style="left:'+(NAMEW+X(d))+'px"></div>'; d=addDays(monthEndD(d),1); } }
+  if(z!=='month'){
+    let d=weekStartD(addDays(min,7));
+    while(d<=max){ overlay+='<div class="eg-grid w" style="left:'+(NAMEW+X(d))+'px"></div>'; d=addDays(d,7); }
+  }
+  if(today>=min&&today<=max)
+    overlay+='<div class="eg-today" style="left:'+(NAMEW+X(today))+'px"><span class="tlbl">오늘</span></div>';
+  el.innerHTML=html+overlay;
+}
+function egMetaText(p){
+  const s=p.stages&&p.stages[0]&&p.stages[0].start, e=p.stages&&p.stages[6]&&p.stages[6].end;
+  return (s&&e)?(s.slice(2)+' ~ '+e.slice(2)):'착수일 미입력';
+}
+function egBarHTML(p,idx){
+  const st=p.stages||[];
+  const s0=parseD(st[0]&&st[0].start), e6=parseD(st[6]&&st[6].end);
+  if(!s0||!e6) return '<div class="eg-empty" style="line-height:34px">표 입력에서 착수일을 넣으면 막대가 생깁니다</div>';
+  const {min,ppd}=egRange;
+  const X=d=>dayDiff(min,d)*ppd;
+  let h='';
+  for(let i=0;i<7;i++){
+    const a=parseD(st[i].start), b=parseD(st[i].end);
+    if(!a||!b) continue;
+    const x=X(a), w=Math.max(2,(dayDiff(a,b)+1)*ppd);
+    h+='<div class="eg-seg s'+i+'" data-idx="'+idx+'" data-seg="'+i+'" style="left:'+x+'px;width:'+w+
+      'px;background:'+STAGE_COLORS[i]+'" title="'+stageLabel(p,i)+' '+st[i].start+' ~ '+st[i].end+
+      ' (몸통 드래그=전체 이동)">'+(w>34?stageLabel(p,i):'')+'</div>';
+  }
+  for(let i=0;i<6;i++){
+    const b=parseD(st[i].end); if(!b) continue;
+    h+='<div class="eg-hnd" data-idx="'+idx+'" data-bnd="'+i+'" style="left:'+(X(b)+ppd)+
+      'px" title="'+stageLabel(p,i)+' ↔ '+stageLabel(p,i+1)+' 경계 (드래그로 조절)"></div>';
+  }
+  h+='<div class="eg-edge" data-idx="'+idx+'" data-edge="L" style="left:'+(X(s0)-4)+'px" title="착수일 (드래그)"></div>';
+  h+='<div class="eg-edge" data-idx="'+idx+'" data-edge="R" style="left:'+(X(e6)+ppd-4)+'px" title="종료일 (드래그)"></div>';
+  return h;
+}
+
+/* ---- 드래그 ---- */
+let egDrag=null;
+const egTip=document.createElement('div'); egTip.className='eg-tip'; document.body.appendChild(egTip);
+function egDown(e){
+  const t=e.target.closest('.eg-seg,.eg-hnd,.eg-edge'); if(!t) return;
+  const idx=Number(t.dataset.idx); const p=state.projects[idx];
+  if(!p||!p.stages||!p.stages[0]||!parseD(p.stages[0].start)) return;
+  e.preventDefault();
+  const kind=t.dataset.bnd!=null?'bnd':(t.dataset.edge?('edge'+t.dataset.edge):'move');
+  egDrag={ idx, kind, bnd:Number(t.dataset.bnd), x0:e.clientX,
+    snap:p.stages.map(s=>({start:s.start,end:s.end})),
+    start0:p.start, end0:p.end, moved:false };
+  t.classList.add('on');
+  document.body.classList.add('eg-dragging');
+  document.addEventListener('pointermove',egMove);
+  document.addEventListener('pointerup',egUp);
+}
+function egMove(e){
+  if(!egDrag) return;
+  const {idx,kind,bnd,x0,snap}=egDrag;
+  const p=state.projects[idx];
+  const dd=Math.round((e.clientX-x0)/egRange.ppd);
+  const sm=egUI().snapMode;
+  const D=parseD, F=fmtD;
+  // 매 이동마다 스냅샷 기준으로 다시 계산 (누적 오차 방지)
+  p.stages.forEach((s,i)=>{ s.start=snap[i].start; s.end=snap[i].end; });
+  p.start=egDrag.start0; p.end=egDrag.end0;
+  let tip='';
+  if(kind==='move'){
+    let ns=egSnapDate(addDays(D(snap[0].start),dd),'first');
+    const shift=dayDiff(D(snap[0].start),ns);
+    if(shift!==0) p.stages.forEach((s,i)=>{
+      s.start=F(addDays(D(snap[i].start),shift)); s.end=F(addDays(D(snap[i].end),shift)); });
+    p.start=p.stages[0].start; p.end=p.stages[6].end;
+    tip='전체 이동 · '+p.start+' ~ '+p.end;
+  }else if(kind==='bnd'){
+    let ne=egSnapDate(addDays(D(snap[bnd].end),dd),sm);
+    const lo=D(snap[bnd].start), hi=addDays(D(snap[bnd+1].end),-1);
+    if(ne<lo)ne=lo; if(ne>hi)ne=hi;
+    p.stages[bnd].end=F(ne);
+    p.stages[bnd+1].start=F(addDays(ne,1));
+    tip=stageLabel(p,bnd)+' 종료 · '+p.stages[bnd].end;
+  }else if(kind==='edgeR'){
+    let ne=egSnapDate(addDays(D(snap[6].end),dd),sm);
+    const lo=D(snap[6].start);
+    if(ne<lo)ne=lo;
+    p.stages[6].end=F(ne); p.end=p.stages[6].end;
+    tip='종료일 · '+p.end;
+  }else if(kind==='edgeL'){
+    let ns=egSnapDate(addDays(D(snap[0].start),dd),'first');
+    const hi=D(snap[0].end);
+    if(ns>hi)ns=hi;
+    p.stages[0].start=F(ns); p.start=p.stages[0].start;
+    tip='착수일 · '+p.start;
+  }
+  egDrag.moved=true;
+  const track=document.getElementById('egTrack'+idx);
+  if(track) track.innerHTML=egBarHTML(p,idx);
+  const meta=document.getElementById('egMeta'+idx); if(meta) meta.textContent=egMetaText(p);
+  egTip.style.display='block'; egTip.textContent=tip;
+  egTip.style.left=(e.clientX+14)+'px'; egTip.style.top=(e.clientY+18)+'px';
+}
+function egUp(){
+  document.removeEventListener('pointermove',egMove);
+  document.removeEventListener('pointerup',egUp);
+  document.body.classList.remove('eg-dragging');
+  egTip.style.display='none';
+  const changed=egDrag&&egDrag.moved;
+  egDrag=null;
+  if(changed){ save(); renderProjects(); refreshPreview(); renderEditGantt(); }
+}
+document.getElementById('egChart').addEventListener('pointerdown',egDown);
 
 /* ---------- preview tab switch ---------- */
 document.querySelectorAll('#viewTabs button').forEach(b=>{
@@ -1479,7 +1826,7 @@ function copyShareURL(){
   const base=location.origin+location.pathname; // 해시 제외한 현재 주소
   const url=base+"#d="+data;
   const len=url.length;
-  const warn = len>6000 ? "\n\n⚠ URL이 매우 깁니다("+len+"자). 카카오톡 등에서 잘릴 수 있으니, 함께 ‘전체 내보내기(백업)’ CSV도 보관하세요."
+  const warn = len>6000 ? "\n\n주의: URL이 매우 깁니다("+len+"자). 카카오톡 등에서 잘릴 수 있으니, 함께 ‘전체 내보내기(백업)’ CSV도 보관하세요."
              : len>2000 ? "\n\n(길이 "+len+"자 — 대부분 환경에서 열리지만, 일부 메신저에서 잘릴 수 있습니다.)"
              : "";
   const finish=(okMsg)=>{ flagSaved("URL 복사됨"); alert(okMsg+" ("+len+"자)"+warn); };
@@ -1554,6 +1901,7 @@ load();
 checkStorage();     // 자동저장 불가 환경이면 경고 표시
 checkShareHash();   // URL에 #d=... 공유 데이터가 있으면 복원 제안
 renderProjects(); renderSettings(); refreshPreview();
+applyEditMode();    // 표 ↔ 간트 편집 모드 복원
 </script>
 </body>
 </html>

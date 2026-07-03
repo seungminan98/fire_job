@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<style>html{visibility:hidden}</style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>소방공사 훅업(Hook-up) 공정 일정 · 간트차트</title>
+<style>
+  :root{
+    --bg:#ffffff; --ink:#1a1a1a; --muted:#6b6b6b; --line:#e2e2e2;
+    --line-strong:#c9c9c9; --soft:#f7f7f7; --softer:#fafafa;
+    --ok:#2f6f4f; --ok-bg:#e8f3ed; --warn:#8a6d1a; --warn-bg:#f6efd9; --over:#9a3434; --over-bg:#f6e4e4;
+    --mech:#c0392b; --elec:#1d5fc4; --supv:#2f7d4f; --perm:#7b2fbf; --etc:#6b6b6b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1500px;margin:0 auto;padding:18px 18px 60px}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+    border-bottom:1.5px solid var(--ink);padding-bottom:10px;margin-bottom:14px}
+  h1{font-size:17px;font-weight:650;letter-spacing:-.01em;margin:0}
+  .sub{color:var(--muted);font-size:12px}
+  .sub a{color:var(--muted)}
+  .saved-flag{font-size:11px;color:var(--ok)}
+
+  .card{border:1px solid var(--line);border-radius:7px;margin-bottom:14px;overflow:hidden}
+  .card-h{display:flex;align-items:center;gap:8px;padding:9px 13px;background:var(--soft);
+    border-bottom:1px solid var(--line);font-size:13px;font-weight:600;flex-wrap:wrap}
+  .card-h .spacer{flex:1}
+  .card-b{padding:12px 13px}
+  .card-b.flush{padding:0}
+
+  button.btn{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line-strong);
+    color:var(--ink);padding:6px 11px;border-radius:5px;font-size:12px;cursor:pointer;font-family:inherit}
+  button.btn:hover{background:var(--soft)}
+  button.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  button.btn.primary:hover{background:#000}
+  button.btn.sm{padding:3px 8px;font-size:11px}
+  button.btn svg{width:13px;height:13px;flex:none}
+  .ico{width:12px;height:12px;vertical-align:-2px}
+  .bico{width:13px;height:13px;vertical-align:-2px;margin-right:4px}
+  button.btn.danger{color:var(--over);border-color:var(--over)}
+  .toolbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  select.big{border:1px solid var(--line-strong);border-radius:5px;padding:5px 8px;font-family:inherit;
+    font-size:12.5px;font-weight:600;max-width:280px}
+  .file-in{display:none}
+
+  /* ── 요약 스탯 ─────────────────────────── */
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .stat{flex:1;min-width:130px;border:1px solid var(--line);border-radius:7px;padding:9px 13px;background:#fff}
+  .stat .k{font-size:11px;color:var(--muted)}
+  .stat .v{font-size:18px;font-weight:650;font-variant-numeric:tabular-nums}
+  .stat .v small{font-size:11px;font-weight:400;color:var(--muted)}
+  .bar-wrap{height:7px;background:var(--soft);border-radius:4px;overflow:hidden;margin-top:5px}
+  .bar{height:100%;border-radius:4px;background:var(--ink)}
+
+  /* ── 공정표(테이블) ─────────────────────── */
+  .proj-scroll{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;font-size:12px}
+  th,td{border:1px solid var(--line);padding:4px 7px;text-align:left;vertical-align:middle;white-space:nowrap}
+  th{background:var(--soft);font-weight:600;color:#333}
+  tbody tr:hover{background:var(--softer)}
+  td input,td select{width:100%;border:none;background:transparent;font-family:inherit;font-size:12px;
+    color:var(--ink);padding:2px 0;min-width:50px}
+  td input:focus,td select:focus{outline:1.5px solid var(--ink);outline-offset:1px;border-radius:3px;background:#fff}
+  td.num input{text-align:right}
+  td input[type=date]{min-width:118px}
+  tr.grp td{background:var(--soft);font-weight:650;border-top:1.5px solid var(--line-strong)}
+  tr.grp td .cnt{font-weight:400;color:var(--muted);font-size:11px}
+  td.wbs{font-variant-numeric:tabular-nums;color:var(--muted);font-size:11px;text-align:center;width:44px}
+  tr.done td, tr.done td input, tr.done td select{color:var(--muted)}
+  tr.done td .tname input{text-decoration:line-through}
+  select.d0{color:var(--mech);font-weight:600} select.d1{color:var(--elec);font-weight:600}
+  select.d2{color:var(--supv);font-weight:600} select.d3{color:var(--perm);font-weight:600}
+  select.d4{color:var(--etc);font-weight:600}
+  .pill{display:inline-block;padding:1px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+  .pill.s0{background:var(--soft);color:var(--muted)}          /* 예정 */
+  .pill.s1{background:#e7eefb;color:var(--elec)}               /* 진행중 */
+  .pill.s2{background:var(--ok-bg);color:var(--ok)}            /* 완료 */
+  .pill.s3{background:var(--over-bg);color:var(--over)}        /* 지연 */
+  .pill.s4{background:var(--warn-bg);color:var(--warn)}        /* 보류 */
+  .late-dot{color:var(--over);font-weight:700;cursor:help}
+  .row-del{cursor:pointer;color:var(--muted);width:24px;text-align:center;padding:0}
+  .row-del:hover{color:var(--over)}
+  .detail-btn{cursor:pointer;font-size:11px;border:1px solid var(--line-strong);border-radius:4px;
+    background:#fff;padding:2px 7px;font-family:inherit}
+  .detail-btn:hover{background:var(--soft)}
+  .att-badge{font-size:10px;color:var(--muted);margin-left:4px}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:9px;line-height:1.6}
+  .hint code{background:var(--soft);padding:1px 5px;border-radius:3px;font-size:11px}
+  .legend{display:flex;gap:13px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin:0 0 10px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:12px;height:12px;border-radius:3px;display:inline-block;flex:none}
+
+  /* ── 공종(그룹) 편집 · 머터리얼 컬러 피커 ── */
+  .grp-rows{display:flex;flex-direction:column;gap:7px;margin-bottom:8px}
+  .grow2{display:flex;gap:7px;align-items:center}
+  .grow2 input{flex:1;border:1px solid var(--line-strong);border-radius:4px;padding:6px 8px;
+    font-family:inherit;font-size:12.5px;min-width:0}
+  .grow2 input.gname2{flex:0 0 130px;font-weight:600}
+  .grow2 .mv{cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:4px;
+    padding:3px 5px;font-size:10px;color:var(--muted);font-family:inherit}
+  .grow2 .mv:hover{color:var(--ink);border-color:var(--line-strong)}
+  .grow2 .rm2{cursor:pointer;border:none;background:none;color:var(--muted);font-size:14px;padding:0 3px}
+  .grow2 .rm2:hover{color:var(--over)}
+  .swbtn{width:28px;height:28px;border-radius:6px;border:1px solid rgba(0,0,0,.15);cursor:pointer;
+    padding:0;flex:none;box-shadow:0 0 0 1px rgba(255,255,255,.4) inset}
+  .swbtn:hover{outline:2px solid var(--ink);outline-offset:1px}
+  .matpop{position:fixed;z-index:80;background:#fff;border:1px solid var(--line-strong);border-radius:9px;
+    box-shadow:0 8px 28px rgba(0,0,0,.2);padding:11px;display:none}
+  .matpop.show{display:block}
+  .matpop .mgrid{display:grid;grid-template-columns:repeat(7,27px);gap:6px}
+  .matpop .mgrid button{width:27px;height:27px;border-radius:6px;border:1px solid rgba(0,0,0,.13);
+    cursor:pointer;padding:0}
+  .matpop .mgrid button:hover{outline:2px solid var(--ink);outline-offset:1px}
+  .matpop .mgrid button.cur{outline:2.5px solid var(--ink);outline-offset:1px}
+  .matpop .mttl{font-size:11px;color:var(--muted);margin-bottom:7px}
+  .shade-demo{display:inline-flex;gap:2px;vertical-align:middle}
+  .shade-demo i{width:11px;height:11px;border-radius:2px;display:inline-block}
+
+  /* ── 간트 ──────────────────────────────── */
+  .hscroll{overflow-x:auto;border:1px solid var(--line);border-radius:6px;position:relative}
+  .hchart{width:max-content;min-width:100%;font-size:11px;position:relative}
+  .hrow{display:flex;align-items:stretch;min-height:30px;border-bottom:1px solid var(--line);position:relative}
+  .hrow.hhead{position:sticky;top:0;z-index:5;border-bottom:1.5px solid var(--line-strong)}
+  .hname{flex:none;width:230px;padding:5px 9px;position:sticky;left:0;z-index:3;background:#fff;
+    border-right:1.5px solid var(--line-strong);font-size:11.5px;line-height:1.35;overflow:hidden}
+  .hhead .hname{background:var(--soft);font-weight:600;display:flex;align-items:center}
+  .hname .meta{color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hname .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+  .hname .nm:hover{text-decoration:underline}
+  .hrow.hgrp{min-height:24px;background:var(--soft)}
+  .hrow.hgrp .hname{background:var(--soft);font-weight:650;display:flex;align-items:center;gap:6px}
+  .htrack{position:relative;flex:none}
+  .hhead .htrack{display:block;background:var(--soft)}
+  .hdrow{display:flex}
+  .hcell2{flex:none;text-align:center;font-size:10px;color:#333;border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);background:var(--soft);padding:2px 0;overflow:hidden;white-space:nowrap}
+  .hcell2.yr{font-weight:650;font-size:10.5px}
+  .hcell2.wknd{color:#c0392b}
+  .seg-tabs{display:flex;gap:2px}
+  .seg-tabs button{background:#fff;border:1px solid var(--line);border-radius:5px;padding:4px 11px;
+    font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit}
+  .seg-tabs button.active{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:600}
+  .hbar{position:absolute;top:50%;transform:translateY(-50%);height:18px;border-radius:3px;cursor:pointer;
+    overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.4) inset;display:flex;align-items:center}
+  .hbar:hover{filter:brightness(1.12);box-shadow:0 0 0 1.5px var(--ink)}
+  .hbar .fill{position:absolute;left:0;top:0;bottom:0;background:rgba(0,0,0,.32)}
+  .hbar .lbl{position:relative;color:#fff;font-size:9.5px;font-weight:600;padding:0 5px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+  .hbar.late{outline:1.5px solid var(--over);outline-offset:1px}
+  .hms{position:absolute;top:50%;width:13px;height:13px;transform:translate(-50%,-50%) rotate(45deg);
+    cursor:pointer;border-radius:2px;box-shadow:0 0 0 1px rgba(255,255,255,.5) inset}
+  .hms:hover{box-shadow:0 0 0 1.5px var(--ink)}
+  .hms-lbl{position:absolute;top:50%;transform:translateY(-50%);font-size:9px;color:var(--muted);
+    white-space:nowrap;pointer-events:none;padding-left:10px}
+  .hgrid{position:absolute;top:0;bottom:0;width:0;pointer-events:none}
+  .hgrid.month{border-left:1px solid var(--line-strong);z-index:1}
+  .hgrid.week{border-left:1px solid var(--line);z-index:0}
+  .htoday{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed #c0392b;z-index:2;pointer-events:none}
+  .htoday .lbl{position:absolute;top:1px;left:2px;font-size:8.5px;color:#c0392b;font-weight:600;background:#fff;padding:0 2px}
+  .undated{padding:6px 9px;font-size:11px;color:var(--muted)}
+
+  /* ── 상세 모달 ─────────────────────────── */
+  .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:50;display:none;
+    align-items:flex-start;justify-content:center;padding:34px 14px;overflow-y:auto}
+  .modal-back.show{display:flex}
+  .modal{background:#fff;border-radius:9px;width:100%;max-width:720px;box-shadow:0 10px 40px rgba(0,0,0,.22)}
+  .modal-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .modal-h .ttl{font-size:14px;font-weight:650;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .modal-h .x{cursor:pointer;border:none;background:none;font-size:17px;color:var(--muted);padding:2px 6px}
+  .modal-h .x:hover{color:var(--ink)}
+  .modal-b{padding:14px 16px 18px}
+  .fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:9px 14px;margin-bottom:12px}
+  .fgrid label{display:block;font-size:11px;color:var(--muted);margin-bottom:2px}
+  .fgrid input,.fgrid select{width:100%;border:1px solid var(--line-strong);border-radius:4px;
+    padding:5px 7px;font-family:inherit;font-size:12px}
+  .fgrid .chk{display:flex;align-items:center;gap:6px;font-size:12px;padding-top:17px}
+  .fgrid .chk input{width:auto}
+  .sec-t{font-size:12px;font-weight:650;margin:14px 0 6px;padding-top:11px;border-top:1px solid var(--line)}
+  textarea.memo{width:100%;min-height:110px;border:1px solid var(--line-strong);border-radius:5px;
+    padding:8px 10px;font-family:inherit;font-size:12.5px;line-height:1.6;resize:vertical}
+  .img-grid{display:flex;gap:9px;flex-wrap:wrap;margin-top:8px}
+  .img-card{width:118px}
+  .img-card .thumb{width:118px;height:88px;object-fit:cover;border:1px solid var(--line);border-radius:5px;
+    cursor:zoom-in;display:block;background:var(--soft)}
+  .img-card .cap{width:100%;border:none;border-bottom:1px dashed var(--line);font-family:inherit;
+    font-size:10.5px;padding:2px 1px;color:var(--muted)}
+  .img-card .cap:focus{outline:none;border-bottom-color:var(--ink);color:var(--ink)}
+  .img-card .rm{display:block;text-align:right;font-size:10px;color:var(--muted);cursor:pointer;border:none;
+    background:none;padding:1px 0;margin-left:auto;font-family:inherit}
+  .img-card .rm:hover{color:var(--over)}
+  .storage{font-size:11px;color:var(--muted);margin-top:8px}
+  .storage b.overq{color:var(--over)}
+
+  .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:60;display:none;
+    align-items:center;justify-content:center;cursor:zoom-out;flex-direction:column;gap:10px}
+  .lightbox.show{display:flex}
+  .lightbox img{max-width:92vw;max-height:86vh;border-radius:5px}
+  .lightbox .cap{color:#eee;font-size:12px}
+
+  /* ── 새 공사 모달 ──────────────────────── */
+  .np-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+  .np-grid .full{grid-column:1/-1}
+  .np-grid label{display:block;font-size:11px;color:var(--muted);margin-bottom:2px}
+  .np-grid input{width:100%;border:1px solid var(--line-strong);border-radius:4px;padding:6px 8px;
+    font-family:inherit;font-size:12.5px}
+  .np-tpl{grid-column:1/-1;display:flex;align-items:flex-start;gap:8px;font-size:12px;background:var(--soft);
+    border-radius:6px;padding:9px 11px;line-height:1.55}
+  .np-tpl input{width:auto;margin-top:2px}
+
+  footer{margin-top:26px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);
+    font-size:11.5px;line-height:1.7}
+</style>
+</head>
+<body>
+<!-- ── 접속 인증 게이트 (공통) ────────────────────────────────
+  주의: 프론트엔드 전용 간이 잠금입니다. 소스에는 비밀번호의 SHA-256 해시만 있지만,
+  코드를 아는 사람이 우회할 수 있으므로 기밀 데이터 보호 용도로는 백엔드 인증이 필요합니다. -->
+<div id="authGate" style="position:fixed;inset:0;z-index:9999;background:#f7f7f7;display:flex;
+  align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border:1px solid #c9c9c9;border-radius:10px;padding:30px 28px;
+    width:100%;max-width:360px;box-shadow:0 8px 30px rgba(0,0,0,.1);text-align:center">
+    <svg width="34" height="34" viewBox="0 0 16 16" fill="none" stroke="#1a1a1a" stroke-width="1.3" style="margin-bottom:8px"><rect x="3" y="7" width="10" height="6.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
+    <div style="font-size:15px;font-weight:650;margin-bottom:4px">소방공사 일정 관리</div>
+    <div style="font-size:12px;color:#6b6b6b;margin-bottom:16px">접속 암호를 입력하세요</div>
+    <input type="password" id="authPw" autocomplete="off" placeholder="암호"
+      style="width:100%;border:1px solid #c9c9c9;border-radius:6px;padding:9px 11px;
+      font-family:inherit;font-size:14px;text-align:center;box-sizing:border-box">
+    <div id="authErr" style="font-size:11.5px;color:#9a3434;min-height:17px;margin-top:6px"></div>
+    <button id="authBtn" style="width:100%;background:#1a1a1a;color:#fff;border:none;border-radius:6px;
+      padding:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:2px">열기</button>
+    <label style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#6b6b6b;margin-top:12px;cursor:pointer">
+      <input type="checkbox" id="authKeep"> 이 브라우저에서 로그인 유지
+    </label>
+  </div>
+</div>
+<script>
+(function(){
+  var HASH="420b78ec6f83cb93315497071fb79d65637187537b50ecd5c36cfc17d889da74"; // SHA-256
+  var FB="74d63e48-18"; // crypto.subtle 불가 환경용 보조 해시
+  var gate=document.getElementById("authGate");
+  function authed(){ try{ return sessionStorage.getItem("fireAuth")==="1"||localStorage.getItem("fireAuth.keep")==="1"; }catch(e){ return false; } }
+  function unlock(){ gate.parentNode.removeChild(gate); document.documentElement.style.visibility="visible"; }
+  if(authed()){ unlock(); return; }
+  document.documentElement.style.visibility="visible";  // 게이트만 보이게 (아래 컨텐츠는 게이트가 가림)
+  function djb2(s){ var h=5381,b=new TextEncoder().encode(s); for(var i=0;i<b.length;i++){ h=((h*33)^b[i])>>>0; } return h.toString(16)+"-"+b.length; }
+  function sha256(s){
+    if(window.crypto&&crypto.subtle&&window.isSecureContext!==false){
+      return crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)).then(function(buf){
+        return Array.from(new Uint8Array(buf)).map(function(x){return x.toString(16).padStart(2,"0");}).join("");
+      });
+    }
+    return Promise.resolve(null);
+  }
+  function tryOpen(){
+    var v=(document.getElementById("authPw").value||"").trim();
+    if(!v) return;
+    sha256(v).then(function(h){
+      var ok = h ? (h===HASH) : (djb2(v)===FB);
+      if(ok){
+        try{
+          sessionStorage.setItem("fireAuth","1");
+          if(document.getElementById("authKeep").checked) localStorage.setItem("fireAuth.keep","1");
+        }catch(e){}
+        unlock();
+      }else{
+        var err=document.getElementById("authErr");
+        err.textContent="암호가 올바르지 않습니다";
+        document.getElementById("authPw").value="";
+        document.getElementById("authPw").focus();
+      }
+    });
+  }
+  document.getElementById("authBtn").addEventListener("click",tryOpen);
+  document.getElementById("authPw").addEventListener("keydown",function(e){ if(e.key==="Enter") tryOpen(); });
+  setTimeout(function(){ document.getElementById("authPw").focus(); },50);
+})();
+</script>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>소방공사 훅업(Hook-up) 공정 일정</h1>
+      <div class="sub">공종을 직접 구성하고(전기·기계·인허가·감리 등) 머터리얼 테마색 지정 — 공사별 공정표 + 간트차트 (막대 클릭 → 상세 메모/사진)</div>
+    </div>
+    <div style="text-align:right">
+      <div class="sub"><a href="bridge.html">AI 자료 밀어넣기</a> · <a href="index.html">전체 공사 일정·M/M →</a></div>
+      <div class="sub" id="saveState"></div>
+    </div>
+  </header>
+
+  <div id="storageWarn" style="display:none;margin-bottom:14px;padding:10px 13px;border-radius:7px;
+    background:var(--over-bg);border:1px solid var(--over);color:var(--over);font-size:12px;line-height:1.6">
+    <svg style="width:13px;height:13px;vertical-align:-2px;margin-right:2px" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2.5 14.5 13.5H1.5Z" stroke-linejoin="round"/><path d="M8 6.5v3.2M8 12.2v.01" stroke-linecap="round"/></svg> <b>이 환경에서는 자동 저장이 작동하지 않습니다.</b> 새로고침하면 입력 내용이 사라질 수 있어요.
+    작업 후 <b>“JSON 백업”</b> 또는 <b>“공유 URL 복사”</b>로 보관하세요.
+  </div>
+
+  <!-- 공사 선택/관리 -->
+  <div class="card">
+    <div class="card-h">
+      공사 선택
+      <select class="big" id="projSel" onchange="switchProject(this.value)"></select>
+      <button class="btn sm" onclick="renameProject()">이름변경</button>
+      <button class="btn sm danger" onclick="deleteProject()">삭제</button>
+      <div class="spacer"></div>
+      <div class="toolbar">
+        <button class="btn primary" onclick="openNewProject()">＋ 새 공사</button>
+        <button class="btn" onclick="copyShareURL()">공유 URL 복사</button>
+        <button class="btn" onclick="exportJSON()">JSON 백업</button>
+        <button class="btn" onclick="document.getElementById('jsonIn').click()">JSON 불러오기</button>
+        <input type="file" id="jsonIn" class="file-in" accept=".json" onchange="importJSON(event)">
+        <button class="btn" onclick="exportCSV()">공정표 CSV</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <!-- 간트차트 -->
+  <div class="card">
+    <div class="card-h">
+      간트차트
+      <div class="spacer"></div>
+      <span class="sub">최소 단위</span>
+      <div class="seg-tabs" id="zoomTabs">
+        <button data-z="month" onclick="setZoom('month')">월</button>
+        <button data-z="week" class="active" onclick="setZoom('week')">주</button>
+        <button data-z="day" onclick="setZoom('day')">일</button>
+      </div>
+    </div>
+    <div class="card-b">
+      <div class="legend" id="legend"></div>
+      <div class="hscroll"><div class="hchart" id="gantt"></div></div>
+      <div class="hint">막대(또는 좌측 작업명)를 <b>클릭하면 상세 창</b>이 열립니다 — 실제 착수/완료, 메모, 현장 사진을 기록하세요.
+        막대 안 어두운 부분은 <b>진척률</b>, 빨간 점선은 <b>오늘</b>, ◆는 <b>마일스톤</b>, 빨간 테두리는 <b>지연</b>(계획완료 경과 &amp; 미완료)입니다.</div>
+    </div>
+  </div>
+
+  <!-- 공정표 -->
+  <div class="card">
+    <div class="card-h">
+      훅업 공정표
+      <div class="spacer"></div>
+      <div class="toolbar">
+        <button class="btn" onclick="openGroupModal()"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>공종·색상 관리</button>
+        <select class="big" style="max-width:150px" id="newGid"></select>
+        <button class="btn primary" onclick="addTask()">＋ 작업 추가</button>
+      </div>
+    </div>
+    <div class="card-b flush">
+      <div class="proj-scroll"><table id="taskTable"></table></div>
+    </div>
+  </div>
+  <div class="hint" style="margin-top:-6px">
+    표는 <b>공종 → 계획착수일</b> 순으로 자동 정렬됩니다. 기간(일)은 계획 착수~완료로 자동 계산.
+    코드는 공종명 첫 글자+순번(<code>기-3</code>, <code>전-1</code> 등)으로 자동 부여되며, 선행 칸에 적어두면 순서 파악에 좋습니다.
+  </div>
+
+  <footer>
+    데이터는 이 브라우저(localStorage)에 자동 저장됩니다. 업로드한 사진은 자동 압축(긴 변 1280px, JPEG)되어 함께 저장되며,
+    <b>JSON 백업</b>에는 사진까지 포함, <b>공유 URL</b>에는 용량 문제로 업로드 사진은 제외(URL로 넣은 이미지는 포함)됩니다.<br>
+    용어 기준: 소방시설공사업법 — 착공신고 · 감리자 지정신고 · 감리원 배치통보 · 완공검사 · 감리결과보고서.
+  </footer>
+</div>
+
+<!-- 작업 상세 모달 -->
+<div class="modal-back" id="detailBack" onclick="if(event.target===this)closeDetail()">
+  <div class="modal">
+    <div class="modal-h">
+      <span class="ttl" id="dTitle"></span>
+      <button class="x" onclick="closeDetail()">✕</button>
+    </div>
+    <div class="modal-b" id="dBody"></div>
+  </div>
+</div>
+
+<!-- 새 공사 모달 -->
+<div class="modal-back" id="npBack" onclick="if(event.target===this)closeNewProject()">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-h"><span class="ttl">새 공사 만들기</span>
+      <button class="x" onclick="closeNewProject()">✕</button></div>
+    <div class="modal-b">
+      <div class="np-grid">
+        <div class="full"><label>공사명 *</label><input id="npName" placeholder="예: ○○물류센터 신축공사 소방공사"></div>
+        <div><label>착수일 *</label><input type="date" id="npStart"></div>
+        <div><label>준공(완료) 예정일 *</label><input type="date" id="npEnd"></div>
+        <div class="full">
+          <label>공종 구성 — 이름 · <b>테마색(클릭해서 선택)</b> · 담당업체</label>
+          <div class="grp-rows" id="npGroups"></div>
+          <button class="btn sm" onclick="npAddGroup()">＋ 공종 추가</button>
+          <div class="hint" style="margin-top:6px">같은 공종의 작업은 위에서 아래로 갈수록 테마색이
+            <span class="shade-demo" id="npShadeDemo"></span> 처럼 점점 옅어집니다 (700→600→500…).</div>
+        </div>
+        <label class="np-tpl"><input type="checkbox" id="npTpl" checked>
+          <span><b>표준 훅업 템플릿으로 시작</b> — 착공신고부터 완공검사증명서 발급까지
+          23개 표준 작업이 착수~준공 기간에 맞춰 자동 배치됩니다. (기본 4개 공종에 매핑, 생성 후 자유롭게 수정/삭제)</span></label>
+      </div>
+      <div class="toolbar" style="margin-top:14px;justify-content:flex-end">
+        <button class="btn" onclick="closeNewProject()">취소</button>
+        <button class="btn primary" onclick="createProject()">만들기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 공종·색상 관리 모달 -->
+<div class="modal-back" id="grpBack" onclick="if(event.target===this)closeGroupModal()">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-h"><span class="ttl">공종·색상 관리</span>
+      <button class="x" onclick="closeGroupModal()">✕</button></div>
+    <div class="modal-b">
+      <div class="grp-rows" id="grpRows"></div>
+      <div class="toolbar">
+        <button class="btn sm" onclick="grpAdd()">＋ 공종 추가</button>
+      </div>
+      <div class="hint">색상 버튼을 누르면 머터리얼 컬러에서 고를 수 있습니다.
+        같은 공종의 작업은 아래로 갈수록 700→600→500… 순으로 톤이 옅어집니다.
+        공종을 삭제하면 그 공종의 작업은 첫 번째 공종으로 옮겨집니다.</div>
+      <div class="toolbar" style="margin-top:12px;justify-content:flex-end">
+        <button class="btn primary" onclick="closeGroupModal()">완료</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 머터리얼 컬러 팔레트 팝오버 -->
+<div class="matpop" id="matPop">
+  <div class="mttl">머터리얼 컬러 선택</div>
+  <div class="mgrid" id="matGrid"></div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('show')">
+  <img id="lbImg" alt=""><div class="cap" id="lbCap"></div>
+</div>
+
+<script>
+/* === LZ-String (MIT License, by pieroxy) — URL-safe 압축. 외부 의존 없이 인라인 === */
+var LZString=function(){var r=String.fromCharCode,o="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",n="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$",e={};function t(r,o){if(!e[r]){e[r]={};for(var n=0;n<r.length;n++)e[r][r.charAt(n)]=n}return e[r][o]}var i={compressToBase64:function(r){if(null==r)return"";var n=i._compress(r,6,function(r){return o.charAt(r)});switch(n.length%4){default:case 0:return n;case 1:return n+"===";case 2:return n+"==";case 3:return n+"="}},decompressFromBase64:function(r){return null==r?"":""==r?null:i._decompress(r.length,32,function(n){return t(o,r.charAt(n))})},compressToUTF16:function(o){return null==o?"":i._compress(o,15,function(o){return r(o+32)})+" "},decompressFromUTF16:function(r){return null==r?"":""==r?null:i._decompress(r.length,16384,function(o){return r.charCodeAt(o)-32})},compressToUint8Array:function(r){for(var o=i.compress(r),n=new Uint8Array(2*o.length),e=0,t=o.length;e<t;e++){var s=o.charCodeAt(e);n[2*e]=s>>>8,n[2*e+1]=s%256}return n},decompressFromUint8Array:function(o){if(null==o)return i.decompress(o);for(var n=new Array(o.length/2),e=0,t=n.length;e<t;e++)n[e]=256*o[2*e]+o[2*e+1];var s=[];return n.forEach(function(o){s.push(r(o))}),i.decompress(s.join(""))},compressToEncodedURIComponent:function(r){return null==r?"":i._compress(r,6,function(r){return n.charAt(r)})},decompressFromEncodedURIComponent:function(r){return null==r?"":""==r?null:(r=r.replace(/ /g,"+"),i._decompress(r.length,32,function(o){return t(n,r.charAt(o))}))},compress:function(o){return i._compress(o,16,function(o){return r(o)})},_compress:function(r,o,n){if(null==r)return"";var e,t,i,s={},u={},a="",p="",c="",l=2,f=3,h=2,d=[],m=0,v=0;for(i=0;i<r.length;i+=1)if(a=r.charAt(i),Object.prototype.hasOwnProperty.call(s,a)||(s[a]=f++,u[a]=!0),p=c+a,Object.prototype.hasOwnProperty.call(s,p))c=p;else{if(Object.prototype.hasOwnProperty.call(u,c)){if(c.charCodeAt(0)<256){for(e=0;e<h;e++)m<<=1,v==o-1?(v=0,d.push(n(m)),m=0):v++;for(t=c.charCodeAt(0),e=0;e<8;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;e<h;e++)m=m<<1|t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=c.charCodeAt(0),e=0;e<16;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}0==--l&&(l=Math.pow(2,h),h++),delete u[c]}else for(t=s[c],e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;0==--l&&(l=Math.pow(2,h),h++),s[p]=f++,c=String(a)}if(""!==c){if(Object.prototype.hasOwnProperty.call(u,c)){if(c.charCodeAt(0)<256){for(e=0;e<h;e++)m<<=1,v==o-1?(v=0,d.push(n(m)),m=0):v++;for(t=c.charCodeAt(0),e=0;e<8;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;e<h;e++)m=m<<1|t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=c.charCodeAt(0),e=0;e<16;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}0==--l&&(l=Math.pow(2,h),h++),delete u[c]}else for(t=s[c],e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;0==--l&&(l=Math.pow(2,h),h++)}for(t=2,e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;for(;;){if(m<<=1,v==o-1){d.push(n(m));break}v++}return d.join("")},decompress:function(r){return null==r?"":""==r?null:i._decompress(r.length,32768,function(o){return r.charCodeAt(o)})},_decompress:function(o,n,e){var t,i,s,u,a,p,c,l=[],f=4,h=4,d=3,m="",v=[],g={val:e(0),position:n,index:1};for(t=0;t<3;t+=1)l[t]=t;for(s=0,a=Math.pow(2,2),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;switch(s){case 0:for(s=0,a=Math.pow(2,8),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;c=r(s);break;case 1:for(s=0,a=Math.pow(2,16),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;c=r(s);break;case 2:return""}for(l[3]=c,i=c,v.push(c);;){if(g.index>o)return"";for(s=0,a=Math.pow(2,d),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;switch(c=s){case 0:for(s=0,a=Math.pow(2,8),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;l[h++]=r(s),c=h-1,f--;break;case 1:for(s=0,a=Math.pow(2,16),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;l[h++]=r(s),c=h-1,f--;break;case 2:return v.join("")}if(0==f&&(f=Math.pow(2,d),d++),l[c])m=l[c];else{if(c!==h)return null;m=i+i.charAt(0)}v.push(m),l[h++]=i+m.charAt(0),i=m,0==--f&&(f=Math.pow(2,d),d++)}}};return i}();
+/* === /LZ-String === */
+
+/* ══════════════ 상수 ══════════════ */
+const STATUSES = ["예정","진행중","완료","지연","보류"];
+const LS_KEY = "fireHookup.v1";
+const MAX_LS = 5*1024*1024; // localStorage 대략 한도
+
+/* ── 머터리얼 컬러 팔레트 (800~200 셰이드) ── */
+const MAT = {
+  red:       {label:"레드",       s:{800:"#c62828",700:"#d32f2f",600:"#e53935",500:"#f44336",400:"#ef5350",300:"#e57373",200:"#ef9a9a"}},
+  pink:      {label:"핑크",       s:{800:"#ad1457",700:"#c2185b",600:"#d81b60",500:"#e91e63",400:"#ec407a",300:"#f06292",200:"#f48fb1"}},
+  purple:    {label:"퍼플",       s:{800:"#6a1b9a",700:"#7b1fa2",600:"#8e24aa",500:"#9c27b0",400:"#ab47bc",300:"#ba68c8",200:"#ce93d8"}},
+  deepPurple:{label:"딥퍼플",     s:{800:"#4527a0",700:"#512da8",600:"#5e35b1",500:"#673ab7",400:"#7e57c2",300:"#9575cd",200:"#b39ddb"}},
+  indigo:    {label:"인디고",     s:{800:"#283593",700:"#303f9f",600:"#3949ab",500:"#3f51b5",400:"#5c6bc0",300:"#7986cb",200:"#9fa8da"}},
+  blue:      {label:"블루",       s:{800:"#1565c0",700:"#1976d2",600:"#1e88e5",500:"#2196f3",400:"#42a5f5",300:"#64b5f6",200:"#90caf9"}},
+  lightBlue: {label:"라이트블루", s:{800:"#0277bd",700:"#0288d1",600:"#039be5",500:"#03a9f4",400:"#29b6f6",300:"#4fc3f7",200:"#81d4fa"}},
+  cyan:      {label:"시안",       s:{800:"#00838f",700:"#0097a7",600:"#00acc1",500:"#00bcd4",400:"#26c6da",300:"#4dd0e1",200:"#80deea"}},
+  teal:      {label:"틸",         s:{800:"#00695c",700:"#00796b",600:"#00897b",500:"#009688",400:"#26a69a",300:"#4db6ac",200:"#80cbc4"}},
+  green:     {label:"그린",       s:{800:"#2e7d32",700:"#388e3c",600:"#43a047",500:"#4caf50",400:"#66bb6a",300:"#81c784",200:"#a5d6a7"}},
+  lightGreen:{label:"라이트그린", s:{800:"#558b2f",700:"#689f38",600:"#7cb342",500:"#8bc34a",400:"#9ccc65",300:"#aed581",200:"#c5e1a5"}},
+  lime:      {label:"라임",       s:{800:"#9e9d24",700:"#afb42b",600:"#c0ca33",500:"#cddc39",400:"#d4e157",300:"#dce775",200:"#e6ee9c"}},
+  yellow:    {label:"옐로",       s:{800:"#f9a825",700:"#fbc02d",600:"#fdd835",500:"#ffeb3b",400:"#ffee58",300:"#fff176",200:"#fff59d"}},
+  amber:     {label:"앰버",       s:{800:"#ff8f00",700:"#ffa000",600:"#ffb300",500:"#ffc107",400:"#ffca28",300:"#ffd54f",200:"#ffe082"}},
+  orange:    {label:"오렌지",     s:{800:"#ef6c00",700:"#f57c00",600:"#fb8c00",500:"#ff9800",400:"#ffa726",300:"#ffb74d",200:"#ffcc80"}},
+  deepOrange:{label:"딥오렌지",   s:{800:"#d84315",700:"#e64a19",600:"#f4511e",500:"#ff5722",400:"#ff7043",300:"#ff8a65",200:"#ffab91"}},
+  brown:     {label:"브라운",     s:{800:"#4e342e",700:"#5d4037",600:"#6d4c41",500:"#795548",400:"#8d6e63",300:"#a1887f",200:"#bcaaa4"}},
+  grey:      {label:"그레이",     s:{800:"#424242",700:"#616161",600:"#757575",500:"#9e9e9e",400:"#bdbdbd",300:"#e0e0e0",200:"#eeeeee"}},
+  blueGrey:  {label:"블루그레이", s:{800:"#37474f",700:"#455a64",600:"#546e7a",500:"#607d8b",400:"#78909c",300:"#90a4ae",200:"#b0bec5"}}
+};
+const MAT_KEYS = Object.keys(MAT);
+const SHADE_STEPS = [700,600,500,400,300,200]; // 그룹 내 작업 순서별 톤 (내려갈수록 흐리게)
+function matS(color){ return (MAT[color]||MAT.grey).s; }
+function gBase(g){ return matS(g.color)[700]; }                     // 그룹 대표색 = 700
+function taskShade(g,i){ return matS(g.color)[SHADE_STEPS[Math.min(i,SHADE_STEPS.length-1)]]; }
+function textOn(hex){ const r=parseInt(hex.slice(1,3),16),gg=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return (r*299+gg*587+b*114)/1000>=150 ? "#333" : "#fff"; }
+
+/* 구버전(disc 0~4 고정) 마이그레이션 및 브리지 기본 매핑용 */
+const LEGACY_DISCS = ["소방기계","소방전기","감리","인허가","공통"];
+const LEGACY_COLORS = ["red","blue","green","deepPurple","grey"];
+
+/* 표준 훅업 템플릿: [공종, 작업명, 시작비율, 종료비율, 마일스톤] */
+const TEMPLATE = [
+  [3,"소방시설공사 착공신고",0.00,0.02,true ],
+  [3,"착공신고 수리·보완 대응",0.02,0.05,false],
+  [2,"소방공사감리자 지정신고",0.00,0.02,true ],
+  [2,"감리원 배치통보",0.02,0.04,false],
+  [0,"입상·주배관 설치(옥내소화전/SP 주관)",0.05,0.35,false],
+  [0,"소화수조·소화펌프(주/충압) 설치",0.25,0.45,false],
+  [0,"스프링클러 가지배관·헤드 설치",0.30,0.65,false],
+  [0,"옥내소화전함·소화기구 설치",0.50,0.70,false],
+  [0,"제연설비(덕트·댐퍼·송풍기) 설치",0.45,0.70,false],
+  [0,"배관 수압시험",0.65,0.72,false],
+  [0,"소화펌프 시운전",0.72,0.78,false],
+  [1,"자탐 배관·입선(감지기 회로)",0.30,0.60,false],
+  [1,"수신기(R형/P형) 설치·결선",0.55,0.65,false],
+  [1,"감지기·발신기·경보장치 설치",0.60,0.78,false],
+  [1,"유도등·비상조명등 설치",0.65,0.80,false],
+  [1,"비상방송·비상전원 결선",0.70,0.82,false],
+  [1,"자동화재탐지설비 연동시험",0.80,0.88,false],
+  [2,"시공 검측(은폐 전 배관 검측 포함)",0.10,0.85,false],
+  [2,"성능시험 입회",0.85,0.90,false],
+  [2,"소방공사 감리결과보고서 제출",0.92,0.97,false],
+  [3,"소방시설 완공검사 신청",0.90,0.91,true ],
+  [3,"소방서 현장확인",0.93,0.95,false],
+  [3,"완공검사증명서 발급",0.98,1.00,true ],
+];
+
+const ICO_MEMO='<svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="2" width="10" height="12" rx="1.5"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke-linecap="round"/></svg>';
+const ICO_IMG='<svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.3" r="1.1"/><path d="M2.5 10.8 6 7.5l2.8 2.8 2.2-2.2 2.5 2.5" stroke-linejoin="round"/></svg>';
+const ICO_CAM='<svg class="bico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5.5 4.5l1-1.7h3l1 1.7" stroke-linejoin="round"/><rect x="1.5" y="4.5" width="13" height="9" rx="1.5"/><circle cx="8" cy="9" r="2.4"/></svg>';
+const ICO_LINK='<svg class="bico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6.5 9.5l3-3"/><path d="M7.6 4.6l1.1-1.1a2.47 2.47 0 0 1 3.5 3.5L11.1 8.1"/><path d="M8.4 11.4l-1.1 1.1a2.47 2.47 0 0 1-3.5-3.5L4.9 7.9"/></svg>';
+
+/* ══════════════ 상태 ══════════════ */
+let state = { projects: [], activeId: null };
+const PPD = { month:2.2, week:6, day:24 };  // 최소단위별 px/일 (index.html 간트 편집과 동일)
+let ppd = PPD.week;
+let canStore = true;
+let saveTimer = null;
+
+function uid(){ return Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
+function activeProj(){ return state.projects.find(p=>p.id===state.activeId) || null; }
+function newTask(gid){
+  return { id:uid(), gid:gid||"", name:"", company:"", owner:"",
+    planStart:"", planEnd:"", actStart:"", actEnd:"",
+    progress:0, status:0, pred:"", milestone:false, memo:"", images:[] };
+}
+function makeGroup(name,color,company){ return { id:uid(), name, color:color||"grey", company:company||"" }; }
+function groupOf(p,gid){ return (p.groups||[]).find(g=>g.id===gid) || null; }
+function firstGroup(p){ return (p.groups&&p.groups[0]) || null; }
+/* 구버전 데이터(t.disc 고정 공종) → 사용자 정의 그룹으로 변환 */
+function migrate(){
+  state.projects.forEach(p=>{
+    if(Array.isArray(p.groups) && p.groups.length){
+      // gid 유실 작업 보정
+      p.tasks.forEach(t=>{ if(!groupOf(p,t.gid)) t.gid=p.groups[0].id; });
+      return;
+    }
+    p.groups=[];
+    const map={};
+    const used=[...new Set(p.tasks.map(t=>{ const d=t.disc; return (d>=0&&d<=4)?d:4; }))].sort();
+    const idxs = used.length ? used : [0,1,2,3];
+    idxs.forEach(i=>{
+      const g=makeGroup(LEGACY_DISCS[i], LEGACY_COLORS[i]);
+      p.groups.push(g); map[i]=g.id;
+    });
+    p.tasks.forEach(t=>{
+      const d=(t.disc>=0&&t.disc<=4)?t.disc:4;
+      t.gid = map[d] || p.groups[0].id;
+      delete t.disc;
+    });
+  });
+}
+
+/* ══════════════ 날짜 유틸 ══════════════ */
+const DAY = 86400000;
+function pd(s){ if(!s) return null; const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
+function fd(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function addD(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function diffD(a,b){ return Math.round((b-a)/DAY); }
+function today0(){ const t=new Date(); return new Date(t.getFullYear(),t.getMonth(),t.getDate()); }
+function fmtShort(s){ return s ? s.slice(2).replace(/-/g,".") : ""; }
+function weekStartD(d){ const x=new Date(d); x.setDate(x.getDate()-((x.getDay()+6)%7)); return x; } // 월요일
+function weekEndD(d){ return addD(weekStartD(d),6); }
+function monthStartD(d){ return new Date(d.getFullYear(),d.getMonth(),1); }
+function monthEndD(d){ return new Date(d.getFullYear(),d.getMonth()+1,0); }
+
+/* ══════════════ 저장/불러오기 ══════════════ */
+function detectStorage(){
+  try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); canStore=true; }
+  catch(e){ canStore=false; document.getElementById("storageWarn").style.display="block"; }
+}
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    if(!canStore){ flag("저장 불가 환경"); return; }
+    try{
+      localStorage.setItem(LS_KEY, JSON.stringify(state));
+      flag("저장됨 · "+new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}));
+    }catch(e){ flag("주의: 저장 실패(용량 초과 가능) — 사진 정리 또는 JSON 백업 권장"); }
+  },250);
+}
+function flag(msg){ document.getElementById("saveState").innerHTML='<span class="saved-flag">'+esc(msg)+'</span>'; }
+function load(){
+  if(!canStore) return;
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){ const s=JSON.parse(raw); if(s && Array.isArray(s.projects)) state=s; }
+  }catch(e){}
+  migrate();
+}
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+/* ══════════════ 머터리얼 컬러 피커 (공용 팝오버) ══════════════ */
+let matPopCb=null;
+function openMatPop(anchor, current, cb){
+  matPopCb=cb;
+  const grid=document.getElementById("matGrid");
+  grid.innerHTML=MAT_KEYS.map(k=>
+    '<button type="button" class="'+(k===current?'cur':'')+'" style="background:'+MAT[k].s[600]+
+    '" title="'+MAT[k].label+'" data-mk="'+k+'"></button>').join("");
+  const pop=document.getElementById("matPop");
+  pop.classList.add("show");
+  const r=anchor.getBoundingClientRect();
+  pop.style.left=Math.min(r.left, window.innerWidth-230)+"px";
+  pop.style.top=Math.min(r.bottom+6, window.innerHeight-190)+"px";
+}
+function closeMatPop(){ document.getElementById("matPop").classList.remove("show"); matPopCb=null; }
+document.getElementById("matPop").addEventListener("click",e=>{
+  const b=e.target.closest("[data-mk]"); if(!b) return;
+  if(matPopCb) matPopCb(b.dataset.mk);
+  closeMatPop();
+});
+document.addEventListener("pointerdown",e=>{
+  const pop=document.getElementById("matPop");
+  if(pop.classList.contains("show") && !pop.contains(e.target) && !e.target.closest(".swbtn")) closeMatPop();
+});
+
+/* ══════════════ 공사 관리 ══════════════ */
+/* 새 공사 모달의 공종 편집 목록 — role: 표준 템플릿 매핑(0기계 1전기 2감리 3인허가) */
+let npGroups=[];
+function openNewProject(){
+  const t=today0();
+  document.getElementById("npStart").value = fd(t);
+  document.getElementById("npEnd").value = fd(addD(t,180));
+  npGroups=[
+    {name:"소방기계", color:"red",        company:"", role:0},
+    {name:"소방전기", color:"blue",       company:"", role:1},
+    {name:"감리",     color:"green",      company:"", role:2},
+    {name:"인허가",   color:"deepPurple", company:"관할 소방서", role:3}
+  ];
+  renderNpGroups();
+  document.getElementById("npBack").classList.add("show");
+  document.getElementById("npName").focus();
+}
+function closeNewProject(){ document.getElementById("npBack").classList.remove("show"); }
+function nextColor(usedList){
+  return MAT_KEYS.find(k=>!usedList.includes(k)) || "grey";
+}
+function renderNpGroups(){
+  const box=document.getElementById("npGroups");
+  box.innerHTML=npGroups.map((g,i)=>
+    '<div class="grow2">'+
+      '<button type="button" class="swbtn" style="background:'+matS(g.color)[700]+'" title="테마색: '+(MAT[g.color]||{}).label+'"'+
+        ' onclick="openMatPop(this,npGroups['+i+'].color,c=>{npGroups['+i+'].color=c;renderNpGroups();})"></button>'+
+      '<input class="gname2" value="'+esc(g.name)+'" placeholder="공종명" oninput="npGroups['+i+'].name=this.value">'+
+      '<input value="'+esc(g.company)+'" placeholder="담당업체 (선택)" oninput="npGroups['+i+'].company=this.value">'+
+      '<button type="button" class="rm2" title="삭제" onclick="npGroups.splice('+i+',1);renderNpGroups()">✕</button>'+
+    '</div>').join("");
+  const demo=document.getElementById("npShadeDemo");
+  const base=npGroups[0]?npGroups[0].color:"blue";
+  demo.innerHTML=SHADE_STEPS.slice(0,4).map(sd=>'<i style="background:'+matS(base)[sd]+'"></i>').join("");
+}
+function npAddGroup(){
+  npGroups.push({name:"", color:nextColor(npGroups.map(g=>g.color)), company:"", role:null});
+  renderNpGroups();
+  const inputs=document.querySelectorAll("#npGroups .gname2");
+  if(inputs.length) inputs[inputs.length-1].focus();
+}
+function createProject(){
+  const name = document.getElementById("npName").value.trim();
+  const s = pd(document.getElementById("npStart").value);
+  const e = pd(document.getElementById("npEnd").value);
+  if(!name){ alert("공사명을 입력하세요."); return; }
+  if(!s || !e || e<=s){ alert("착수일/준공일을 확인하세요. (준공일이 착수일 이후여야 합니다)"); return; }
+  const defs=npGroups.filter(g=>g.name.trim());
+  if(!defs.length){ alert("공종을 1개 이상 입력하세요."); return; }
+  const p = { id:uid(), name, start:fd(s), end:fd(e), groups:[], tasks:[] };
+  const roleMap={};
+  defs.forEach(g=>{
+    const grp=makeGroup(g.name.trim(), g.color, g.company.trim());
+    p.groups.push(grp);
+    if(g.role!=null) roleMap[g.role]=grp;
+  });
+  if(document.getElementById("npTpl").checked){
+    const total = diffD(s,e);
+    TEMPLATE.forEach(([role,tname,f0,f1,ms])=>{
+      const grp=roleMap[role]; if(!grp) return; // 해당 역할 공종을 지웠으면 그 작업은 생략
+      const t = newTask(grp.id);
+      t.name = tname; t.milestone = ms; t.company = grp.company||"";
+      t.planStart = fd(addD(s, Math.round(total*f0)));
+      t.planEnd   = fd(addD(s, Math.max(Math.round(total*f0), Math.round(total*f1))));
+      if(pd(t.planEnd) < pd(t.planStart)) t.planEnd = t.planStart;
+      p.tasks.push(t);
+    });
+  }
+  state.projects.push(p);
+  state.activeId = p.id;
+  document.getElementById("npName").value="";
+  closeNewProject(); save(); render();
+}
+
+/* ══════════════ 공종·색상 관리 (기존 공사) ══════════════ */
+function openGroupModal(){
+  const p=activeProj();
+  if(!p){ alert("먼저 '새 공사'를 만들어 주세요."); return; }
+  renderGrpRows();
+  document.getElementById("grpBack").classList.add("show");
+}
+function closeGroupModal(){
+  const p=activeProj();
+  if(p) p.groups=p.groups.filter(g=>g.name.trim()); // 빈 이름 정리
+  document.getElementById("grpBack").classList.remove("show");
+  save(); render();
+}
+function renderGrpRows(){
+  const p=activeProj(); if(!p) return;
+  document.getElementById("grpRows").innerHTML=p.groups.map((g,i)=>
+    '<div class="grow2">'+
+      '<button type="button" class="swbtn" style="background:'+gBase(g)+'" title="테마색: '+(MAT[g.color]||{}).label+'"'+
+        ' onclick="openMatPop(this,\''+g.color+'\',c=>grpSet('+i+',\'color\',c))"></button>'+
+      '<input class="gname2" value="'+esc(g.name)+'" placeholder="공종명" oninput="grpSet('+i+',\'name\',this.value,true)">'+
+      '<input value="'+esc(g.company)+'" placeholder="담당업체" oninput="grpSet('+i+',\'company\',this.value,true)">'+
+      '<button type="button" class="mv" '+(i===0?'disabled':'')+' onclick="grpMove('+i+',-1)">▲</button>'+
+      '<button type="button" class="mv" '+(i===p.groups.length-1?'disabled':'')+' onclick="grpMove('+i+',1)">▼</button>'+
+      '<button type="button" class="rm2" title="삭제" onclick="grpDel('+i+')">✕</button>'+
+    '</div>').join("");
+}
+function grpSet(i,f,v,quiet){
+  const p=activeProj(); if(!p||!p.groups[i]) return;
+  p.groups[i][f]=v; save();
+  if(!quiet) renderGrpRows();
+}
+function grpMove(i,d){
+  const p=activeProj(); const j=i+d;
+  if(!p||j<0||j>=p.groups.length) return;
+  [p.groups[i],p.groups[j]]=[p.groups[j],p.groups[i]];
+  save(); renderGrpRows();
+}
+function grpAdd(){
+  const p=activeProj(); if(!p) return;
+  p.groups.push(makeGroup("", nextColor(p.groups.map(g=>g.color)), ""));
+  save(); renderGrpRows();
+  const inputs=document.querySelectorAll("#grpRows .gname2");
+  if(inputs.length) inputs[inputs.length-1].focus();
+}
+function grpDel(i){
+  const p=activeProj(); if(!p) return;
+  if(p.groups.length<=1){ alert("공종은 최소 1개 필요합니다."); return; }
+  const g=p.groups[i];
+  const n=p.tasks.filter(t=>t.gid===g.id).length;
+  if(n && !confirm('"'+g.name+'" 공종에 작업 '+n+'건이 있습니다. 삭제하면 첫 번째 공종으로 옮겨집니다. 계속할까요?')) return;
+  p.groups.splice(i,1);
+  const first=p.groups[0].id;
+  p.tasks.forEach(t=>{ if(t.gid===g.id) t.gid=first; });
+  save(); renderGrpRows();
+}
+function switchProject(id){
+  if(id && id.startsWith("imp:")){ importFromMain(Number(id.slice(4))); return; }
+  state.activeId=id; save(); render();
+}
+function renameProject(){
+  const p=activeProj(); if(!p) return;
+  const n=prompt("공사명 변경", p.name);
+  if(n && n.trim()){ p.name=n.trim(); save(); render(); }
+}
+function deleteProject(){
+  const p=activeProj(); if(!p) return;
+  if(!confirm('공사 "'+p.name+'" 를 삭제할까요? (작업·메모·사진 모두 삭제)')) return;
+  state.projects = state.projects.filter(x=>x.id!==p.id);
+  state.activeId = state.projects.length ? state.projects[0].id : null;
+  save(); render();
+}
+
+/* ══════════════ 작업 관리 ══════════════ */
+function addTask(){
+  const p=activeProj();
+  if(!p){ alert("먼저 '새 공사'를 만들어 주세요."); return; }
+  const gid=document.getElementById("newGid").value || (firstGroup(p)&&firstGroup(p).id);
+  if(!gid){ alert("공종이 없습니다 — '공종·색상 관리'에서 먼저 추가해 주세요."); return; }
+  const t = newTask(gid);
+  const g=groupOf(p,gid);
+  if(g && g.company) t.company=g.company;
+  if(p.start) t.planStart = p.start;
+  p.tasks.push(t); save(); render();
+  openDetail(t.id);
+}
+function delTask(id){
+  const p=activeProj(); if(!p) return;
+  const t=p.tasks.find(x=>x.id===id);
+  if(!confirm('작업 "'+(t&&t.name||"(무제)")+'" 삭제?')) return;
+  p.tasks = p.tasks.filter(x=>x.id!==id);
+  save(); render();
+}
+function setField(id, field, val){
+  const p=activeProj(); if(!p) return;
+  const t=p.tasks.find(x=>x.id===id); if(!t) return;
+  if(field==="progress"){ val=Math.max(0,Math.min(100,Number(val)||0)); if(val===100 && t.status!==2) t.status=2; }
+  if(field==="status") val=Number(val);
+  if(field==="milestone") val=!!val;
+  t[field]=val;
+  if(field==="status" && val===2 && t.progress<100) t.progress=100;
+  save(); renderStats(); renderGantt();
+  if(field==="gid"||field==="planStart"||field==="status") renderTable();
+}
+/* 공종(그룹 순서) → 계획착수 → 이름 순 정렬 + WBS 코드 + 그룹 내 순번(_gi: 색 톤 계산용) */
+function sortedTasks(p){
+  const gidx={}; (p.groups||[]).forEach((g,i)=>gidx[g.id]=i);
+  const arr=[...p.tasks].sort((a,b)=>{
+    const ga=gidx[a.gid]??999, gb=gidx[b.gid]??999;
+    if(ga!==gb) return ga-gb;
+    const da=a.planStart||"9999", db=b.planStart||"9999";
+    if(da!==db) return da<db?-1:1;
+    return (a.name||"").localeCompare(b.name||"","ko");
+  });
+  const codeMap={};
+  (p.groups||[]).forEach(g=>codeMap[g.id]=groupCode(g,p.groups));
+  const cnt={};
+  arr.forEach(t=>{
+    cnt[t.gid]=(cnt[t.gid]||0)+1;
+    t._gi=cnt[t.gid]-1; // 그룹 내 0-base 순번 → 700,600,500… 톤
+    t._wbs=(codeMap[t.gid]||"?")+"-"+cnt[t.gid];
+  });
+  return arr;
+}
+/* WBS용 코드 글자: 다른 공종과 이름이 갈라지는 첫 글자 (소방기계/소방전기 → 기/전) */
+function groupCode(g,groups){
+  const name=(g.name||"").trim(); if(!name) return "?";
+  const others=groups.filter(x=>x!==g).map(x=>(x.name||"").trim()).filter(Boolean);
+  for(let i=0;i<name.length;i++){
+    const pref=name.slice(0,i+1);
+    if(!others.some(o=>o.slice(0,i+1)===pref)) return name[i];
+  }
+  return name[0];
+}
+function isLate(t){
+  if(t.status===2) return false;
+  const e=pd(t.planEnd);
+  return !!(e && e<today0() && (t.progress||0)<100);
+}
+function statusIdx(t){ return isLate(t) && t.status!==4 ? 3 : t.status; }
+
+/* ══════════════ 렌더 ══════════════ */
+function render(){ renderProjSel(); renderStats(); renderTable(); renderGantt(); renderLegend(); renderNewGid(); }
+
+/* ── 전체 공사 일정(index.html, fireSchedule.v2)과 연동 ── */
+function loadMainProjects(){
+  try{
+    const raw=localStorage.getItem("fireSchedule.v2");
+    if(raw){ const s=JSON.parse(raw); if(s && Array.isArray(s.projects)) return s.projects; }
+  }catch(e){}
+  return [];
+}
+/* 아직 가져오지 않은 전체 일정 공사 (가져온 것은 srcId 또는 동일 이름으로 판정) */
+function importableMain(){
+  const mains=loadMainProjects();
+  return mains.map((mp,i)=>({mp,i})).filter(({mp})=>{
+    const nm=(mp.name||"").trim();
+    return !state.projects.some(p=>p.srcId===mp.id || (nm && (p.name||"").trim()===nm));
+  });
+}
+function renderProjSel(){
+  const sel=document.getElementById("projSel");
+  let html = state.projects.map(p=>
+    '<option value="'+p.id+'"'+(p.id===state.activeId?" selected":"")+'>'+esc(p.name)+'</option>').join("")
+    || '<option value="">— 공사 없음 (＋ 새 공사) —</option>';
+  const imp=importableMain();
+  if(imp.length){
+    html+='<optgroup label="전체 공사 일정에서 가져오기">'+
+      imp.map(({mp,i})=>'<option value="imp:'+i+'">'+esc(mp.name||"(무제)")+
+        (mp.start?' · '+esc(mp.start):'')+'</option>').join("")+'</optgroup>';
+  }
+  document.getElementById("projSel").innerHTML=html;
+}
+/* 전체 일정의 공사를 훅업 공정표 공사로 변환해서 가져오기
+   연결 항목: 공사명 · 기계/전기 담당 · 시공 단계 기간(훅업은 시공 구간의 일이므로)
+   시공 단계 날짜가 없으면 착수일~준공일로 대체 */
+function importFromMain(idx){
+  const mp=loadMainProjects()[idx];
+  if(!mp){ alert("전체 공사 일정 데이터를 찾지 못했습니다."); render(); return; }
+  const name=(mp.name||"").trim()||"(무제)";
+  const con=(mp.stages&&mp.stages[4])||{};                       // 시공 단계
+  const usedCon=!!(con.start&&con.end);
+  const start=con.start || mp.start || "";
+  const end=con.end || mp.end || (mp.stages&&mp.stages[6]&&mp.stages[6].end) || "";
+  const p={ id:uid(), srcId:mp.id, name, start, end, groups:[], tasks:[] };
+  const roleMap={};
+  [["소방기계","red",0,(mp.mech||"").trim()],
+   ["소방전기","blue",1,(mp.elec||"").trim()],
+   ["감리","green",2,""],
+   ["인허가","deepPurple",3,"관할 소방서"]]
+    .forEach(([nm,color,role,comp])=>{
+      const g=makeGroup(nm,color,comp);
+      p.groups.push(g); roleMap[role]=g;
+    });
+  const s=pd(start), e=pd(end);
+  if(s && e && e>s &&
+     confirm('"'+name+'" 를 가져옵니다.\n'+
+       '기간: '+start+' ~ '+end+(usedCon?' (전체 일정의 시공 단계 기준)':' (시공 단계 미입력 → 착수~준공 기준)')+'\n'+
+       ((mp.mech||mp.elec)?('담당: 기계 '+(mp.mech||'—')+' · 전기 '+(mp.elec||'—')+'\n'):'')+
+       '\n표준 훅업 템플릿 23개 작업을 기간에 맞춰 자동 배치할까요?\n(취소 = 빈 공정표로 가져오기)')){
+    const total=diffD(s,e);
+    TEMPLATE.forEach(([role,tname,f0,f1,ms])=>{
+      const grp=roleMap[role]; if(!grp) return;
+      const t=newTask(grp.id);
+      t.name=tname; t.milestone=ms; t.company=grp.company||"";
+      t.planStart=fd(addD(s,Math.round(total*f0)));
+      t.planEnd=fd(addD(s,Math.max(Math.round(total*f0),Math.round(total*f1))));
+      if(pd(t.planEnd)<pd(t.planStart)) t.planEnd=t.planStart;
+      p.tasks.push(t);
+    });
+  }
+  state.projects.push(p);
+  state.activeId=p.id;
+  save(); render();
+  flag('전체 일정에서 가져옴: '+name);
+}
+
+function renderStats(){
+  const box=document.getElementById("stats");
+  const p=activeProj();
+  if(!p){ box.innerHTML=""; return; }
+  const tasks=p.tasks;
+  let wsum=0, psum=0;
+  tasks.forEach(t=>{
+    const s=pd(t.planStart), e=pd(t.planEnd);
+    const w = (s&&e) ? Math.max(1,diffD(s,e)+1) : 1;
+    wsum+=w; psum+=w*(t.progress||0);
+  });
+  const prog = wsum ? Math.round(psum/wsum) : 0;
+  const done = tasks.filter(t=>statusIdx(t)===2).length;
+  const late = tasks.filter(isLate).length;
+  const run  = tasks.filter(t=>statusIdx(t)===1).length;
+  const end = pd(p.end);
+  const dday = end ? diffD(today0(), end) : null;
+  box.innerHTML =
+    '<div class="stat"><div class="k">전체 공정률(기간 가중)</div><div class="v">'+prog+'<small> %</small></div>'+
+      '<div class="bar-wrap"><div class="bar" style="width:'+prog+'%"></div></div></div>'+
+    '<div class="stat"><div class="k">작업</div><div class="v">'+done+'<small> / '+tasks.length+' 완료</small></div></div>'+
+    '<div class="stat"><div class="k">진행중</div><div class="v">'+run+'<small> 건</small></div></div>'+
+    '<div class="stat"><div class="k">지연</div><div class="v" style="color:'+(late?"var(--over)":"inherit")+'">'+late+'<small> 건</small></div></div>'+
+    '<div class="stat"><div class="k">준공까지</div><div class="v">'+(dday==null?"—":(dday>=0?"D-"+dday:'<span style="color:var(--over)">D+'+(-dday)+"</span>"))+
+      '<small> ('+esc(fmtShort(p.end))+')</small></div></div>';
+}
+
+function renderLegend(){
+  const p=activeProj();
+  const groups=(p&&p.groups)||[];
+  document.getElementById("legend").innerHTML =
+    groups.map(g=>'<span><span class="shade-demo">'+
+      SHADE_STEPS.slice(0,3).map(sd=>'<i style="background:'+matS(g.color)[sd]+'"></i>').join("")+
+      '</span>'+esc(g.name)+'</span>').join("")+
+    '<span style="margin-left:4px">같은 공종은 아래로 갈수록 옅은 톤(700→600→500…)</span>';
+}
+function renderNewGid(){
+  const sel=document.getElementById("newGid");
+  const p=activeProj();
+  const cur=sel.value;
+  sel.innerHTML=((p&&p.groups)||[]).map(g=>'<option value="'+g.id+'">'+esc(g.name)+'</option>').join("")
+    || '<option value="">(공종 없음)</option>';
+  if(cur && p && groupOf(p,cur)) sel.value=cur;
+}
+
+function renderTable(){
+  const tbl=document.getElementById("taskTable");
+  const p=activeProj();
+  if(!p){ tbl.innerHTML='<tbody><tr><td style="padding:14px;color:var(--muted)">공사를 먼저 만들어 주세요.</td></tr></tbody>'; return; }
+  const arr=sortedTasks(p);
+  let html='<thead><tr><th>코드</th><th>공종</th><th style="min-width:210px">작업명</th><th>담당업체</th><th>담당자</th>'+
+    '<th>계획 착수</th><th>계획 완료</th><th>기간(일)</th><th>진척률(%)</th><th>상태</th><th>선행</th><th>M/S</th><th>상세</th><th></th></tr></thead><tbody>';
+  let lastGid=null;
+  arr.forEach(t=>{
+    const g=groupOf(p,t.gid)||{name:"?",color:"grey"};
+    if(t.gid!==lastGid){
+      lastGid=t.gid;
+      const n=arr.filter(x=>x.gid===t.gid).length;
+      html+='<tr class="grp"><td colspan="14" style="color:'+gBase(g)+'">'+
+        '■ '+esc(g.name)+' <span class="cnt">('+n+'건'+(g.company?' · '+esc(g.company):'')+')</span></td></tr>';
+    }
+    const s=pd(t.planStart), e=pd(t.planEnd);
+    const dur=(s&&e&&e>=s)?(diffD(s,e)+1):"";
+    const si=statusIdx(t);
+    const att=(t.memo?ICO_MEMO:"")+((t.images&&t.images.length)?" "+ICO_IMG+t.images.length:"");
+    html+='<tr class="'+(si===2?"done":"")+'">'+
+      '<td class="wbs"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:'+taskShade(g,t._gi)+';margin-right:3px"></span>'+t._wbs+'</td>'+
+      '<td><select style="color:'+gBase(g)+';font-weight:600" onchange="setField(\''+t.id+'\',\'gid\',this.value)">'+
+        (p.groups||[]).map(gg=>'<option value="'+gg.id+'"'+(gg.id===t.gid?" selected":"")+'>'+esc(gg.name)+'</option>').join("")+'</select></td>'+
+      '<td class="tname"><input value="'+esc(t.name)+'" placeholder="작업명" oninput="setField(\''+t.id+'\',\'name\',this.value)"></td>'+
+      '<td><input value="'+esc(t.company)+'" oninput="setField(\''+t.id+'\',\'company\',this.value)"></td>'+
+      '<td><input value="'+esc(t.owner)+'" style="min-width:60px" oninput="setField(\''+t.id+'\',\'owner\',this.value)"></td>'+
+      '<td><input type="date" value="'+t.planStart+'" onchange="setField(\''+t.id+'\',\'planStart\',this.value)"></td>'+
+      '<td><input type="date" value="'+t.planEnd+'" onchange="setField(\''+t.id+'\',\'planEnd\',this.value)"></td>'+
+      '<td class="num" style="text-align:right;color:var(--muted)">'+dur+'</td>'+
+      '<td class="num"><input type="number" min="0" max="100" value="'+(t.progress||0)+'" style="width:52px" onchange="setField(\''+t.id+'\',\'progress\',this.value)"></td>'+
+      '<td><span class="pill s'+si+'">'+STATUSES[si]+'</span>'+(isLate(t)&&t.status!==2?' <span class="late-dot" title="계획완료일 경과">!</span>':"")+
+        ' <select style="width:20px" onchange="setField(\''+t.id+'\',\'status\',this.value)" title="상태 변경">'+
+        STATUSES.map((sName,i)=>i===3?"":'<option value="'+i+'"'+(i===t.status?" selected":"")+'>'+sName+'</option>').join("")+'</select></td>'+
+      '<td><input value="'+esc(t.pred)+'" style="min-width:42px" placeholder="-" oninput="setField(\''+t.id+'\',\'pred\',this.value)"></td>'+
+      '<td style="text-align:center"><input type="checkbox"'+(t.milestone?" checked":"")+' onchange="setField(\''+t.id+'\',\'milestone\',this.checked)"></td>'+
+      '<td><button class="detail-btn" onclick="openDetail(\''+t.id+'\')">열기</button><span class="att-badge">'+att+'</span></td>'+
+      '<td class="row-del" onclick="delTask(\''+t.id+'\')" title="삭제">✕</td></tr>';
+  });
+  html+='</tbody>';
+  tbl.innerHTML=html;
+}
+
+function ganttZoom(){ return (state.ui&&state.ui.ganttZoom)||"week"; }
+function setZoom(z){
+  if(!state.ui) state.ui={};
+  state.ui.ganttZoom=z; save(); syncZoomTabs(); renderGantt();
+}
+function syncZoomTabs(){
+  document.querySelectorAll("#zoomTabs button").forEach(b=>b.classList.toggle("active",b.dataset.z===ganttZoom()));
+}
+
+function renderGantt(){
+  const el=document.getElementById("gantt");
+  const p=activeProj();
+  if(!p){ el.innerHTML='<div class="undated">공사를 먼저 만들어 주세요.</div>'; return; }
+  const zoom=ganttZoom(); ppd=PPD[zoom];
+  const arr=sortedTasks(p);
+  const dated=arr.filter(t=>t.planStart&&t.planEnd&&pd(t.planEnd)>=pd(t.planStart));
+  let rs,re;
+  if(dated.length){
+    rs = dated.reduce((m,t)=>pd(t.planStart)<m?pd(t.planStart):m, pd(dated[0].planStart));
+    re = dated.reduce((m,t)=>pd(t.planEnd)>m?pd(t.planEnd):m, pd(dated[0].planEnd));
+  }else{
+    rs = pd(p.start)||today0(); re = pd(p.end)||addD(rs,120);
+  }
+  rs=monthStartD(addD(rs,-7)); re=monthEndD(addD(re,10));   // 단위 경계에 맞춰 정렬
+  const total=diffD(rs,re)+1;
+  const NAMEW=230;
+
+  /* ── 계층 헤더: 년 → 월 → 주 → 일 (index.html 간트 편집과 동일) ── */
+  const yr=[],mo=[],wk=[],dy=[];
+  { let d=new Date(rs);
+    while(d<=re){ const e=new Date(d.getFullYear(),11,31); const to=e>re?re:e;
+      yr.push({label:d.getFullYear()+'년', w:(diffD(d,to)+1)*ppd, cls:'yr'}); d=addD(to,1); } }
+  const monthLines=[];
+  { let d=new Date(rs);
+    while(d<=re){ const e=monthEndD(d); const to=e>re?re:e;
+      mo.push({label:(d.getMonth()+1)+'월', w:(diffD(d,to)+1)*ppd});
+      if(d>rs) monthLines.push(diffD(rs,d)*ppd);
+      d=addD(to,1); } }
+  const weekLines=[];
+  { let wd=addD(rs,(8-rs.getDay())%7||7);
+    while(wd<=re){ weekLines.push(diffD(rs,wd)*ppd); wd=addD(wd,7); } }
+  if(zoom!=="month"){
+    let d=new Date(rs);
+    while(d<=re){
+      const we=weekEndD(d); const to=we>re?re:we;
+      const ws=weekStartD(d);
+      const label = zoom==="day"
+        ? (Math.floor((ws.getDate()-1)/7)+1)+"주"
+        : (ws.getMonth()+1)+"/"+ws.getDate();
+      wk.push({label, w:(diffD(d,to)+1)*ppd});
+      d=addD(to,1);
+    }
+  }
+  if(zoom==="day"){
+    let d=new Date(rs);
+    while(d<=re){ const w=d.getDay();
+      dy.push({label:String(d.getDate()), w:ppd, cls:(w===0||w===6)?"wknd":""});
+      d=addD(d,1); }
+  }
+  const hdRow=cells=>'<div class="hdrow">'+cells.map(c=>
+    '<div class="hcell2'+(c.cls?' '+c.cls:'')+'" style="width:'+c.w+'px">'+(c.w>=17?c.label:'')+'</div>').join('')+'</div>';
+  let mh=hdRow(yr)+hdRow(mo);
+  if(wk.length&&zoom!=="month") mh+=hdRow(wk);
+  if(dy.length) mh+=hdRow(dy);
+
+  let html='<div class="hrow hhead"><div class="hname">작업 / 기간</div>'+
+    '<div class="htrack" style="width:'+(total*ppd)+'px">'+mh+'</div></div>';
+
+  let lastGid=null;
+  arr.forEach(t=>{
+    const g=groupOf(p,t.gid)||{name:"?",color:"grey"};
+    if(t.gid!==lastGid){
+      lastGid=t.gid;
+      html+='<div class="hrow hgrp"><div class="hname" style="color:'+gBase(g)+'">■ '+esc(g.name)+'</div>'+
+        '<div class="htrack" style="width:'+(total*ppd)+'px"></div></div>';
+    }
+    const s=pd(t.planStart), e=pd(t.planEnd);
+    const ok = s&&e&&e>=s;
+    let barHtml="";
+    if(ok){
+      const x=diffD(rs,s)*ppd, w=Math.max(ppd,(diffD(s,e)+1)*ppd);
+      const col=taskShade(g,t._gi);          // 그룹 내 순번 → 700,600,500… 점점 옅게
+      const txt=textOn(col);
+      const tip=esc(t.name)+" | "+fmtShort(t.planStart)+"~"+fmtShort(t.planEnd)+" ("+(diffD(s,e)+1)+"일) · "+(t.progress||0)+"%"
+        +(t.company?" · "+esc(t.company):"");
+      if(t.milestone){
+        barHtml='<div class="hms" style="left:'+(x+ppd/2)+'px;background:'+col+'" title="'+tip+'" onclick="openDetail(\''+t.id+'\')"></div>'+
+          '<div class="hms-lbl" style="left:'+(x+ppd/2+4)+'px">'+esc(t.name)+'</div>';
+      }else{
+        barHtml='<div class="hbar'+(isLate(t)?" late":"")+'" style="left:'+x+'px;width:'+w+'px;background:'+col+'" title="'+tip+'" onclick="openDetail(\''+t.id+'\')">'+
+          '<div class="fill" style="width:'+(t.progress||0)+'%"></div>'+
+          (w>46?'<span class="lbl" style="color:'+txt+'">'+esc(t.name)+'</span>':"")+'</div>';
+      }
+    }
+    const meta=[t._wbs, t.company||"", ok?fmtShort(t.planStart)+"~"+fmtShort(t.planEnd):"날짜 미정"].filter(Boolean).join(" · ");
+    const att=(t.memo?" "+ICO_MEMO:"")+((t.images&&t.images.length)?" "+ICO_IMG:"");
+    html+='<div class="hrow"><div class="hname">'+
+      '<div class="nm" onclick="openDetail(\''+t.id+'\')">'+esc(t.name||"(무제)")+att+'</div>'+
+      '<div class="meta">'+esc(meta)+'</div></div>'+
+      '<div class="htrack" style="width:'+(total*ppd)+'px">'+barHtml+'</div></div>';
+  });
+  if(!arr.length) html+='<div class="undated">작업이 없습니다 — “＋ 작업 추가” 또는 새 공사에서 템플릿을 사용하세요.</div>';
+
+  /* 그리드/오늘 오버레이 */
+  let overlay="";
+  weekLines.forEach(x=>overlay+='<div class="hgrid week" style="left:'+(NAMEW+x)+'px"></div>');
+  monthLines.forEach(x=>overlay+='<div class="hgrid month" style="left:'+(NAMEW+x)+'px"></div>');
+  const t0=today0();
+  if(t0>=rs&&t0<=re){
+    overlay+='<div class="htoday" style="left:'+(NAMEW+diffD(rs,t0)*ppd)+'px"><span class="lbl">오늘</span></div>';
+  }
+  el.innerHTML=html+overlay;
+}
+
+/* ══════════════ 상세 모달 ══════════════ */
+let detailId=null;
+function openDetail(id){
+  detailId=id;
+  renderDetail();
+  document.getElementById("detailBack").classList.add("show");
+}
+function closeDetail(){ detailId=null; document.getElementById("detailBack").classList.remove("show"); render(); }
+function dSet(field,val){ if(detailId) setField(detailId,field,val); refreshDetailTitle(); }
+function curTask(){ const p=activeProj(); return p? p.tasks.find(x=>x.id===detailId) : null; }
+function refreshDetailTitle(){
+  const t=curTask(); if(!t) return;
+  const p=activeProj();
+  const g=p?groupOf(p,t.gid):null;
+  document.getElementById("dTitle").textContent =
+    "["+(g?g.name:"?")+"] "+(t.name||"(무제)");
+}
+function renderDetail(){
+  const t=curTask(); if(!t) return;
+  refreshDetailTitle();
+  const body=document.getElementById("dBody");
+  body.innerHTML =
+  '<div class="fgrid">'+
+    '<div style="grid-column:1/-1"><label>작업명</label><input value="'+esc(t.name)+'" oninput="dSet(\'name\',this.value)"></div>'+
+    '<div><label>공종</label><select onchange="dSet(\'gid\',this.value)">'+
+      ((activeProj()&&activeProj().groups)||[]).map(g=>'<option value="'+g.id+'"'+(g.id===t.gid?" selected":"")+'>'+esc(g.name)+'</option>').join("")+'</select></div>'+
+    '<div><label>담당업체</label><input value="'+esc(t.company)+'" oninput="dSet(\'company\',this.value)"></div>'+
+    '<div><label>담당자 / 연락처</label><input value="'+esc(t.owner)+'" oninput="dSet(\'owner\',this.value)"></div>'+
+    '<div><label>선행 작업(코드)</label><input value="'+esc(t.pred)+'" placeholder="예: 기-3" oninput="dSet(\'pred\',this.value)"></div>'+
+    '<div><label>계획 착수</label><input type="date" value="'+t.planStart+'" onchange="dSet(\'planStart\',this.value)"></div>'+
+    '<div><label>계획 완료</label><input type="date" value="'+t.planEnd+'" onchange="dSet(\'planEnd\',this.value)"></div>'+
+    '<div><label>실제 착수</label><input type="date" value="'+(t.actStart||"")+'" onchange="dSet(\'actStart\',this.value)"></div>'+
+    '<div><label>실제 완료</label><input type="date" value="'+(t.actEnd||"")+'" onchange="dSet(\'actEnd\',this.value)"></div>'+
+    '<div><label>진척률(%)</label><input type="number" min="0" max="100" value="'+(t.progress||0)+'" onchange="dSet(\'progress\',this.value)"></div>'+
+    '<div><label>상태</label><select onchange="dSet(\'status\',this.value)">'+
+      STATUSES.map((s,i)=>i===3?"":'<option value="'+i+'"'+(i===t.status?" selected":"")+'>'+s+'</option>').join("")+'</select></div>'+
+    '<label class="chk"><input type="checkbox"'+(t.milestone?" checked":"")+' onchange="dSet(\'milestone\',this.checked)"> 마일스톤(◆)</label>'+
+  '</div>'+
+  '<div class="sec-t">메모 (검측 결과, 지적사항, 협의 내용 등)</div>'+
+  '<textarea class="memo" placeholder="예) 6/12 감리 검측 — 3층 SP 가지배관 행거 간격 보완 지시, 6/14 재검측 예정" oninput="dSet(\'memo\',this.value)">'+esc(t.memo)+'</textarea>'+
+  '<div class="sec-t">현장 사진 / 도면</div>'+
+  '<div class="toolbar">'+
+    '<button class="btn sm" onclick="document.getElementById(\'imgIn\').click()">'+ICO_CAM+'사진 업로드</button>'+
+    '<input type="file" id="imgIn" class="file-in" accept="image/*" multiple onchange="addImageFiles(event)">'+
+    '<button class="btn sm" onclick="addImageUrl()">'+ICO_LINK+'이미지 URL 추가</button>'+
+    '<span class="sub">업로드 시 자동 압축(긴 변 1280px) 후 브라우저에 저장</span>'+
+  '</div>'+
+  '<div class="img-grid" id="imgGrid"></div>'+
+  '<div class="storage" id="storageMeter"></div>';
+  renderImages();
+}
+function renderImages(){
+  const t=curTask(); if(!t) return;
+  const g=document.getElementById("imgGrid");
+  g.innerHTML=(t.images||[]).map((im,i)=>
+    '<div class="img-card">'+
+      '<img class="thumb" src="'+esc(im.src)+'" alt="" loading="lazy" onclick="openLightbox('+i+')" onerror="this.style.opacity=.25;this.title=\'이미지를 불러올 수 없음\'">'+
+      '<input class="cap" value="'+esc(im.cap||"")+'" placeholder="설명…" oninput="setImgCap('+i+',this.value)">'+
+      '<button class="rm" onclick="rmImage('+i+')">삭제</button>'+
+    '</div>').join("") || '<span class="sub">등록된 사진이 없습니다.</span>';
+  renderStorageMeter();
+}
+function renderStorageMeter(){
+  const used=new Blob([JSON.stringify(state)]).size;
+  const pct=Math.round(used/MAX_LS*100);
+  document.getElementById("storageMeter").innerHTML=
+    '브라우저 저장 사용량 약 <b class="'+(pct>80?"overq":"")+'">'+(used/1024/1024).toFixed(2)+' MB / 5 MB ('+pct+'%)</b>'+
+    (pct>80?' — 용량 임박: 오래된 사진을 정리하거나 JSON 백업 후 삭제하세요.':"");
+}
+function addImageFiles(ev){
+  const t=curTask(); if(!t) return;
+  const files=[...ev.target.files]; ev.target.value="";
+  files.forEach(f=>{
+    const r=new FileReader();
+    r.onload=()=>{
+      const img=new Image();
+      img.onload=()=>{
+        const MAX=1280;
+        let w=img.width,h=img.height;
+        if(Math.max(w,h)>MAX){ const k=MAX/Math.max(w,h); w=Math.round(w*k); h=Math.round(h*k); }
+        const cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+        cv.getContext("2d").drawImage(img,0,0,w,h);
+        t.images=t.images||[];
+        t.images.push({src:cv.toDataURL("image/jpeg",0.75), cap:f.name.replace(/\.[^.]+$/,""), up:1});
+        save(); renderImages();
+      };
+      img.src=r.result;
+    };
+    r.readAsDataURL(f);
+  });
+}
+function addImageUrl(){
+  const t=curTask(); if(!t) return;
+  const u=prompt("이미지 URL을 붙여넣으세요 (https://…)");
+  if(!u||!u.trim()) return;
+  t.images=t.images||[];
+  t.images.push({src:u.trim(), cap:"", up:0});
+  save(); renderImages();
+}
+function setImgCap(i,v){ const t=curTask(); if(t&&t.images[i]){ t.images[i].cap=v; save(); } }
+function rmImage(i){
+  const t=curTask(); if(!t) return;
+  if(!confirm("사진을 삭제할까요?")) return;
+  t.images.splice(i,1); save(); renderImages();
+}
+function openLightbox(i){
+  const t=curTask(); if(!t||!t.images[i]) return;
+  document.getElementById("lbImg").src=t.images[i].src;
+  document.getElementById("lbCap").textContent=t.images[i].cap||"";
+  document.getElementById("lightbox").classList.add("show");
+}
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){
+    const lb=document.getElementById("lightbox");
+    if(lb.classList.contains("show")){ lb.classList.remove("show"); return; }
+    if(document.getElementById("matPop").classList.contains("show")){ closeMatPop(); return; }
+    if(document.getElementById("grpBack").classList.contains("show")){ closeGroupModal(); return; }
+    if(document.getElementById("detailBack").classList.contains("show")) closeDetail();
+    if(document.getElementById("npBack").classList.contains("show")) closeNewProject();
+  }
+});
+
+/* ══════════════ 공유 URL / 백업 ══════════════ */
+function copyShareURL(){
+  /* 업로드(base64) 이미지는 제외하고 URL형 이미지만 포함 */
+  const slim={ activeId:state.activeId, projects: state.projects.map(p=>({
+    ...p, tasks: p.tasks.map(t=>({ ...t, images:(t.images||[]).filter(im=>!im.up) }))
+  }))};
+  const hash=LZString.compressToEncodedURIComponent(JSON.stringify(slim));
+  const url=location.origin+location.pathname+"#h="+hash;
+  const droppedImgs = state.projects.reduce((n,p)=>n+p.tasks.reduce((m,t)=>m+(t.images||[]).filter(im=>im.up).length,0),0);
+  navigator.clipboard.writeText(url).then(()=>{
+    alert("공유 URL을 복사했습니다."+(droppedImgs?"\n※ 업로드된 사진 "+droppedImgs+"장은 용량 문제로 URL에서 제외됩니다(JSON 백업에는 포함).":"")+
+      (url.length>6000?"\n주의: URL이 매우 깁니다 — 일부 메신저에서 잘릴 수 있으니 JSON 백업도 함께 보관하세요.":""));
+  },()=>{ prompt("복사가 차단되었습니다. 아래 URL을 직접 복사하세요.", url); });
+}
+function tryRestoreFromHash(){
+  const m=location.hash.match(/#h=(.+)/);
+  if(!m) return;
+  try{
+    const json=LZString.decompressFromEncodedURIComponent(m[1]);
+    const s=JSON.parse(json);
+    if(s && Array.isArray(s.projects)){
+      if(!state.projects.length || confirm("공유받은 데이터를 불러올까요?\n(확인 = 현재 데이터를 대체)")){
+        state=s; migrate(); save();
+      }
+    }
+  }catch(e){ alert("공유 URL 해석에 실패했습니다."); }
+  history.replaceState(null,"",location.pathname+location.search);
+}
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(state,null,1)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="소방훅업일정_백업_"+fd(today0())+".json";
+  a.click(); URL.revokeObjectURL(a.href);
+}
+function importJSON(ev){
+  const f=ev.target.files[0]; ev.target.value="";
+  if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const s=JSON.parse(r.result);
+      if(!s || !Array.isArray(s.projects)) throw 0;
+      if(!confirm("현재 데이터를 백업 파일 내용으로 대체할까요?")) return;
+      state=s; migrate();
+      if(!state.projects.find(p=>p.id===state.activeId)) state.activeId=state.projects[0]?state.projects[0].id:null;
+      save(); render();
+    }catch(e){ alert("JSON 파일을 해석할 수 없습니다."); }
+  };
+  r.readAsText(f);
+}
+function exportCSV(){
+  const p=activeProj(); if(!p){ alert("공사가 없습니다."); return; }
+  const head=["코드","공종","작업명","담당업체","담당자","계획착수","계획완료","기간(일)","실제착수","실제완료","진척률(%)","상태","선행","마일스톤","메모"];
+  const q=s=>'"'+String(s==null?"":s).replace(/"/g,'""')+'"';
+  const rows=[head.map(q).join(",")];
+  sortedTasks(p).forEach(t=>{
+    const s=pd(t.planStart),e=pd(t.planEnd);
+    const g=groupOf(p,t.gid);
+    rows.push([t._wbs,(g?g.name:""),t.name,t.company,t.owner,t.planStart,t.planEnd,
+      (s&&e&&e>=s)?diffD(s,e)+1:"",t.actStart||"",t.actEnd||"",t.progress||0,
+      STATUSES[statusIdx(t)],t.pred,t.milestone?"◆":"",t.memo].map(q).join(","));
+  });
+  const blob=new Blob(["﻿"+rows.join("\r\n")],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=p.name.replace(/[\\/:*?"<>|]/g,"_")+"_훅업공정표_"+fd(today0())+".csv";
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+/* ══════════════ 시작 ══════════════ */
+detectStorage();
+load();
+tryRestoreFromHash();
+if(!state.projects.length) flag("＋ 새 공사로 시작하세요");
+else flag("불러옴");
+syncZoomTabs();
+render();
+</script>
+</body>
+</html>
