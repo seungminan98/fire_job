@@ -138,12 +138,31 @@
   .man-imgs{margin-top:6px;display:flex;gap:7px;flex-wrap:wrap}
   .man-imgs img{width:92px;height:66px;object-fit:cover;border:1px solid var(--line);border-radius:4px;cursor:zoom-in}
   .att-cnt{font-size:10px;color:var(--muted);background:var(--soft);border-radius:8px;padding:0 6px;margin-left:4px;white-space:nowrap}
+  .fold-cnt{font-size:10px;color:var(--ink);background:#fff;border:1px solid var(--line-strong);border-radius:8px;
+    padding:0 6px;margin-left:4px;white-space:nowrap;cursor:pointer;display:inline-flex;align-items:center;gap:3px;vertical-align:1px}
+  .fold-cnt:hover{border-color:var(--ink)}
+  .fold-cnt svg{width:10px;height:10px}
+
+  /* 폴더 경로(브레드크럼) */
+  .crumbs{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:14px;
+    padding:9px 13px;background:var(--soft);border:1px solid var(--line);border-radius:7px;font-size:12.5px}
+  .crumbs .seg{cursor:pointer;color:#1d5fc4;display:inline-flex;align-items:center;gap:5px;
+    border:none;background:none;font-family:inherit;font-size:12.5px;padding:0}
+  .crumbs .seg:hover{text-decoration:underline}
+  .crumbs .cur{font-weight:650;display:inline-flex;align-items:center;gap:5px}
+  .crumbs .sep{color:var(--muted)}
+  .crumbs svg{width:13px;height:13px;flex:none}
+  .crumbs .up{margin-left:auto}
+
+  /* 본문 하위 프로세스 들여쓰기 */
+  .man-sub{margin:4px 0 4px 36px;border-left:2px solid var(--line);padding-left:10px}
+  .man-step .n.subn{width:auto;min-width:26px;border-radius:13px;padding:0 7px;font-size:10.5px}
 
   footer{margin-top:26px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);
     font-size:11.5px;line-height:1.7}
 
   @media print{
-    #authGate,.modal-back,.lightbox{display:none!important}
+    #authGate,.modal-back,.lightbox,#crumbBar{display:none!important}
     .man-links a::after{content:" (" attr(href) ")";color:#888;font-size:10px}
     html{visibility:visible!important}
     header .sub a, .toolbar, .card-h .spacer ~ *, #editCard, footer, #saveState{display:none!important}
@@ -295,13 +314,17 @@
     </div>
   </div>
 
+  <!-- 폴더 경로 (세부단계로 들어가면 표시) -->
+  <div class="crumbs" id="crumbBar" style="display:none"></div>
+
   <!-- 플로우차트 -->
   <div class="card" id="flowCard">
     <div class="card-h">프로세스 플로우차트 <span class="sub" id="flowTitle"></span></div>
     <div class="card-b">
       <div class="doc-desc" id="docDesc"></div>
       <div class="flow-scroll" id="flowArea"></div>
-      <div class="hint">사각형=작업 · 마름모=조건 판단(분기별 화살표에 라벨) · 노드를 클릭하면 상세 창(링크·이미지 첨부)이 열리고 편집 표의 해당 행이 강조됩니다.</div>
+      <div class="hint">사각형=작업 · 마름모=조건 판단(분기별 화살표에 라벨) · 노드를 클릭하면 상세 창(링크·이미지 첨부)이 열리고 편집 표의 해당 행이 강조됩니다.<br>
+        각 단계는 폴더처럼 <b>세부단계</b>를 담을 수 있습니다 — 노드 왼쪽 위의 폴더 표시, 편집 표의 "세부" 버튼, 상세 창의 "세부단계 열기"로 안에 들어가고, 위의 경로 표시줄로 되돌아옵니다.</div>
     </div>
   </div>
 
@@ -355,12 +378,65 @@ const TYPES=[["start","시작"],["task","작업"],["decision","판단"],["end","
 const TYPE_LABEL={start:"시작",task:"작업",decision:"판단",end:"종료"};
 let state={docs:[],activeId:null};
 let canStore=true, saveTimer=null, selStepId=null;
+let navPath=[]; // 현재 들어와 있는 폴더(단계) id 경로 — 비어 있으면 최상위
+
+const ICO_FOLDER='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 4.5a1 1 0 0 1 1-1h2.8l1.4 1.8h6.8a1 1 0 0 1 1 1v5.7a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z" stroke-linejoin="round"/></svg>';
+const ICO_FOLDER_OPEN='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M1.5 12.5v-8a1 1 0 0 1 1-1h2.8l1.4 1.8h5.3a1 1 0 0 1 1 1V7"/><path d="M3.4 7h11.1l-1.7 5.5H1.5z"/></svg>';
 
 function uid(){ return Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function activeDoc(){ return state.docs.find(d=>d.id===state.activeId)||null; }
-function newStep(type){ return {id:uid(),type:type||"task",title:"",desc:"",owner:"",next:"",branches:[],links:[],images:[]}; }
+function newStep(type){ return {id:uid(),type:type||"task",title:"",desc:"",owner:"",next:"",branches:[],links:[],images:[],children:[]}; }
 function attCnt(s){ return ((s.links||[]).length)+((s.images||[]).length); }
+function kidCnt(s){ return (s.children||[]).length; }
+function normSteps(arr){
+  (arr||[]).forEach(s=>{
+    if(!Array.isArray(s.links)) s.links=[];
+    if(!Array.isArray(s.images)) s.images=[];
+    if(!Array.isArray(s.children)) s.children=[];
+    normSteps(s.children);
+  });
+}
+
+/* ── 폴더 탐색 (세부단계 드릴다운) ── */
+function currentSteps(){
+  const d=activeDoc(); if(!d) return null;
+  let arr=d.steps;
+  for(const id of navPath){
+    const s=(arr||[]).find(x=>x.id===id);
+    if(!s){ navPath=[]; return d.steps; }
+    if(!Array.isArray(s.children)) s.children=[];
+    arr=s.children;
+  }
+  return arr;
+}
+function stepByIdIn(arr,id){
+  for(const s of arr||[]){
+    if(s.id===id) return s;
+    const r=stepByIdIn(s.children,id); if(r) return r;
+  }
+  return null;
+}
+function pathOf(id){
+  const d=activeDoc(); if(!d) return null;
+  const walk=(arr,trail)=>{
+    for(const s of arr||[]){
+      if(s.id===id) return trail.concat(s.id);
+      const r=walk(s.children,trail.concat(s.id)); if(r) return r;
+    }
+    return null;
+  };
+  return walk(d.steps,[]);
+}
+function enterStep(id){ // 단계를 폴더처럼 열고 안으로 들어간다
+  const p=pathOf(id); if(!p) return;
+  detailStepId=null; document.getElementById("stepBack").classList.remove("show");
+  navPath=p; selStepId=null;
+  save(); render();
+  window.scrollTo({top:0});
+}
+function goUp(){ navPath.pop(); selStepId=null; render(); window.scrollTo({top:0}); }
+function navTo(i){ navPath=navPath.slice(0,i+1); selStepId=null; render(); window.scrollTo({top:0}); } // i=-1 → 최상위
 
 function detectStorage(){
   try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); canStore=true; }
@@ -381,10 +457,7 @@ function load(){
     const raw=localStorage.getItem(LS_KEY);
     if(raw){ const s=JSON.parse(raw); if(s&&Array.isArray(s.docs)) state=s; }
   }catch(e){}
-  state.docs.forEach(d=>d.steps.forEach(s=>{
-    if(!Array.isArray(s.links)) s.links=[];
-    if(!Array.isArray(s.images)) s.images=[];
-  }));
+  state.docs.forEach(d=>normSteps(d.steps));
 }
 
 /* ══════════════ 예시 템플릿 ══════════════ */
@@ -398,7 +471,11 @@ function sampleDoc(){
       {id:ids[2],type:"task",title:"관할 소방서 접수",desc:"소방시설공사 착공신고 제출",owner:"공무",next:"",branches:[]},
       {id:ids[3],type:"decision",title:"보완 요구?",desc:"소방서 검토 결과 서류 보완 지시 여부",owner:"",next:"",
         branches:[{label:"보완 필요",to:ids[1]},{label:"수리",to:ids[4]}]},
-      {id:ids[4],type:"task",title:"시공 개시",desc:"착공신고 수리 후 시공. 은폐 전 감리 검측 필수",owner:"현장",next:"",branches:[]},
+      {id:ids[4],type:"task",title:"시공 개시",desc:"착공신고 수리 후 시공. 은폐 전 감리 검측 필수",owner:"현장",next:"",branches:[],children:[
+        {id:uid(),type:"task",title:"자재 반입·검수",desc:"승인자재 여부 확인, 반입검수 기록 작성",owner:"현장",next:"",branches:[]},
+        {id:uid(),type:"task",title:"배관·기구 설치",desc:"도면 기준 시공, 변경 발생 시 감리 협의",owner:"현장",next:"",branches:[]},
+        {id:uid(),type:"task",title:"은폐 전 감리 검측",desc:"매립·천장 은폐 전 검측 요청 및 사진 기록",owner:"현장/감리",next:"",branches:[]}
+      ]},
       {id:ids[5],type:"task",title:"수압·연동시험",desc:"배관 수압시험, 자탐 연동시험, 성능시험 입회",owner:"현장/감리",next:"",branches:[]},
       {id:ids[6],type:"task",title:"완공검사 신청",desc:"감리결과보고서 첨부하여 관할 소방서 신청",owner:"공무",next:"",branches:[]},
       {id:ids[7],type:"decision",title:"현장확인 지적?",desc:"소방서 현장확인 결과",owner:"",next:"",
@@ -422,10 +499,11 @@ function newDoc(){
       {id:uid(),type:"end",title:"종료",desc:"",owner:"",next:"",branches:[]}
     ]};
   }
-  state.docs.push(d); state.activeId=d.id;
+  normSteps(d.steps);
+  state.docs.push(d); state.activeId=d.id; navPath=[];
   save(); render();
 }
-function switchDoc(id){ state.activeId=id; selStepId=null; save(); render(); }
+function switchDoc(id){ state.activeId=id; selStepId=null; navPath=[]; save(); render(); }
 function renameDoc(){
   const d=activeDoc(); if(!d) return;
   const n=prompt("매뉴얼 이름",d.name);
@@ -441,6 +519,7 @@ function deleteDoc(){
   if(!confirm('매뉴얼 "'+d.name+'" 을 삭제할까요?')) return;
   state.docs=state.docs.filter(x=>x.id!==d.id);
   state.activeId=state.docs.length?state.docs[0].id:null;
+  navPath=[];
   save(); render();
 }
 
@@ -448,59 +527,61 @@ function deleteDoc(){
 function addStep(){
   const d=activeDoc();
   if(!d){ alert("먼저 '새 매뉴얼'을 만들어 주세요."); return; }
+  const arr=currentSteps();
   // 종료 단계가 마지막이면 그 앞에 삽입
-  const endIdx=d.steps.length && d.steps[d.steps.length-1].type==="end" ? d.steps.length-1 : d.steps.length;
-  d.steps.splice(endIdx,0,newStep("task"));
+  const endIdx=arr.length && arr[arr.length-1].type==="end" ? arr.length-1 : arr.length;
+  arr.splice(endIdx,0,newStep("task"));
   save(); render();
 }
 function insStep(i){
-  const d=activeDoc(); if(!d) return;
-  d.steps.splice(i+1,0,newStep("task"));
+  const arr=currentSteps(); if(!arr) return;
+  arr.splice(i+1,0,newStep("task"));
   save(); render();
 }
 function delStep(i){
-  const d=activeDoc(); if(!d) return;
-  const s=d.steps[i];
-  if(!confirm('단계 "'+(s.title||"(무제)")+'" 삭제?')) return;
-  d.steps.splice(i,1);
-  // 이 단계를 가리키던 참조 정리
-  d.steps.forEach(x=>{
+  const arr=currentSteps(); if(!arr) return;
+  const s=arr[i];
+  const kids=kidCnt(s)?" (세부단계 "+kidCnt(s)+"개 포함)":"";
+  if(!confirm('단계 "'+(s.title||"(무제)")+'" 삭제?'+kids)) return;
+  arr.splice(i,1);
+  // 이 단계를 가리키던 참조 정리 (같은 레벨 안에서만 연결됨)
+  arr.forEach(x=>{
     if(x.next===s.id) x.next="";
     (x.branches||[]).forEach(b=>{ if(b.to===s.id) b.to=""; });
   });
   save(); render();
 }
 function mvStep(i,dir){
-  const d=activeDoc(); const j=i+dir;
-  if(!d||j<0||j>=d.steps.length) return;
-  [d.steps[i],d.steps[j]]=[d.steps[j],d.steps[i]];
+  const arr=currentSteps(); const j=i+dir;
+  if(!arr||j<0||j>=arr.length) return;
+  [arr[i],arr[j]]=[arr[j],arr[i]];
   save(); render();
 }
 function setStep(i,f,v){
-  const d=activeDoc(); if(!d||!d.steps[i]) return;
-  const s=d.steps[i];
+  const arr=currentSteps(); if(!arr||!arr[i]) return;
+  const s=arr[i];
   if(f==="type"){
     s.type=v;
     if(v==="decision"&&!(s.branches||[]).length) s.branches=[{label:"예",to:""},{label:"아니오",to:""}];
     render(); save(); return;
   }
   s[f]=v; save();
-  if(f==="title") renderFlow(), renderMan();
+  if(f==="title") renderFlow(), renderMan(), renderCrumb();
   if(f==="next") renderFlow(), renderMan();
 }
 function brSet(i,bi,f,v){
-  const d=activeDoc(); if(!d) return;
-  const b=d.steps[i].branches[bi]; if(!b) return;
+  const arr=currentSteps(); if(!arr) return;
+  const b=arr[i].branches[bi]; if(!b) return;
   b[f]=v; save(); renderFlow(); renderMan();
 }
 function brAdd(i){
-  const d=activeDoc(); if(!d) return;
-  (d.steps[i].branches=d.steps[i].branches||[]).push({label:"",to:""});
+  const arr=currentSteps(); if(!arr) return;
+  (arr[i].branches=arr[i].branches||[]).push({label:"",to:""});
   save(); render();
 }
 function brDel(i,bi){
-  const d=activeDoc(); if(!d) return;
-  d.steps[i].branches.splice(bi,1);
+  const arr=currentSteps(); if(!arr) return;
+  arr[i].branches.splice(bi,1);
   save(); render();
 }
 function selectStep(id){
@@ -511,11 +592,11 @@ function selectStep(id){
 
 /* ══════════════ 단계 상세 모달 (링크·이미지) ══════════════ */
 let detailStepId=null;
-function stepById(id){ const d=activeDoc(); return d? d.steps.find(s=>s.id===id) : null; }
+function stepById(id){ const d=activeDoc(); return d? stepByIdIn(d.steps,id) : null; }
 function openStepDetail(id){
   detailStepId=id;
   const s=stepById(id);
-  if(s){ if(!Array.isArray(s.links)) s.links=[]; if(!Array.isArray(s.images)) s.images=[]; }
+  if(s){ if(!Array.isArray(s.links)) s.links=[]; if(!Array.isArray(s.images)) s.images=[]; if(!Array.isArray(s.children)) s.children=[]; }
   renderStepDetail();
   document.getElementById("stepBack").classList.add("show");
 }
@@ -542,6 +623,12 @@ function renderStepDetail(){
   '</div>'+
   '<label style="font-size:11px;color:var(--muted)">내용 / 기준</label>'+
   '<textarea class="sdesc" oninput="sdSet(\'desc\',this.value)">'+esc(s.desc)+'</textarea>'+
+  '<div class="sec-t">세부단계 (이 단계를 폴더처럼 열기)</div>'+
+  '<div class="toolbar">'+
+    '<button class="btn sm" onclick="enterStep(\''+s.id+'\')">'+ICO_FOLDER_OPEN+
+      (kidCnt(s)?'세부단계 열기 · '+kidCnt(s)+'단계':'폴더 열고 세부단계 만들기')+'</button>'+
+    '<span class="sub" style="font-size:11px">이 단계 안에 하위 프로세스(세부단계)를 담을 수 있습니다</span>'+
+  '</div>'+
   '<div class="sec-t">참고 링크 (매뉴얼·규정·양식 등)</div>'+
   '<div id="sdLinks"></div>'+
   '<button class="btn sm" onclick="lnkAdd()">+ 링크 추가</button>'+
@@ -649,16 +736,35 @@ document.addEventListener("keydown",e=>{
 });
 
 /* ══════════════ 렌더 ══════════════ */
-function render(){ renderDocSel(); renderTable(); renderFlow(); renderMan(); }
+function render(){ renderDocSel(); renderCrumb(); renderTable(); renderFlow(); renderMan(); }
+function renderCrumb(){
+  const bar=document.getElementById("crumbBar");
+  const d=activeDoc();
+  if(!d||!navPath.length){ bar.style.display="none"; bar.innerHTML=""; return; }
+  bar.style.display="flex";
+  let arr=d.steps;
+  let html='<button class="seg" onclick="navTo(-1)">'+ICO_FOLDER+esc(d.name)+'</button>';
+  navPath.forEach((id,i)=>{
+    const s=(arr||[]).find(x=>x.id===id); if(!s) return;
+    const last=i===navPath.length-1;
+    html+='<span class="sep">›</span>'+
+      (last?'<span class="cur">'+ICO_FOLDER_OPEN+esc(s.title||"(무제)")+'</span>'
+           :'<button class="seg" onclick="navTo('+i+')">'+ICO_FOLDER+esc(s.title||"(무제)")+'</button>');
+    arr=s.children||[];
+  });
+  html+='<button class="btn sm up" onclick="goUp()">'+
+    '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12.5V4.5M4.5 8 8 4.5 11.5 8"/></svg>상위 단계로</button>';
+  bar.innerHTML=html;
+}
 function renderDocSel(){
   document.getElementById("docSel").innerHTML =
     state.docs.map(d=>'<option value="'+d.id+'"'+(d.id===state.activeId?" selected":"")+'>'+esc(d.name)+'</option>').join("")
     || '<option value="">— 매뉴얼 없음 (+ 새 매뉴얼) —</option>';
 }
-function stepOptions(d,selfId,cur){
+function stepOptions(arr,selfId,cur){
   return '<option value="">(바로 아래 단계로)</option>'+
-    d.steps.filter(s=>s.id!==selfId).map((s,)=>{
-      const n=d.steps.indexOf(s)+1;
+    arr.filter(s=>s.id!==selfId).map(s=>{
+      const n=arr.indexOf(s)+1;
       return '<option value="'+s.id+'"'+(s.id===cur?" selected":"")+'>'+n+'. '+esc(s.title||"(무제)")+'</option>';
     }).join("");
 }
@@ -666,23 +772,28 @@ function renderTable(){
   const tbl=document.getElementById("stepTable");
   const d=activeDoc();
   if(!d){ tbl.innerHTML='<tbody><tr><td style="padding:14px;color:var(--muted)">매뉴얼을 먼저 만들어 주세요.</td></tr></tbody>'; return; }
+  const arr=currentSteps();
+  if(!arr.length){
+    tbl.innerHTML='<tbody><tr><td style="padding:14px;color:var(--muted)">아직 세부단계가 없습니다. 위의 "+ 단계 추가"로 이 폴더 안의 프로세스를 만들어 주세요.</td></tr></tbody>';
+    return;
+  }
   let html='<thead><tr><th>#</th><th>유형</th><th style="min-width:150px">제목</th><th style="min-width:200px">내용 / 기준</th>'+
     '<th>담당</th><th style="min-width:180px">다음 단계 / 분기</th><th></th><th></th><th></th></tr></thead><tbody>';
-  d.steps.forEach((s,i)=>{
+  arr.forEach((s,i)=>{
     let nextCell;
     if(s.type==="decision"){
       nextCell='<div class="br-list">'+
         (s.branches||[]).map((b,bi)=>
           '<div class="br-row">'+
             '<input value="'+esc(b.label)+'" placeholder="조건 라벨" oninput="brSet('+i+','+bi+',\'label\',this.value)">'+
-            '<select onchange="brSet('+i+','+bi+',\'to\',this.value)">'+stepOptions(d,s.id,b.to)+'</select>'+
+            '<select onchange="brSet('+i+','+bi+',\'to\',this.value)">'+stepOptions(arr,s.id,b.to)+'</select>'+
             '<button class="rm" title="분기 삭제" onclick="brDel('+i+','+bi+')">✕</button>'+
           '</div>').join("")+
         '<button class="br-add" onclick="brAdd('+i+')">+ 분기 추가</button></div>';
     }else if(s.type==="end"){
       nextCell='<span style="color:var(--muted);font-size:11px">(프로세스 종료)</span>';
     }else{
-      nextCell='<select class="next-sel" onchange="setStep('+i+',\'next\',this.value)">'+stepOptions(d,s.id,s.next)+'</select>';
+      nextCell='<select class="next-sel" onchange="setStep('+i+',\'next\',this.value)">'+stepOptions(arr,s.id,s.next)+'</select>';
     }
     html+='<tr data-sid="'+s.id+'"'+(s.id===selStepId?' class="selrow"':'')+'>'+
       '<td class="no">'+(i+1)+'</td>'+
@@ -694,9 +805,10 @@ function renderTable(){
       '<td>'+nextCell+'</td>'+
       '<td style="width:52px;white-space:nowrap;vertical-align:middle">'+
         '<button class="mv" '+(i===0?'disabled':'')+' onclick="mvStep('+i+',-1)">▲</button>'+
-        '<button class="mv" '+(i===d.steps.length-1?'disabled':'')+' onclick="mvStep('+i+',1)">▼</button></td>'+
-      '<td style="width:78px;vertical-align:middle;white-space:nowrap">'+
+        '<button class="mv" '+(i===arr.length-1?'disabled':'')+' onclick="mvStep('+i+',1)">▼</button></td>'+
+      '<td style="width:118px;vertical-align:middle;white-space:nowrap">'+
         '<button class="mv" title="링크·이미지 첨부/상세" onclick="openStepDetail(\''+s.id+'\')">상세'+(attCnt(s)?'·'+attCnt(s):'')+'</button>'+
+        '<button class="mv" title="세부단계(폴더) 안으로 들어가기" onclick="enterStep(\''+s.id+'\')">세부'+(kidCnt(s)?'·'+kidCnt(s):'')+'</button>'+
         '<button class="mv" title="아래에 삽입" onclick="insStep('+i+')">+삽입</button></td>'+
       '<td class="row-del" onclick="delStep('+i+')" title="삭제">✕</td></tr>';
   });
@@ -707,14 +819,25 @@ function renderTable(){
 function renderFlow(){
   const area=document.getElementById("flowArea");
   const d=activeDoc();
-  document.getElementById("flowTitle").textContent = d? "— "+d.name : "";
-  document.getElementById("docDesc").textContent = d? (d.desc||"") : "";
-  if(!d||!d.steps.length){ area.innerHTML='<div style="color:var(--muted);font-size:12px;padding:10px">단계를 추가하면 플로우차트가 그려집니다.</div>'; return; }
+  const steps=currentSteps()||[];
+  let title="";
+  if(d){
+    title="— "+d.name;
+    let walk=d.steps;
+    navPath.forEach(id=>{
+      const s=(walk||[]).find(x=>x.id===id); if(!s) return;
+      title+=" › "+(s.title||"(무제)"); walk=s.children||[];
+    });
+  }
+  document.getElementById("flowTitle").textContent = title;
+  document.getElementById("docDesc").textContent = d&&!navPath.length? (d.desc||"") : "";
+  if(!d||!steps.length){ area.innerHTML='<div style="color:var(--muted);font-size:12px;padding:10px">'+
+    (navPath.length?'이 폴더는 비어 있습니다. 아래 "+ 단계 추가"로 세부단계를 만들어 주세요.':'단계를 추가하면 플로우차트가 그려집니다.')+'</div>'; return; }
 
   const CX=430, TW=280, DW=210, VGAP=42;
-  const idxOf={}; d.steps.forEach((s,i)=>idxOf[s.id]=i);
+  const idxOf={}; steps.forEach((s,i)=>idxOf[s.id]=i);
   // 노드 배치
-  const nodes=d.steps.map((s,i)=>{
+  const nodes=steps.map((s,i)=>{
     const h = s.type==="decision"?66 : (s.type==="start"||s.type==="end")?36 : (s.desc?52:40);
     return {s,i,h,w:s.type==="decision"?DW:(s.type==="task"?TW:170)};
   });
@@ -790,6 +913,14 @@ function renderFlow(){
       svg+='<g class="flow-node" onclick="openStepDetail(\''+s.id+'\')"><circle cx="'+bx+'" cy="'+by+'" r="8" fill="#1a1a1a"/>'+
         '<text x="'+bx+'" y="'+(by+3)+'" text-anchor="middle" font-size="9" fill="#fff" font-weight="600">'+attCnt(s)+'</text></g>';
     }
+    if(kidCnt(s)){ // 폴더 표시(세부단계 있음) — 클릭하면 안으로
+      const pw=kidCnt(s)>9?38:32;
+      const x0=CX-n.w/2-6, y0=n.y-11;
+      svg+='<g class="flow-node" onclick="enterStep(\''+s.id+'\')"><title>세부단계 '+kidCnt(s)+'개 — 클릭하여 열기</title>'+
+        '<rect x="'+x0+'" y="'+y0+'" width="'+pw+'" height="18" rx="9" fill="#fff" stroke="#1a1a1a" stroke-width="1.2"/>'+
+        '<g transform="translate('+(x0+5)+','+(y0+2.5)+') scale(0.8)"><path d="M1.5 4.5a1 1 0 0 1 1-1h2.8l1.4 1.8h6.8a1 1 0 0 1 1 1v5.7a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z" fill="none" stroke="#1a1a1a" stroke-width="1.7" stroke-linejoin="round"/></g>'+
+        '<text x="'+(x0+pw-8)+'" y="'+(y0+13)+'" text-anchor="middle" font-size="10" font-weight="650" fill="#1a1a1a">'+kidCnt(s)+'</text></g>';
+    }
   });
   area.innerHTML='<svg width="880" height="'+H+'" viewBox="0 0 880 '+H+'" style="min-width:880px;display:block;margin:0 auto">'+
     '<defs><marker id="arr" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#888"/></marker>'+
@@ -803,17 +934,21 @@ function renderMan(){
   const box=document.getElementById("manBody");
   const d=activeDoc();
   if(!d){ box.innerHTML=""; return; }
-  const idxOf={}; d.steps.forEach((s,i)=>idxOf[s.id]=i);
-  const ref=id=>{ const i=idxOf[id]; return i==null?"?":(i+1)+". "+(d.steps[i].title||"(무제)"); };
-  box.innerHTML=d.steps.map((s,i)=>{
+  box.innerHTML=manLevel(d.steps,"",0);
+}
+function manLevel(arr,prefix,depth){
+  const idxOf={}; (arr||[]).forEach((s,i)=>idxOf[s.id]=i);
+  const ref=id=>{ const i=idxOf[id]; return i==null?"?":prefix+(i+1)+". "+(arr[i].title||"(무제)"); };
+  return (arr||[]).map((s,i)=>{
+    const num=prefix+(i+1);
     let flow="";
     if(s.type==="decision"){
-      flow=(s.branches||[]).map(b=>'<b>'+esc(b.label||"분기")+'</b> → '+esc(b.to?ref(b.to):(i+2<=d.steps.length?(i+2)+". "+(d.steps[i+1]?d.steps[i+1].title:""):"다음"))).join(" · ");
+      flow=(s.branches||[]).map(b=>'<b>'+esc(b.label||"분기")+'</b> → '+esc(b.to?ref(b.to):(arr[i+1]?prefix+(i+2)+". "+(arr[i+1].title||"(무제)"):"다음"))).join(" · ");
     }else if(s.type!=="end"){
       if(s.next) flow="다음: "+esc(ref(s.next));
-      else if(d.steps[i+1]) flow="다음: "+(i+2)+". "+esc(d.steps[i+1].title||"(무제)");
+      else if(arr[i+1]) flow="다음: "+prefix+(i+2)+". "+esc(arr[i+1].title||"(무제)");
     }
-    const ncls=s.type==="decision"?"dec":(s.type==="start"||s.type==="end"?"se":"");
+    const ncls=(s.type==="decision"?"dec":(s.type==="start"||s.type==="end"?"se":""))+(depth?" subn":"");
     const links=(s.links||[]).filter(l=>l.url);
     const linkHtml=links.length?'<div class="man-links">'+links.map(l=>
       '<a href="'+esc(l.url)+'" target="_blank" rel="noopener">'+
@@ -821,14 +956,16 @@ function renderMan(){
       esc(l.label||l.url)+'</a>').join("")+'</div>':'';
     const imgHtml=(s.images||[]).length?'<div class="man-imgs">'+s.images.map((im,ii)=>
       '<img src="'+esc(im.src)+'" alt="'+esc(im.cap||"")+'" title="'+esc(im.cap||"")+'" loading="lazy" onclick="openLightboxFor(\''+s.id+'\','+ii+')">').join("")+'</div>':'';
-    return '<div class="man-step"><div class="n '+ncls+'">'+(i+1)+'</div><div class="bd">'+
+    const foldBadge=kidCnt(s)?'<span class="fold-cnt" title="세부단계 열기" onclick="event.stopPropagation();enterStep(\''+s.id+'\')">'+ICO_FOLDER+'세부 '+kidCnt(s)+'</span>':'';
+    const kidsHtml=kidCnt(s)?'<div class="man-sub">'+manLevel(s.children,num+".",depth+1)+'</div>':'';
+    return '<div class="man-step"><div class="n '+ncls+'">'+num+'</div><div class="bd">'+
       '<div class="t" style="cursor:pointer" onclick="openStepDetail(\''+s.id+'\')" title="클릭: 상세(링크·이미지)">['+TYPE_LABEL[s.type]+'] '+esc(s.title||"(무제)")+
         (s.owner?' <span style="font-weight:400;color:var(--muted)">— 담당: '+esc(s.owner)+'</span>':'')+
-        (attCnt(s)?'<span class="att-cnt">첨부 '+attCnt(s)+'</span>':'')+'</div>'+
+        (attCnt(s)?'<span class="att-cnt">첨부 '+attCnt(s)+'</span>':'')+foldBadge+'</div>'+
       (s.desc?'<div class="d">'+esc(s.desc)+'</div>':'')+
       (flow?'<div class="m">'+flow+'</div>':'')+
       linkHtml+imgHtml+
-    '</div></div>';
+    '</div></div>'+kidsHtml;
   }).join("");
 }
 
@@ -851,7 +988,9 @@ function importJSON(ev){
       if(!s||!Array.isArray(s.docs)) throw 0;
       if(!confirm("현재 데이터를 백업 파일 내용으로 대체할까요?")) return;
       state=s;
+      state.docs.forEach(d=>normSteps(d.steps));
       if(!state.docs.find(d=>d.id===state.activeId)) state.activeId=state.docs[0]?state.docs[0].id:null;
+      navPath=[];
       save(); render();
     }catch(e){ alert("JSON 파일을 해석할 수 없습니다."); }
   };
