@@ -225,7 +225,7 @@
     <input type="text" id="authPw" autocomplete="off" autocapitalize="off" autocorrect="off"
       spellcheck="false" placeholder="암호"
       style="width:100%;border:1px solid #c9c9c9;border-radius:6px;padding:9px 11px;
-      font-family:inherit;font-size:14px;text-align:center;box-sizing:border-box;-webkit-text-security:disc">
+      font-family:inherit;font-size:14px;text-align:center;box-sizing:border-box">
     <div id="authErr" style="font-size:11.5px;color:#9a3434;min-height:17px;margin-top:6px"></div>
     <button id="authBtn" style="width:100%;background:#1a1a1a;color:#fff;border:none;border-radius:6px;
       padding:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:2px">열기</button>
@@ -310,11 +310,6 @@
       }
     });
   }
-  // CSS 마스킹 미지원 브라우저(일부 구형)는 password 타입으로 폴백
-  try{
-    if(!(window.CSS&&CSS.supports&&CSS.supports("-webkit-text-security","disc")))
-      document.getElementById("authPw").type="password";
-  }catch(e){}
   document.getElementById("authBtn").addEventListener("click",tryOpen);
   document.getElementById("authPw").addEventListener("keydown",function(e){ if(e.key==="Enter") tryOpen(); });
   setTimeout(function(){ document.getElementById("authPw").focus(); },50);
@@ -326,7 +321,7 @@
     <div>
       <h1>소방공사 일정 · M/M Capacity 관리</h1>
       <div class="sub">접수 · 기획 · 설계 · 계약 · 시공 · 정산 · 인수인계 / 월별 인원 풀 점검
-        · <a href="hookup.html" style="color:inherit;font-weight:600">공사별 훅업 공정표 →</a></div>
+        · <a href="hookup.html" style="color:inherit;font-weight:600">공사별 훅업 공정표 →</a> · <a href="process.html" style="color:inherit">업무 매뉴얼 →</a></div>
     </div>
     <div class="sub" id="saveState"></div>
   </header>

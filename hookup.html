@@ -71,6 +71,22 @@
   td.wbs{font-variant-numeric:tabular-nums;color:var(--muted);font-size:11px;text-align:center;width:44px}
   tr.done td, tr.done td input, tr.done td select{color:var(--muted)}
   tr.done td .tname input{text-decoration:line-through}
+  /* 계층(Epic > Task > Sub-Task) */
+  .tgl{cursor:pointer;color:var(--muted);font-size:10px;display:inline-block;width:14px;text-align:center;
+    user-select:none;flex:none}
+  .tgl:hover{color:var(--ink)}
+  .tgl-sp{display:inline-block;width:14px;flex:none}
+  td.tname{white-space:nowrap}
+  td.tname input{width:calc(100% - 18px);display:inline-block;vertical-align:middle}
+  td.tname.sub{padding-left:24px}
+  .subhook{color:var(--line-strong);font-size:11px;margin-right:4px;flex:none}
+  tr.subrow td, tr.subrow td input{font-size:11.5px}
+  tr.subrow .wbs{font-size:10px}
+  .kids-n{font-size:10px;color:var(--muted);background:var(--soft);border-radius:8px;padding:0 6px;margin-left:4px}
+  .hrow.subrow{background:var(--softer)}
+  .hrow .nm{display:flex;align-items:center;gap:2px}
+  .hrow .nm>span[onclick]{cursor:pointer;overflow:hidden;text-overflow:ellipsis}
+  .hrow .nm>span[onclick]:hover{text-decoration:underline}
   select.d0{color:var(--mech);font-weight:600} select.d1{color:var(--elec);font-weight:600}
   select.d2{color:var(--supv);font-weight:600} select.d3{color:var(--perm);font-weight:600}
   select.d4{color:var(--etc);font-weight:600}
@@ -228,7 +244,7 @@
     <input type="text" id="authPw" autocomplete="off" autocapitalize="off" autocorrect="off"
       spellcheck="false" placeholder="암호"
       style="width:100%;border:1px solid #c9c9c9;border-radius:6px;padding:9px 11px;
-      font-family:inherit;font-size:14px;text-align:center;box-sizing:border-box;-webkit-text-security:disc">
+      font-family:inherit;font-size:14px;text-align:center;box-sizing:border-box">
     <div id="authErr" style="font-size:11.5px;color:#9a3434;min-height:17px;margin-top:6px"></div>
     <button id="authBtn" style="width:100%;background:#1a1a1a;color:#fff;border:none;border-radius:6px;
       padding:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:2px">열기</button>
@@ -313,11 +329,6 @@
       }
     });
   }
-  // CSS 마스킹 미지원 브라우저(일부 구형)는 password 타입으로 폴백
-  try{
-    if(!(window.CSS&&CSS.supports&&CSS.supports("-webkit-text-security","disc")))
-      document.getElementById("authPw").type="password";
-  }catch(e){}
   document.getElementById("authBtn").addEventListener("click",tryOpen);
   document.getElementById("authPw").addEventListener("keydown",function(e){ if(e.key==="Enter") tryOpen(); });
   setTimeout(function(){ document.getElementById("authPw").focus(); },50);
@@ -331,7 +342,7 @@
       <div class="sub">공종을 직접 구성하고(전기·기계·인허가·감리 등) 머터리얼 테마색 지정 — 공사별 공정표 + 간트차트 (막대 클릭 → 상세 메모/사진)</div>
     </div>
     <div style="text-align:right">
-      <div class="sub"><a href="bridge.html">AI 자료 밀어넣기</a> · <a href="index.html">전체 공사 일정·M/M →</a></div>
+      <div class="sub"><a href="bridge.html">AI 자료 밀어넣기</a> · <a href="process.html">업무 매뉴얼</a> · <a href="index.html">전체 공사 일정·M/M →</a></div>
       <div class="sub" id="saveState"></div>
     </div>
   </header>
@@ -564,18 +575,28 @@ let canStore = true;
 let saveTimer = null;
 
 function uid(){ return Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
-function activeProj(){ return state.projects.find(p=>p.id===state.activeId) || null; }
+function activeProj(){
+  const p=state.projects.find(x=>x.id===state.activeId) || null;
+  if(p){ if(!Array.isArray(p.collapsed)) p.collapsed=[]; if(!Array.isArray(p.gcol)) p.gcol=[]; }
+  return p;
+}
 function newTask(gid){
-  return { id:uid(), gid:gid||"", name:"", company:"", owner:"",
+  return { id:uid(), gid:gid||"", parentId:"", name:"", company:"", owner:"",
     planStart:"", planEnd:"", actStart:"", actEnd:"",
     progress:0, status:0, pred:"", milestone:false, memo:"", images:[] };
 }
+function childrenOf(p,id){ return p.tasks.filter(t=>t.parentId===id); }
 function makeGroup(name,color,company){ return { id:uid(), name, color:color||"grey", company:company||"" }; }
 function groupOf(p,gid){ return (p.groups||[]).find(g=>g.id===gid) || null; }
 function firstGroup(p){ return (p.groups&&p.groups[0]) || null; }
 /* 구버전 데이터(t.disc 고정 공종) → 사용자 정의 그룹으로 변환 */
 function migrate(){
   state.projects.forEach(p=>{
+    if(!Array.isArray(p.collapsed)) p.collapsed=[];   // 접힌 상위 작업 id 목록
+    if(!Array.isArray(p.gcol)) p.gcol=[];             // 접힌 공종(Epic) gid 목록
+    p.tasks.forEach(t=>{ if(t.parentId==null) t.parentId=""; });
+    // 상위 작업이 삭제/유실됐으면 최상위로 승격
+    p.tasks.forEach(t=>{ if(t.parentId && !p.tasks.some(x=>x.id===t.parentId)) t.parentId=""; });
     if(Array.isArray(p.groups) && p.groups.length){
       // gid 유실 작업 보정
       p.tasks.forEach(t=>{ if(!groupOf(p,t.gid)) t.gid=p.groups[0].id; });
@@ -823,8 +844,11 @@ function addTask(){
 function delTask(id){
   const p=activeProj(); if(!p) return;
   const t=p.tasks.find(x=>x.id===id);
-  if(!confirm('작업 "'+(t&&t.name||"(무제)")+'" 삭제?')) return;
-  p.tasks = p.tasks.filter(x=>x.id!==id);
+  const kids=childrenOf(p,id);
+  const msg='작업 "'+(t&&t.name||"(무제)")+'" 삭제?'+(kids.length?'\n(하위 작업 '+kids.length+'건도 함께 삭제됩니다)':'');
+  if(!confirm(msg)) return;
+  const rm=new Set([id, ...kids.map(k=>k.id)]);
+  p.tasks = p.tasks.filter(x=>!rm.has(x.id));
   save(); render();
 }
 function setField(id, field, val){
@@ -833,28 +857,79 @@ function setField(id, field, val){
   if(field==="progress"){ val=Math.max(0,Math.min(100,Number(val)||0)); if(val===100 && t.status!==2) t.status=2; }
   if(field==="status") val=Number(val);
   if(field==="milestone") val=!!val;
+  if(field==="gid"){
+    childrenOf(p,t.id).forEach(k=>k.gid=val);            // 상위 이동 시 하위도 함께
+    if(t.parentId){ const par=p.tasks.find(x=>x.id===t.parentId);
+      if(par && par.gid!==val) t.parentId="";            // 하위만 다른 공종으로 → 분리
+    }
+  }
+  if(field==="parentId"){
+    if(val===t.id) val="";                               // 자기 자신 금지
+    if(val && childrenOf(p,t.id).length) val="";         // 하위를 가진 작업은 하위가 될 수 없음(1단계)
+    const par=val ? p.tasks.find(x=>x.id===val) : null;
+    if(par) t.gid=par.gid;                               // 상위의 공종을 따라감
+  }
   t[field]=val;
   if(field==="status" && val===2 && t.progress<100) t.progress=100;
   save(); renderStats(); renderGantt();
-  if(field==="gid"||field==="planStart"||field==="status") renderTable();
+  if(field==="gid"||field==="planStart"||field==="status"||field==="parentId") renderTable();
 }
-/* 공종(그룹 순서) → 계획착수 → 이름 순 정렬 + WBS 코드 + 그룹 내 순번(_gi: 색 톤 계산용) */
+/* 접기/펼치기 (Epic=공종, 상위 작업) */
+function toggleGroupCol(gid){
+  const p=activeProj(); if(!p) return;
+  const i=p.gcol.indexOf(gid);
+  if(i<0) p.gcol.push(gid); else p.gcol.splice(i,1);
+  save(); renderTable(); renderGantt();
+}
+function toggleTaskCol(id){
+  const p=activeProj(); if(!p) return;
+  const i=p.collapsed.indexOf(id);
+  if(i<0) p.collapsed.push(id); else p.collapsed.splice(i,1);
+  save(); renderTable(); renderGantt();
+}
+function addSubTask(parentId){
+  const p=activeProj(); if(!p) return;
+  const par=p.tasks.find(x=>x.id===parentId); if(!par) return;
+  const t=newTask(par.gid);
+  t.parentId=parentId;
+  t.company=par.company||"";
+  t.planStart=par.planStart||""; t.planEnd=par.planEnd||"";
+  const i=p.collapsed.indexOf(parentId); if(i>=0) p.collapsed.splice(i,1); // 펼쳐서 보이게
+  p.tasks.push(t); save(); render();
+  openDetail(t.id);
+}
+/* 계층 정렬: 공종(Epic) → 상위 작업(착수일순) → 그 하위 작업(착수일순)
+   _lvl(0/1), _hasKids, _wbs(기-1 / 기-1.1), _gi(그룹 내 순번: 톤 계산) 부여 */
 function sortedTasks(p){
   const gidx={}; (p.groups||[]).forEach((g,i)=>gidx[g.id]=i);
-  const arr=[...p.tasks].sort((a,b)=>{
-    const ga=gidx[a.gid]??999, gb=gidx[b.gid]??999;
-    if(ga!==gb) return ga-gb;
+  const byDate=(a,b)=>{
     const da=a.planStart||"9999", db=b.planStart||"9999";
     if(da!==db) return da<db?-1:1;
     return (a.name||"").localeCompare(b.name||"","ko");
+  };
+  const tops=p.tasks.filter(t=>!t.parentId).sort((a,b)=>{
+    const ga=gidx[a.gid]??999, gb=gidx[b.gid]??999;
+    if(ga!==gb) return ga-gb;
+    return byDate(a,b);
   });
   const codeMap={};
   (p.groups||[]).forEach(g=>codeMap[g.id]=groupCode(g,p.groups));
-  const cnt={};
-  arr.forEach(t=>{
+  const arr=[], cnt={}, giCnt={};
+  tops.forEach(t=>{
     cnt[t.gid]=(cnt[t.gid]||0)+1;
-    t._gi=cnt[t.gid]-1; // 그룹 내 0-base 순번 → 700,600,500… 톤
-    t._wbs=(codeMap[t.gid]||"?")+"-"+cnt[t.gid];
+    giCnt[t.gid]=(giCnt[t.gid]||0)+1;
+    t._lvl=0; t._wbs=(codeMap[t.gid]||"?")+"-"+cnt[t.gid];
+    t._gi=giCnt[t.gid]-1;
+    const kids=childrenOf(p,t.id).sort(byDate);
+    t._hasKids=kids.length>0;
+    arr.push(t);
+    kids.forEach((k,ki)=>{
+      giCnt[t.gid]=(giCnt[t.gid]||0)+1;
+      k._lvl=1; k._hasKids=false;
+      k._wbs=t._wbs+"."+(ki+1);
+      k._gi=giCnt[t.gid]-1;   // 아래로 갈수록 계속 옅어짐
+      arr.push(k);
+    });
   });
   return arr;
 }
@@ -1009,18 +1084,29 @@ function renderTable(){
     if(t.gid!==lastGid){
       lastGid=t.gid;
       const n=arr.filter(x=>x.gid===t.gid).length;
+      const gCol=p.gcol.includes(t.gid);
       html+='<tr class="grp"><td colspan="14" style="color:'+gBase(g)+'">'+
+        '<span class="tgl" onclick="toggleGroupCol(\''+t.gid+'\')" title="'+(gCol?'펼치기':'접기')+'">'+(gCol?'▸':'▾')+'</span>'+
         '■ '+esc(g.name)+' <span class="cnt">('+n+'건'+(g.company?' · '+esc(g.company):'')+')</span></td></tr>';
     }
+    if(p.gcol.includes(t.gid)) return;                            // Epic 접힘
+    if(t._lvl===1 && p.collapsed.includes(t.parentId)) return;    // 상위 작업 접힘
     const s=pd(t.planStart), e=pd(t.planEnd);
     const dur=(s&&e&&e>=s)?(diffD(s,e)+1):"";
     const si=statusIdx(t);
     const att=(t.memo?ICO_MEMO:"")+((t.images&&t.images.length)?" "+ICO_IMG+t.images.length:"");
-    html+='<tr class="'+(si===2?"done":"")+'">'+
+    const tCol=p.collapsed.includes(t.id);
+    const nameCell = t._lvl===1
+      ? '<td class="tname sub"><span class="subhook">└</span><input value="'+esc(t.name)+'" placeholder="하위 작업명" oninput="setField(\''+t.id+'\',\'name\',this.value)"></td>'
+      : '<td class="tname">'+
+          (t._hasKids?'<span class="tgl" onclick="toggleTaskCol(\''+t.id+'\')" title="'+(tCol?'하위 펼치기':'하위 접기')+'">'+(tCol?'▸':'▾')+'</span>':'<span class="tgl-sp"></span>')+
+          '<input value="'+esc(t.name)+'" placeholder="작업명" oninput="setField(\''+t.id+'\',\'name\',this.value)">'+
+          (tCol&&t._hasKids?'<span class="kids-n">+'+childrenOf(p,t.id).length+'</span>':'')+'</td>';
+    html+='<tr class="'+(si===2?"done":"")+(t._lvl===1?" subrow":"")+'">'+
       '<td class="wbs"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:'+taskShade(g,t._gi)+';margin-right:3px"></span>'+t._wbs+'</td>'+
       '<td><select style="color:'+gBase(g)+';font-weight:600" onchange="setField(\''+t.id+'\',\'gid\',this.value)">'+
         (p.groups||[]).map(gg=>'<option value="'+gg.id+'"'+(gg.id===t.gid?" selected":"")+'>'+esc(gg.name)+'</option>').join("")+'</select></td>'+
-      '<td class="tname"><input value="'+esc(t.name)+'" placeholder="작업명" oninput="setField(\''+t.id+'\',\'name\',this.value)"></td>'+
+      nameCell+
       '<td><input value="'+esc(t.company)+'" oninput="setField(\''+t.id+'\',\'company\',this.value)"></td>'+
       '<td><input value="'+esc(t.owner)+'" style="min-width:60px" oninput="setField(\''+t.id+'\',\'owner\',this.value)"></td>'+
       '<td><input type="date" value="'+t.planStart+'" onchange="setField(\''+t.id+'\',\'planStart\',this.value)"></td>'+
@@ -1032,7 +1118,9 @@ function renderTable(){
         STATUSES.map((sName,i)=>i===3?"":'<option value="'+i+'"'+(i===t.status?" selected":"")+'>'+sName+'</option>').join("")+'</select></td>'+
       '<td><input value="'+esc(t.pred)+'" style="min-width:42px" placeholder="-" oninput="setField(\''+t.id+'\',\'pred\',this.value)"></td>'+
       '<td style="text-align:center"><input type="checkbox"'+(t.milestone?" checked":"")+' onchange="setField(\''+t.id+'\',\'milestone\',this.checked)"></td>'+
-      '<td><button class="detail-btn" onclick="openDetail(\''+t.id+'\')">열기</button><span class="att-badge">'+att+'</span></td>'+
+      '<td><button class="detail-btn" onclick="openDetail(\''+t.id+'\')">열기</button>'+
+        (t._lvl===0?'<button class="detail-btn" style="margin-left:3px" title="하위 작업 추가" onclick="addSubTask(\''+t.id+'\')">+하위</button>':'')+
+        '<span class="att-badge">'+att+'</span></td>'+
       '<td class="row-del" onclick="delTask(\''+t.id+'\')" title="삭제">✕</td></tr>';
   });
   html+='</tbody>';
@@ -1112,9 +1200,14 @@ function renderGantt(){
     const g=groupOf(p,t.gid)||{name:"?",color:"grey"};
     if(t.gid!==lastGid){
       lastGid=t.gid;
-      html+='<div class="hrow hgrp"><div class="hname" style="color:'+gBase(g)+'">■ '+esc(g.name)+'</div>'+
+      const gCol=p.gcol.includes(t.gid);
+      html+='<div class="hrow hgrp"><div class="hname" style="color:'+gBase(g)+'">'+
+        '<span class="tgl" onclick="toggleGroupCol(\''+t.gid+'\')">'+(gCol?'▸':'▾')+'</span>'+
+        '■ '+esc(g.name)+'</div>'+
         '<div class="htrack" style="width:'+(total*ppd)+'px"></div></div>';
     }
+    if(p.gcol.includes(t.gid)) return;
+    if(t._lvl===1 && p.collapsed.includes(t.parentId)) return;
     const s=pd(t.planStart), e=pd(t.planEnd);
     const ok = s&&e&&e>=s;
     let barHtml="";
@@ -1135,9 +1228,15 @@ function renderGantt(){
     }
     const meta=[t._wbs, t.company||"", ok?fmtShort(t.planStart)+"~"+fmtShort(t.planEnd):"날짜 미정"].filter(Boolean).join(" · ");
     const att=(t.memo?" "+ICO_MEMO:"")+((t.images&&t.images.length)?" "+ICO_IMG:"");
-    html+='<div class="hrow"><div class="hname">'+
-      '<div class="nm" onclick="openDetail(\''+t.id+'\')">'+esc(t.name||"(무제)")+att+'</div>'+
-      '<div class="meta">'+esc(meta)+'</div></div>'+
+    const tCol=p.collapsed.includes(t.id);
+    const namePad = t._lvl===1 ? 'padding-left:24px' : '';
+    const tglHtml = t._lvl===0
+      ? (t._hasKids?'<span class="tgl" onclick="toggleTaskCol(\''+t.id+'\')">'+(tCol?'▸':'▾')+'</span>':'<span class="tgl-sp"></span>')
+      : '<span class="subhook">└</span>';
+    html+='<div class="hrow'+(t._lvl===1?' subrow':'')+'"><div class="hname" style="'+namePad+'">'+
+      '<div class="nm">'+tglHtml+'<span onclick="openDetail(\''+t.id+'\')">'+esc(t.name||"(무제)")+'</span>'+att+
+      (tCol&&t._hasKids?'<span class="kids-n">+'+childrenOf(p,t.id).length+'</span>':'')+'</div>'+
+      '<div class="meta" style="padding-left:14px">'+esc(meta)+'</div></div>'+
       '<div class="htrack" style="width:'+(total*ppd)+'px">'+barHtml+'</div></div>';
   });
   if(!arr.length) html+='<div class="undated">작업이 없습니다 — “＋ 작업 추가” 또는 새 공사에서 템플릿을 사용하세요.</div>';
@@ -1179,6 +1278,13 @@ function renderDetail(){
     '<div style="grid-column:1/-1"><label>작업명</label><input value="'+esc(t.name)+'" oninput="dSet(\'name\',this.value)"></div>'+
     '<div><label>공종</label><select onchange="dSet(\'gid\',this.value)">'+
       ((activeProj()&&activeProj().groups)||[]).map(g=>'<option value="'+g.id+'"'+(g.id===t.gid?" selected":"")+'>'+esc(g.name)+'</option>').join("")+'</select></div>'+
+    (childrenOf(activeProj(),t.id).length
+      ? '<div><label>상위 작업</label><input value="(하위 작업 '+childrenOf(activeProj(),t.id).length+'건 보유)" disabled style="color:var(--muted)"></div>'
+      : '<div><label>상위 작업 (같은 공종)</label><select onchange="dSet(\'parentId\',this.value)">'+
+          '<option value="">(없음 — 최상위)</option>'+
+          activeProj().tasks.filter(x=>x.gid===t.gid && !x.parentId && x.id!==t.id)
+            .map(x=>'<option value="'+x.id+'"'+(x.id===t.parentId?" selected":"")+'>'+esc(x.name||"(무제)")+'</option>').join("")+
+        '</select></div>')+
     '<div><label>담당업체</label><input value="'+esc(t.company)+'" oninput="dSet(\'company\',this.value)"></div>'+
     '<div><label>담당자 / 연락처</label><input value="'+esc(t.owner)+'" oninput="dSet(\'owner\',this.value)"></div>'+
     '<div><label>선행 작업(코드)</label><input value="'+esc(t.pred)+'" placeholder="예: 기-3" oninput="dSet(\'pred\',this.value)"></div>'+
@@ -1328,13 +1434,14 @@ function importJSON(ev){
 }
 function exportCSV(){
   const p=activeProj(); if(!p){ alert("공사가 없습니다."); return; }
-  const head=["코드","공종","작업명","담당업체","담당자","계획착수","계획완료","기간(일)","실제착수","실제완료","진척률(%)","상태","선행","마일스톤","메모"];
+  const head=["코드","공종","상위작업","작업명","담당업체","담당자","계획착수","계획완료","기간(일)","실제착수","실제완료","진척률(%)","상태","선행","마일스톤","메모"];
   const q=s=>'"'+String(s==null?"":s).replace(/"/g,'""')+'"';
   const rows=[head.map(q).join(",")];
   sortedTasks(p).forEach(t=>{
     const s=pd(t.planStart),e=pd(t.planEnd);
     const g=groupOf(p,t.gid);
-    rows.push([t._wbs,(g?g.name:""),t.name,t.company,t.owner,t.planStart,t.planEnd,
+    const par=t.parentId ? p.tasks.find(x=>x.id===t.parentId) : null;
+    rows.push([t._wbs,(g?g.name:""),(par?par.name:""),t.name,t.company,t.owner,t.planStart,t.planEnd,
       (s&&e&&e>=s)?diffD(s,e)+1:"",t.actStart||"",t.actEnd||"",t.progress||0,
       STATUSES[statusIdx(t)],t.pred,t.milestone?"◆":"",t.memo].map(q).join(","));
   });

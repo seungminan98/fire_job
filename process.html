@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<style>html{visibility:hidden}</style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>업무 표준 매뉴얼 · 프로세스 플로우</title>
+<style>
+  :root{
+    --bg:#ffffff; --ink:#1a1a1a; --muted:#6b6b6b; --line:#e2e2e2;
+    --line-strong:#c9c9c9; --soft:#f7f7f7; --softer:#fafafa;
+    --ok:#2f6f4f; --ok-bg:#e8f3ed; --warn:#8a6d1a; --warn-bg:#f6efd9; --over:#9a3434; --over-bg:#f6e4e4;
+    --dec:#7b1fa2;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1250px;margin:0 auto;padding:18px 18px 60px}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+    border-bottom:1.5px solid var(--ink);padding-bottom:10px;margin-bottom:14px}
+  h1{font-size:17px;font-weight:650;letter-spacing:-.01em;margin:0}
+  .sub{color:var(--muted);font-size:12px}
+  .sub a{color:var(--muted)}
+  .saved-flag{font-size:11px;color:var(--ok)}
+
+  .card{border:1px solid var(--line);border-radius:7px;margin-bottom:14px;overflow:hidden}
+  .card-h{display:flex;align-items:center;gap:8px;padding:9px 13px;background:var(--soft);
+    border-bottom:1px solid var(--line);font-size:13px;font-weight:600;flex-wrap:wrap}
+  .card-h .spacer{flex:1}
+  .card-b{padding:12px 13px}
+  .card-b.flush{padding:0}
+  button.btn{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line-strong);
+    color:var(--ink);padding:6px 11px;border-radius:5px;font-size:12px;cursor:pointer;font-family:inherit}
+  button.btn:hover{background:var(--soft)}
+  button.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  button.btn.primary:hover{background:#000}
+  button.btn.sm{padding:3px 8px;font-size:11px}
+  button.btn.danger{color:var(--over);border-color:var(--over)}
+  button.btn svg{width:13px;height:13px;flex:none}
+  .toolbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  select.big{border:1px solid var(--line-strong);border-radius:5px;padding:5px 8px;font-family:inherit;
+    font-size:12.5px;font-weight:600;max-width:280px}
+  .file-in{display:none}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:9px;line-height:1.6}
+  .hint code{background:var(--soft);padding:1px 5px;border-radius:3px;font-size:11px}
+
+  /* 단계 편집 표 */
+  table{border-collapse:collapse;width:100%;font-size:12px}
+  th,td{border:1px solid var(--line);padding:4px 7px;text-align:left;vertical-align:top}
+  th{background:var(--soft);font-weight:600;white-space:nowrap;color:#333}
+  td input,td select,td textarea{width:100%;border:none;background:transparent;font-family:inherit;
+    font-size:12px;color:var(--ink);padding:2px 0}
+  td input:focus,td select:focus,td textarea:focus{outline:1.5px solid var(--ink);outline-offset:1px;border-radius:3px;background:#fff}
+  td.no{width:34px;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums;vertical-align:middle}
+  tr.selrow td{background:#fdf6df}
+  select.st-start,select.st-end{color:var(--muted);font-weight:600}
+  select.st-task{color:var(--ink);font-weight:600}
+  select.st-decision{color:var(--dec);font-weight:600}
+  .mv{cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:4px;
+    padding:2px 5px;font-size:10px;color:var(--muted);font-family:inherit}
+  .mv:hover{color:var(--ink);border-color:var(--line-strong)}
+  .mv:disabled{opacity:.3;cursor:default}
+  .row-del{cursor:pointer;color:var(--muted);width:24px;text-align:center;vertical-align:middle}
+  .row-del:hover{color:var(--over)}
+  .br-list{display:flex;flex-direction:column;gap:3px}
+  .br-row{display:flex;gap:4px;align-items:center}
+  .br-row input{flex:0 0 84px;border:1px solid var(--line);border-radius:3px;padding:2px 5px;font-size:11px}
+  .br-row select{flex:1;border:1px solid var(--line);border-radius:3px;padding:2px 4px;font-size:11px;min-width:0}
+  .br-row .rm{cursor:pointer;border:none;background:none;color:var(--muted);font-size:12px;padding:0 2px}
+  .br-row .rm:hover{color:var(--over)}
+  .br-add{align-self:flex-start;font-size:10.5px;border:1px dashed var(--line-strong);background:none;
+    border-radius:4px;padding:2px 7px;cursor:pointer;color:var(--muted);font-family:inherit}
+  .br-add:hover{color:var(--ink)}
+  .next-sel{border:1px solid var(--line)!important;border-radius:3px!important;padding:2px 4px!important;font-size:11px!important}
+
+  /* 플로우차트 */
+  .flow-scroll{overflow-x:auto;padding:10px 0}
+  .flow-node{cursor:pointer}
+  .flow-node:hover .nd{stroke:var(--ink);stroke-width:2}
+  .doc-desc{font-size:12px;color:var(--muted);margin-bottom:8px;white-space:pre-wrap}
+
+  /* 매뉴얼 본문(인쇄 겸용) */
+  .man-step{display:flex;gap:10px;padding:8px 4px;border-bottom:1px solid var(--line);font-size:12.5px}
+  .man-step .n{flex:none;width:26px;height:26px;border-radius:50%;background:var(--ink);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600}
+  .man-step .n.dec{background:var(--dec)}
+  .man-step .n.se{background:#fff;color:var(--muted);border:1.5px solid var(--line-strong)}
+  .man-step .bd{min-width:0}
+  .man-step .t{font-weight:650}
+  .man-step .d{color:#444;white-space:pre-wrap}
+  .man-step .m{color:var(--muted);font-size:11px;margin-top:2px}
+  .man-step .m b{color:var(--dec);font-weight:600}
+
+  footer{margin-top:26px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);
+    font-size:11.5px;line-height:1.7}
+
+  @media print{
+    #authGate{display:none!important}
+    html{visibility:visible!important}
+    header .sub a, .toolbar, .card-h .spacer ~ *, #editCard, footer, #saveState{display:none!important}
+    .card{border:none;page-break-inside:avoid}
+    .card-h{background:none;border-bottom:1.5px solid var(--ink)}
+    body{font-size:12px}
+  }
+</style>
+</head>
+<body>
+<!-- ── 접속 인증 게이트 (공통) ────────────────────────────────
+  주의: 프론트엔드 전용 간이 잠금입니다. 소스에는 비밀번호의 SHA-256 해시만 있지만,
+  코드를 아는 사람이 우회할 수 있으므로 기밀 데이터 보호 용도로는 백엔드 인증이 필요합니다. -->
+<div id="authGate" style="position:fixed;inset:0;z-index:9999;background:#f7f7f7;display:flex;
+  align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border:1px solid #c9c9c9;border-radius:10px;padding:30px 28px;
+    width:100%;max-width:360px;box-shadow:0 8px 30px rgba(0,0,0,.1);text-align:center">
+    <svg width="34" height="34" viewBox="0 0 16 16" fill="none" stroke="#1a1a1a" stroke-width="1.3" style="margin-bottom:8px"><rect x="3" y="7" width="10" height="6.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
+    <div style="font-size:15px;font-weight:650;margin-bottom:4px">소방공사 일정 관리</div>
+    <div style="font-size:12px;color:#6b6b6b;margin-bottom:16px">접속 암호를 입력하세요</div>
+    <input type="text" id="authPw" autocomplete="off" autocapitalize="off" autocorrect="off"
+      spellcheck="false" placeholder="암호"
+      style="width:100%;border:1px solid #c9c9c9;border-radius:6px;padding:9px 11px;
+      font-family:inherit;font-size:14px;text-align:center;box-sizing:border-box">
+    <div id="authErr" style="font-size:11.5px;color:#9a3434;min-height:17px;margin-top:6px"></div>
+    <button id="authBtn" style="width:100%;background:#1a1a1a;color:#fff;border:none;border-radius:6px;
+      padding:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:2px">열기</button>
+    <label style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#6b6b6b;margin-top:12px;cursor:pointer">
+      <input type="checkbox" id="authKeep"> 이 브라우저에서 로그인 유지
+    </label>
+  </div>
+</div>
+<script>
+(function(){
+  var HASH="420b78ec6f83cb93315497071fb79d65637187537b50ecd5c36cfc17d889da74"; // SHA-256
+  var FB="74d63e48-18"; // crypto.subtle 불가 환경용 보조 해시
+  var gate=document.getElementById("authGate");
+  function authed(){ try{ return sessionStorage.getItem("fireAuth")==="1"||localStorage.getItem("fireAuth.keep")==="1"; }catch(e){ return false; } }
+  function unlock(){ gate.parentNode.removeChild(gate); document.documentElement.style.visibility="visible"; }
+  if(authed()){ unlock(); return; }
+  document.documentElement.style.visibility="visible";  // 게이트만 보이게 (아래 컨텐츠는 게이트가 가림)
+  function djb2(s){ var h=5381,b=new TextEncoder().encode(s); for(var i=0;i<b.length;i++){ h=((h*33)^b[i])>>>0; } return h.toString(16)+"-"+b.length; }
+  function sha256(s){
+    if(window.crypto&&crypto.subtle&&window.isSecureContext!==false){
+      return crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)).then(function(buf){
+        return Array.from(new Uint8Array(buf)).map(function(x){return x.toString(16).padStart(2,"0");}).join("");
+      });
+    }
+    return Promise.resolve(null);
+  }
+  /* 한글 IME가 막힌 환경(윈도우 password 입력칸 등)에서 자모가 낱자로 들어온 경우 음절로 조합 */
+  function composeJamo(s){
+    var CHO="\u3131\u3132\u3134\u3137\u3138\u3139\u3141\u3142\u3143\u3145\u3146\u3147\u3148\u3149\u314a\u314b\u314c\u314d\u314e";
+    var JUNG="\u314f\u3150\u3151\u3152\u3153\u3154\u3155\u3156\u3157\u3158\u3159\u315a\u315b\u315c\u315d\u315e\u315f\u3160\u3161\u3162\u3163";
+    var JONG="\u3131\u3132\u3133\u3134\u3135\u3136\u3137\u3139\u313a\u313b\u313c\u313d\u313e\u313f\u3140\u3141\u3142\u3144\u3145\u3146\u3147\u3148\u314a\u314b\u314c\u314d\u314e";
+    var VC={"\u3157\u314f":"\u3158","\u3157\u3150":"\u3159","\u3157\u3163":"\u315a","\u315c\u3153":"\u315d","\u315c\u3154":"\u315e","\u315c\u3163":"\u315f","\u3161\u3163":"\u3162"};
+    var JC={"\u3131\u3145":"\u3133","\u3134\u3148":"\u3135","\u3134\u314e":"\u3136","\u3139\u3131":"\u313a","\u3139\u3141":"\u313b","\u3139\u3142":"\u313c","\u3139\u3145":"\u313d","\u3139\u314c":"\u313e","\u3139\u314d":"\u313f","\u3139\u314e":"\u3140","\u3142\u3145":"\u3144"};
+    var JSPLIT={}; for(var k in JC){ JSPLIT[JC[k]]=k; }
+    var out="", cho=null, jung=null, jong=null;
+    function syl(){ return String.fromCharCode(0xAC00 + CHO.indexOf(cho)*588 + JUNG.indexOf(jung)*28 + (jong?JONG.indexOf(jong)+1:0)); }
+    function flush(){ if(cho&&jung){ out+=syl(); } else { if(cho)out+=cho; if(jung)out+=jung; } cho=jung=jong=null; }
+    for(var i=0;i<s.length;i++){
+      var c=s[i];
+      if(JUNG.indexOf(c)>=0){
+        if(cho&&jung&&jong){ var mv;
+          if(JSPLIT[jong]){ mv=JSPLIT[jong][1]; jong=JSPLIT[jong][0]; } else { mv=jong; jong=null; }
+          flush(); cho=mv; jung=c;
+        }else if(cho&&jung){ var vc=VC[jung+c];
+          if(vc){ jung=vc; } else { flush(); out+=c; }
+        }else if(cho){ jung=c; }
+        else { flush(); out+=c; }
+      }else if(CHO.indexOf(c)>=0||JONG.indexOf(c)>=0){
+        if(cho&&jung){
+          if(!jong&&JONG.indexOf(c)>=0){ jong=c; }
+          else if(jong&&JC[jong+c]){ jong=JC[jong+c]; }
+          else { flush(); cho=c; }
+        }else if(cho){ flush(); cho=c; }
+        else { cho=c; }
+      }else{ flush(); out+=c; }
+    }
+    flush();
+    return out;
+  }
+  function tryOpen(){
+    var raw=(document.getElementById("authPw").value||"").trim();
+    if(!raw) return;
+    var nfc=raw.normalize?raw.normalize("NFC"):raw;
+    var cands=[raw]; if(cands.indexOf(nfc)<0)cands.push(nfc);
+    var comp=composeJamo(nfc); if(cands.indexOf(comp)<0)cands.push(comp);
+    Promise.all(cands.map(sha256)).then(function(hs){
+      var ok=false;
+      for(var i=0;i<cands.length;i++){
+        if(hs[i] ? (hs[i]===HASH) : (djb2(cands[i])===FB)){ ok=true; break; }
+      }
+      if(ok){
+        try{
+          sessionStorage.setItem("fireAuth","1");
+          if(document.getElementById("authKeep").checked) localStorage.setItem("fireAuth.keep","1");
+        }catch(e){}
+        unlock();
+      }else{
+        var err=document.getElementById("authErr");
+        err.textContent="암호가 올바르지 않습니다";
+        document.getElementById("authPw").value="";
+        document.getElementById("authPw").focus();
+      }
+    });
+  }
+  document.getElementById("authBtn").addEventListener("click",tryOpen);
+  document.getElementById("authPw").addEventListener("keydown",function(e){ if(e.key==="Enter") tryOpen(); });
+  setTimeout(function(){ document.getElementById("authPw").focus(); },50);
+})();
+</script>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>업무 표준 매뉴얼 <span style="font-weight:400;color:var(--muted)">— 프로세스 플로우</span></h1>
+      <div class="sub">"이걸 하고 나면 이걸 하고, 조건이 이러면 저리로" — 단계·조건 분기를 입력하면 플로우차트가 자동으로 그려집니다</div>
+    </div>
+    <div style="text-align:right">
+      <div class="sub"><a href="index.html">전체 일정</a> · <a href="hookup.html">훅업 공정표</a> · <a href="bridge.html">AI 밀어넣기</a></div>
+      <div class="sub" id="saveState"></div>
+    </div>
+  </header>
+
+  <div id="storageWarn" style="display:none;margin-bottom:14px;padding:10px 13px;border-radius:7px;
+    background:var(--over-bg);border:1px solid var(--over);color:var(--over);font-size:12px;line-height:1.6">
+    <svg style="width:13px;height:13px;vertical-align:-2px;margin-right:2px" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2.5 14.5 13.5H1.5Z" stroke-linejoin="round"/><path d="M8 6.5v3.2M8 12.2v.01" stroke-linecap="round"/></svg>
+    <b>이 환경에서는 자동 저장이 작동하지 않습니다.</b> 작업 후 JSON 백업으로 보관하세요.
+  </div>
+
+  <!-- 매뉴얼 선택 -->
+  <div class="card">
+    <div class="card-h">
+      매뉴얼 선택
+      <select class="big" id="docSel" onchange="switchDoc(this.value)"></select>
+      <button class="btn sm" onclick="renameDoc()">이름변경</button>
+      <button class="btn sm" onclick="editDesc()">설명</button>
+      <button class="btn sm danger" onclick="deleteDoc()">삭제</button>
+      <div class="spacer"></div>
+      <div class="toolbar">
+        <button class="btn primary" onclick="newDoc()">+ 새 매뉴얼</button>
+        <button class="btn" onclick="window.print()">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4.5 6V2.5h7V6"/><rect x="2" y="6" width="12" height="6" rx="1"/><rect x="4.5" y="9.5" width="7" height="4"/></svg>인쇄</button>
+        <button class="btn" onclick="exportJSON()">JSON 백업</button>
+        <button class="btn" onclick="document.getElementById('jsonIn').click()">JSON 불러오기</button>
+        <input type="file" id="jsonIn" class="file-in" accept=".json" onchange="importJSON(event)">
+      </div>
+    </div>
+  </div>
+
+  <!-- 플로우차트 -->
+  <div class="card" id="flowCard">
+    <div class="card-h">프로세스 플로우차트 <span class="sub" id="flowTitle"></span></div>
+    <div class="card-b">
+      <div class="doc-desc" id="docDesc"></div>
+      <div class="flow-scroll" id="flowArea"></div>
+      <div class="hint">사각형=작업 · 마름모=조건 판단(분기별 화살표에 라벨) · 노드를 클릭하면 아래 편집 표의 해당 행이 강조됩니다.</div>
+    </div>
+  </div>
+
+  <!-- 단계 편집 -->
+  <div class="card" id="editCard">
+    <div class="card-h">
+      단계 편집
+      <div class="spacer"></div>
+      <button class="btn primary" onclick="addStep()">+ 단계 추가</button>
+    </div>
+    <div class="card-b flush">
+      <div style="overflow-x:auto"><table id="stepTable"></table></div>
+    </div>
+  </div>
+  <div class="hint" style="margin-top:-6px">
+    <b>다음 단계</b>를 비워두면 표의 바로 아래 단계로 이어집니다. <b>판단</b> 유형은 분기(예/아니오 등)마다
+    라벨과 이동할 단계를 정합니다 — 앞 단계로 되돌아가는 분기(재작업 루프)도 가능합니다.
+  </div>
+
+  <!-- 매뉴얼 본문 (인쇄 포함) -->
+  <div class="card" id="manCard">
+    <div class="card-h">매뉴얼 본문 (단계 상세)</div>
+    <div class="card-b" id="manBody"></div>
+  </div>
+
+  <footer>
+    데이터는 이 브라우저(localStorage)에 자동 저장됩니다. 다른 사람과 공유하려면 JSON 백업을 전달하거나
+    인쇄(PDF 저장)를 사용하세요. 인쇄 시 플로우차트와 매뉴얼 본문만 출력됩니다.
+  </footer>
+</div>
+
+<script>
+/* ══════════════ 상수/상태 ══════════════ */
+const LS_KEY="fireProcess.v1";
+const TYPES=[["start","시작"],["task","작업"],["decision","판단"],["end","종료"]];
+const TYPE_LABEL={start:"시작",task:"작업",decision:"판단",end:"종료"};
+let state={docs:[],activeId:null};
+let canStore=true, saveTimer=null, selStepId=null;
+
+function uid(){ return Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function activeDoc(){ return state.docs.find(d=>d.id===state.activeId)||null; }
+function newStep(type){ return {id:uid(),type:type||"task",title:"",desc:"",owner:"",next:"",branches:[]}; }
+
+function detectStorage(){
+  try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); canStore=true; }
+  catch(e){ canStore=false; document.getElementById("storageWarn").style.display="block"; }
+}
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{
+    if(!canStore){ flag("저장 불가 환경"); return; }
+    try{ localStorage.setItem(LS_KEY,JSON.stringify(state)); flag("저장됨"); }
+    catch(e){ flag("주의: 저장 실패"); }
+  },250);
+}
+function flag(m){ document.getElementById("saveState").innerHTML='<span class="saved-flag">'+esc(m)+'</span>'; }
+function load(){
+  if(!canStore) return;
+  try{
+    const raw=localStorage.getItem(LS_KEY);
+    if(raw){ const s=JSON.parse(raw); if(s&&Array.isArray(s.docs)) state=s; }
+  }catch(e){}
+}
+
+/* ══════════════ 예시 템플릿 ══════════════ */
+function sampleDoc(){
+  const ids=Array.from({length:10},()=>uid());
+  return { id:uid(), name:"소방공사 착공-완공 표준 프로세스(예시)",
+    desc:"소방시설공사 착공신고부터 완공검사증명서 발급까지의 표준 업무 흐름 예시입니다. 자유롭게 수정하세요.",
+    steps:[
+      {id:ids[0],type:"start",title:"공사 수주",desc:"",owner:"",next:"",branches:[]},
+      {id:ids[1],type:"task",title:"착공신고 서류 작성",desc:"설계도서·시공자 자격·감리자 지정 서류 준비",owner:"공무",next:"",branches:[]},
+      {id:ids[2],type:"task",title:"관할 소방서 접수",desc:"소방시설공사 착공신고 제출",owner:"공무",next:"",branches:[]},
+      {id:ids[3],type:"decision",title:"보완 요구?",desc:"소방서 검토 결과 서류 보완 지시 여부",owner:"",next:"",
+        branches:[{label:"보완 필요",to:ids[1]},{label:"수리",to:ids[4]}]},
+      {id:ids[4],type:"task",title:"시공 개시",desc:"착공신고 수리 후 시공. 은폐 전 감리 검측 필수",owner:"현장",next:"",branches:[]},
+      {id:ids[5],type:"task",title:"수압·연동시험",desc:"배관 수압시험, 자탐 연동시험, 성능시험 입회",owner:"현장/감리",next:"",branches:[]},
+      {id:ids[6],type:"task",title:"완공검사 신청",desc:"감리결과보고서 첨부하여 관할 소방서 신청",owner:"공무",next:"",branches:[]},
+      {id:ids[7],type:"decision",title:"현장확인 지적?",desc:"소방서 현장확인 결과",owner:"",next:"",
+        branches:[{label:"지적사항",to:ids[8]},{label:"적합",to:ids[9]}]},
+      {id:ids[8],type:"task",title:"지적사항 보완",desc:"보완 시공 후 재확인 요청",owner:"현장",next:ids[7],branches:[]},
+      {id:ids[9],type:"end",title:"완공검사증명서 발급",desc:"",owner:"",next:"",branches:[]}
+    ]};
+}
+
+/* ══════════════ 매뉴얼 관리 ══════════════ */
+function newDoc(){
+  const name=prompt("새 매뉴얼 이름","");
+  if(name==null) return;
+  let d;
+  if(confirm("예시 프로세스(소방공사 착공-완공 흐름)로 시작할까요?\n(취소 = 빈 매뉴얼)")){
+    d=sampleDoc(); if(name.trim()) d.name=name.trim();
+  }else{
+    d={id:uid(),name:name.trim()||"새 매뉴얼",desc:"",steps:[
+      {id:uid(),type:"start",title:"시작",desc:"",owner:"",next:"",branches:[]},
+      newStep("task"),
+      {id:uid(),type:"end",title:"종료",desc:"",owner:"",next:"",branches:[]}
+    ]};
+  }
+  state.docs.push(d); state.activeId=d.id;
+  save(); render();
+}
+function switchDoc(id){ state.activeId=id; selStepId=null; save(); render(); }
+function renameDoc(){
+  const d=activeDoc(); if(!d) return;
+  const n=prompt("매뉴얼 이름",d.name);
+  if(n&&n.trim()){ d.name=n.trim(); save(); render(); }
+}
+function editDesc(){
+  const d=activeDoc(); if(!d) return;
+  const n=prompt("매뉴얼 설명(머리말)",d.desc||"");
+  if(n!=null){ d.desc=n; save(); render(); }
+}
+function deleteDoc(){
+  const d=activeDoc(); if(!d) return;
+  if(!confirm('매뉴얼 "'+d.name+'" 을 삭제할까요?')) return;
+  state.docs=state.docs.filter(x=>x.id!==d.id);
+  state.activeId=state.docs.length?state.docs[0].id:null;
+  save(); render();
+}
+
+/* ══════════════ 단계 편집 ══════════════ */
+function addStep(){
+  const d=activeDoc();
+  if(!d){ alert("먼저 '새 매뉴얼'을 만들어 주세요."); return; }
+  // 종료 단계가 마지막이면 그 앞에 삽입
+  const endIdx=d.steps.length && d.steps[d.steps.length-1].type==="end" ? d.steps.length-1 : d.steps.length;
+  d.steps.splice(endIdx,0,newStep("task"));
+  save(); render();
+}
+function insStep(i){
+  const d=activeDoc(); if(!d) return;
+  d.steps.splice(i+1,0,newStep("task"));
+  save(); render();
+}
+function delStep(i){
+  const d=activeDoc(); if(!d) return;
+  const s=d.steps[i];
+  if(!confirm('단계 "'+(s.title||"(무제)")+'" 삭제?')) return;
+  d.steps.splice(i,1);
+  // 이 단계를 가리키던 참조 정리
+  d.steps.forEach(x=>{
+    if(x.next===s.id) x.next="";
+    (x.branches||[]).forEach(b=>{ if(b.to===s.id) b.to=""; });
+  });
+  save(); render();
+}
+function mvStep(i,dir){
+  const d=activeDoc(); const j=i+dir;
+  if(!d||j<0||j>=d.steps.length) return;
+  [d.steps[i],d.steps[j]]=[d.steps[j],d.steps[i]];
+  save(); render();
+}
+function setStep(i,f,v){
+  const d=activeDoc(); if(!d||!d.steps[i]) return;
+  const s=d.steps[i];
+  if(f==="type"){
+    s.type=v;
+    if(v==="decision"&&!(s.branches||[]).length) s.branches=[{label:"예",to:""},{label:"아니오",to:""}];
+    render(); save(); return;
+  }
+  s[f]=v; save();
+  if(f==="title") renderFlow(), renderMan();
+  if(f==="next") renderFlow(), renderMan();
+}
+function brSet(i,bi,f,v){
+  const d=activeDoc(); if(!d) return;
+  const b=d.steps[i].branches[bi]; if(!b) return;
+  b[f]=v; save(); renderFlow(); renderMan();
+}
+function brAdd(i){
+  const d=activeDoc(); if(!d) return;
+  (d.steps[i].branches=d.steps[i].branches||[]).push({label:"",to:""});
+  save(); render();
+}
+function brDel(i,bi){
+  const d=activeDoc(); if(!d) return;
+  d.steps[i].branches.splice(bi,1);
+  save(); render();
+}
+function selectStep(id){
+  selStepId=id;
+  renderTable();
+  const row=document.querySelector('tr[data-sid="'+id+'"]');
+  if(row) row.scrollIntoView({block:"center",behavior:"smooth"});
+}
+
+/* ══════════════ 렌더 ══════════════ */
+function render(){ renderDocSel(); renderTable(); renderFlow(); renderMan(); }
+function renderDocSel(){
+  document.getElementById("docSel").innerHTML =
+    state.docs.map(d=>'<option value="'+d.id+'"'+(d.id===state.activeId?" selected":"")+'>'+esc(d.name)+'</option>').join("")
+    || '<option value="">— 매뉴얼 없음 (+ 새 매뉴얼) —</option>';
+}
+function stepOptions(d,selfId,cur){
+  return '<option value="">(바로 아래 단계로)</option>'+
+    d.steps.filter(s=>s.id!==selfId).map((s,)=>{
+      const n=d.steps.indexOf(s)+1;
+      return '<option value="'+s.id+'"'+(s.id===cur?" selected":"")+'>'+n+'. '+esc(s.title||"(무제)")+'</option>';
+    }).join("");
+}
+function renderTable(){
+  const tbl=document.getElementById("stepTable");
+  const d=activeDoc();
+  if(!d){ tbl.innerHTML='<tbody><tr><td style="padding:14px;color:var(--muted)">매뉴얼을 먼저 만들어 주세요.</td></tr></tbody>'; return; }
+  let html='<thead><tr><th>#</th><th>유형</th><th style="min-width:150px">제목</th><th style="min-width:200px">내용 / 기준</th>'+
+    '<th>담당</th><th style="min-width:180px">다음 단계 / 분기</th><th></th><th></th><th></th></tr></thead><tbody>';
+  d.steps.forEach((s,i)=>{
+    let nextCell;
+    if(s.type==="decision"){
+      nextCell='<div class="br-list">'+
+        (s.branches||[]).map((b,bi)=>
+          '<div class="br-row">'+
+            '<input value="'+esc(b.label)+'" placeholder="조건 라벨" oninput="brSet('+i+','+bi+',\'label\',this.value)">'+
+            '<select onchange="brSet('+i+','+bi+',\'to\',this.value)">'+stepOptions(d,s.id,b.to)+'</select>'+
+            '<button class="rm" title="분기 삭제" onclick="brDel('+i+','+bi+')">✕</button>'+
+          '</div>').join("")+
+        '<button class="br-add" onclick="brAdd('+i+')">+ 분기 추가</button></div>';
+    }else if(s.type==="end"){
+      nextCell='<span style="color:var(--muted);font-size:11px">(프로세스 종료)</span>';
+    }else{
+      nextCell='<select class="next-sel" onchange="setStep('+i+',\'next\',this.value)">'+stepOptions(d,s.id,s.next)+'</select>';
+    }
+    html+='<tr data-sid="'+s.id+'"'+(s.id===selStepId?' class="selrow"':'')+'>'+
+      '<td class="no">'+(i+1)+'</td>'+
+      '<td style="width:70px"><select class="st-'+s.type+'" onchange="setStep('+i+',\'type\',this.value)">'+
+        TYPES.map(([v,l])=>'<option value="'+v+'"'+(v===s.type?" selected":"")+'>'+l+'</option>').join("")+'</select></td>'+
+      '<td><input value="'+esc(s.title)+'" placeholder="'+(s.type==="decision"?"판단 질문 (예: 보완 요구?)":"단계 제목")+'" oninput="setStep('+i+',\'title\',this.value)"></td>'+
+      '<td><input value="'+esc(s.desc)+'" placeholder="상세 내용, 기준, 참고" oninput="setStep('+i+',\'desc\',this.value)"></td>'+
+      '<td style="width:80px"><input value="'+esc(s.owner)+'" placeholder="-" oninput="setStep('+i+',\'owner\',this.value)"></td>'+
+      '<td>'+nextCell+'</td>'+
+      '<td style="width:52px;white-space:nowrap;vertical-align:middle">'+
+        '<button class="mv" '+(i===0?'disabled':'')+' onclick="mvStep('+i+',-1)">▲</button>'+
+        '<button class="mv" '+(i===d.steps.length-1?'disabled':'')+' onclick="mvStep('+i+',1)">▼</button></td>'+
+      '<td style="width:40px;vertical-align:middle"><button class="mv" title="아래에 삽입" onclick="insStep('+i+')">+삽입</button></td>'+
+      '<td class="row-del" onclick="delStep('+i+')" title="삭제">✕</td></tr>';
+  });
+  tbl.innerHTML=html+'</tbody>';
+}
+
+/* ══════════════ 플로우차트 (SVG) ══════════════ */
+function renderFlow(){
+  const area=document.getElementById("flowArea");
+  const d=activeDoc();
+  document.getElementById("flowTitle").textContent = d? "— "+d.name : "";
+  document.getElementById("docDesc").textContent = d? (d.desc||"") : "";
+  if(!d||!d.steps.length){ area.innerHTML='<div style="color:var(--muted);font-size:12px;padding:10px">단계를 추가하면 플로우차트가 그려집니다.</div>'; return; }
+
+  const CX=430, TW=280, DW=210, VGAP=42;
+  const idxOf={}; d.steps.forEach((s,i)=>idxOf[s.id]=i);
+  // 노드 배치
+  const nodes=d.steps.map((s,i)=>{
+    const h = s.type==="decision"?66 : (s.type==="start"||s.type==="end")?36 : (s.desc?52:40);
+    return {s,i,h,w:s.type==="decision"?DW:(s.type==="task"?TW:170)};
+  });
+  let y=8;
+  nodes.forEach(n=>{ n.y=y; y+=n.h+VGAP; });
+  const H=y+8;
+
+  // 엣지 수집: {from,to,label}
+  const edges=[];
+  nodes.forEach(n=>{
+    const s=n.s;
+    if(s.type==="end") return;
+    if(s.type==="decision"){
+      const brs=(s.branches||[]).length?(s.branches):[{label:"",to:""}];
+      brs.forEach(b=>{
+        const ti = b.to? idxOf[b.to] : n.i+1;
+        if(ti==null||ti>=nodes.length) return;
+        edges.push({from:n.i,to:ti,label:b.label||""});
+      });
+    }else{
+      const ti = s.next? idxOf[s.next] : n.i+1;
+      if(ti==null||ti>=nodes.length) return;
+      edges.push({from:n.i,to:ti,label:""});
+    }
+  });
+
+  // 그리기
+  let svg='';
+  let rLane=0,lLane=0;
+  edges.forEach(e=>{
+    const a=nodes[e.from], b=nodes[e.to];
+    const aBot=a.y+a.h, bTop=b.y;
+    if(e.to===e.from+1){ // 바로 아래
+      svg+='<line x1="'+CX+'" y1="'+aBot+'" x2="'+CX+'" y2="'+(bTop-6)+'" stroke="#888" stroke-width="1.4" marker-end="url(#arr)"/>';
+      if(e.label) svg+='<text x="'+(CX+8)+'" y="'+(aBot+(bTop-aBot)/2+3)+'" font-size="10.5" fill="#7b1fa2" font-weight="600">'+esc(e.label)+'</text>';
+    }else if(e.to>e.from){ // 앞으로 점프: 오른쪽 레인
+      rLane++;
+      const lx=CX+Math.max(TW,DW)/2+26+rLane*20;
+      const sy=a.y+a.h/2, ey=bTop-10;
+      svg+='<polyline fill="none" stroke="#888" stroke-width="1.4" marker-end="url(#arr)" points="'+
+        (CX+a.w/2)+','+sy+' '+lx+','+sy+' '+lx+','+ey+' '+CX+','+ey+' '+CX+','+(bTop-6)+'"/>';
+      if(e.label) svg+='<text x="'+(CX+a.w/2+6)+'" y="'+(sy-5)+'" font-size="10.5" fill="#7b1fa2" font-weight="600">'+esc(e.label)+'</text>';
+    }else{ // 되돌아가기(루프): 왼쪽 레인
+      lLane++;
+      const lx=CX-Math.max(TW,DW)/2-26-lLane*20;
+      const sy=a.y+a.h/2, ey=bTop-10;
+      svg+='<polyline fill="none" stroke="#b06060" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#arrR)" points="'+
+        (CX-a.w/2)+','+sy+' '+lx+','+sy+' '+lx+','+ey+' '+CX+','+ey+' '+CX+','+(bTop-6)+'"/>';
+      if(e.label) svg+='<text x="'+(CX-a.w/2-6)+'" y="'+(sy-5)+'" font-size="10.5" fill="#b06060" font-weight="600" text-anchor="end">'+esc(e.label)+'</text>';
+    }
+  });
+  // 노드
+  nodes.forEach(n=>{
+    const s=n.s, cy=n.y+n.h/2;
+    const click=' onclick="selectStep(\''+s.id+'\')"';
+    if(s.type==="decision"){
+      const w=n.w/2,h=n.h/2;
+      svg+='<g class="flow-node"'+click+'><polygon class="nd" points="'+CX+','+n.y+' '+(CX+w)+','+cy+' '+CX+','+(n.y+n.h)+' '+(CX-w)+','+cy+
+        '" fill="#f6effa" stroke="#7b1fa2" stroke-width="1.4"/>'+
+        '<text x="'+CX+'" y="'+(cy+4)+'" text-anchor="middle" font-size="12" font-weight="650" fill="#4a1266">'+esc(clip(s.title||"(판단)",16))+'</text></g>';
+    }else if(s.type==="start"||s.type==="end"){
+      svg+='<g class="flow-node"'+click+'><rect class="nd" x="'+(CX-n.w/2)+'" y="'+n.y+'" width="'+n.w+'" height="'+n.h+'" rx="18" fill="'+(s.type==="start"?"#fff":"#1a1a1a")+'" stroke="#1a1a1a" stroke-width="1.4"/>'+
+        '<text x="'+CX+'" y="'+(cy+4)+'" text-anchor="middle" font-size="12" font-weight="650" fill="'+(s.type==="start"?"#1a1a1a":"#fff")+'">'+esc(clip(s.title||TYPE_LABEL[s.type],18))+'</text></g>';
+    }else{
+      svg+='<g class="flow-node"'+click+'><rect class="nd" x="'+(CX-n.w/2)+'" y="'+n.y+'" width="'+n.w+'" height="'+n.h+'" rx="5" fill="#fff" stroke="#555" stroke-width="1.4"/>'+
+        '<text x="'+CX+'" y="'+(n.y+(s.desc?20:n.h/2+4))+'" text-anchor="middle" font-size="12" font-weight="650">'+esc(clip((n.i+1)+". "+(s.title||"(무제)"),24))+'</text>'+
+        (s.desc?'<text x="'+CX+'" y="'+(n.y+37)+'" text-anchor="middle" font-size="10" fill="#6b6b6b">'+esc(clip(s.desc,32))+'</text>':'')+'</g>';
+    }
+    if(s.owner&&s.type!=="decision")
+      svg+='<text x="'+(CX+n.w/2+8)+'" y="'+(cy+3)+'" font-size="10" fill="#6b6b6b">'+esc(s.owner)+'</text>';
+  });
+  area.innerHTML='<svg width="880" height="'+H+'" viewBox="0 0 880 '+H+'" style="min-width:880px;display:block;margin:0 auto">'+
+    '<defs><marker id="arr" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#888"/></marker>'+
+    '<marker id="arrR" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#b06060"/></marker></defs>'+
+    svg+'</svg>';
+}
+function clip(s,n){ s=String(s); return s.length>n? s.slice(0,n-1)+"…" : s; }
+
+/* ══════════════ 매뉴얼 본문 ══════════════ */
+function renderMan(){
+  const box=document.getElementById("manBody");
+  const d=activeDoc();
+  if(!d){ box.innerHTML=""; return; }
+  const idxOf={}; d.steps.forEach((s,i)=>idxOf[s.id]=i);
+  const ref=id=>{ const i=idxOf[id]; return i==null?"?":(i+1)+". "+(d.steps[i].title||"(무제)"); };
+  box.innerHTML=d.steps.map((s,i)=>{
+    let flow="";
+    if(s.type==="decision"){
+      flow=(s.branches||[]).map(b=>'<b>'+esc(b.label||"분기")+'</b> → '+esc(b.to?ref(b.to):(i+2<=d.steps.length?(i+2)+". "+(d.steps[i+1]?d.steps[i+1].title:""):"다음"))).join(" · ");
+    }else if(s.type!=="end"){
+      if(s.next) flow="다음: "+esc(ref(s.next));
+      else if(d.steps[i+1]) flow="다음: "+(i+2)+". "+esc(d.steps[i+1].title||"(무제)");
+    }
+    const ncls=s.type==="decision"?"dec":(s.type==="start"||s.type==="end"?"se":"");
+    return '<div class="man-step"><div class="n '+ncls+'">'+(i+1)+'</div><div class="bd">'+
+      '<div class="t">['+TYPE_LABEL[s.type]+'] '+esc(s.title||"(무제)")+(s.owner?' <span style="font-weight:400;color:var(--muted)">— 담당: '+esc(s.owner)+'</span>':'')+'</div>'+
+      (s.desc?'<div class="d">'+esc(s.desc)+'</div>':'')+
+      (flow?'<div class="m">'+flow+'</div>':'')+
+    '</div></div>';
+  }).join("");
+}
+
+/* ══════════════ 백업 ══════════════ */
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(state,null,1)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  const t=new Date();
+  a.download="업무프로세스_백업_"+t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0")+".json";
+  a.click(); URL.revokeObjectURL(a.href);
+}
+function importJSON(ev){
+  const f=ev.target.files[0]; ev.target.value="";
+  if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const s=JSON.parse(r.result);
+      if(!s||!Array.isArray(s.docs)) throw 0;
+      if(!confirm("현재 데이터를 백업 파일 내용으로 대체할까요?")) return;
+      state=s;
+      if(!state.docs.find(d=>d.id===state.activeId)) state.activeId=state.docs[0]?state.docs[0].id:null;
+      save(); render();
+    }catch(e){ alert("JSON 파일을 해석할 수 없습니다."); }
+  };
+  r.readAsText(f);
+}
+
+/* ══════════════ 시작 ══════════════ */
+detectStorage();
+load();
+if(!state.docs.length) flag("+ 새 매뉴얼로 시작하세요");
+render();
+</script>
+</body>
+</html>
