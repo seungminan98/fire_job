@@ -92,11 +92,59 @@
   .man-step .m{color:var(--muted);font-size:11px;margin-top:2px}
   .man-step .m b{color:var(--dec);font-weight:600}
 
+  /* 단계 상세 모달 (링크·이미지) */
+  .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:50;display:none;
+    align-items:flex-start;justify-content:center;padding:34px 14px;overflow-y:auto}
+  .modal-back.show{display:flex}
+  .modal{background:#fff;border-radius:9px;width:100%;max-width:680px;box-shadow:0 10px 40px rgba(0,0,0,.22)}
+  .modal-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .modal-h .ttl{font-size:14px;font-weight:650;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .modal-h .x{cursor:pointer;border:none;background:none;font-size:17px;color:var(--muted);padding:2px 6px}
+  .modal-h .x:hover{color:var(--ink)}
+  .modal-b{padding:14px 16px 18px}
+  .fgrid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:9px 14px;margin-bottom:10px}
+  .fgrid label{display:block;font-size:11px;color:var(--muted);margin-bottom:2px}
+  .fgrid input,.fgrid select{width:100%;border:1px solid var(--line-strong);border-radius:4px;
+    padding:5px 7px;font-family:inherit;font-size:12px}
+  textarea.sdesc{width:100%;min-height:70px;border:1px solid var(--line-strong);border-radius:5px;
+    padding:8px 10px;font-family:inherit;font-size:12.5px;line-height:1.6;resize:vertical}
+  .sec-t{font-size:12px;font-weight:650;margin:14px 0 6px;padding-top:11px;border-top:1px solid var(--line)}
+  .lnk-row{display:flex;gap:6px;align-items:center;margin-bottom:5px}
+  .lnk-row input{border:1px solid var(--line-strong);border-radius:4px;padding:5px 7px;font-family:inherit;font-size:12px}
+  .lnk-row input.lb{flex:0 0 120px}
+  .lnk-row input.ur{flex:1;min-width:0}
+  .lnk-row a{flex:none;font-size:11px;color:var(--ink)}
+  .lnk-row .rm{cursor:pointer;border:none;background:none;color:var(--muted);font-size:13px;padding:0 3px}
+  .lnk-row .rm:hover{color:var(--over)}
+  .img-grid{display:flex;gap:9px;flex-wrap:wrap;margin-top:8px}
+  .img-card{width:112px}
+  .img-card .thumb{width:112px;height:82px;object-fit:cover;border:1px solid var(--line);border-radius:5px;
+    cursor:zoom-in;display:block;background:var(--soft)}
+  .img-card .cap{width:100%;border:none;border-bottom:1px dashed var(--line);font-family:inherit;
+    font-size:10.5px;padding:2px 1px;color:var(--muted)}
+  .img-card .cap:focus{outline:none;border-bottom-color:var(--ink);color:var(--ink)}
+  .img-card .rm{display:block;text-align:right;font-size:10px;color:var(--muted);cursor:pointer;border:none;
+    background:none;padding:1px 0;margin-left:auto;font-family:inherit}
+  .img-card .rm:hover{color:var(--over)}
+  .storage{font-size:11px;color:var(--muted);margin-top:8px}
+  .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:60;display:none;
+    align-items:center;justify-content:center;cursor:zoom-out;flex-direction:column;gap:10px}
+  .lightbox.show{display:flex}
+  .lightbox img{max-width:92vw;max-height:86vh;border-radius:5px}
+  .lightbox .cap{color:#eee;font-size:12px}
+  /* 본문의 링크·이미지 */
+  .man-links{margin-top:4px;display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px}
+  .man-links a{color:#1d5fc4}
+  .man-imgs{margin-top:6px;display:flex;gap:7px;flex-wrap:wrap}
+  .man-imgs img{width:92px;height:66px;object-fit:cover;border:1px solid var(--line);border-radius:4px;cursor:zoom-in}
+  .att-cnt{font-size:10px;color:var(--muted);background:var(--soft);border-radius:8px;padding:0 6px;margin-left:4px;white-space:nowrap}
+
   footer{margin-top:26px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);
     font-size:11.5px;line-height:1.7}
 
   @media print{
-    #authGate{display:none!important}
+    #authGate,.modal-back,.lightbox{display:none!important}
+    .man-links a::after{content:" (" attr(href) ")";color:#888;font-size:10px}
     html{visibility:visible!important}
     header .sub a, .toolbar, .card-h .spacer ~ *, #editCard, footer, #saveState{display:none!important}
     .card{border:none;page-break-inside:avoid}
@@ -253,7 +301,7 @@
     <div class="card-b">
       <div class="doc-desc" id="docDesc"></div>
       <div class="flow-scroll" id="flowArea"></div>
-      <div class="hint">사각형=작업 · 마름모=조건 판단(분기별 화살표에 라벨) · 노드를 클릭하면 아래 편집 표의 해당 행이 강조됩니다.</div>
+      <div class="hint">사각형=작업 · 마름모=조건 판단(분기별 화살표에 라벨) · 노드를 클릭하면 상세 창(링크·이미지 첨부)이 열리고 편집 표의 해당 행이 강조됩니다.</div>
     </div>
   </div>
 
@@ -285,6 +333,21 @@
   </footer>
 </div>
 
+<!-- 단계 상세 모달 (링크·이미지 첨부) -->
+<div class="modal-back" id="stepBack" onclick="if(event.target===this)closeStepDetail()">
+  <div class="modal">
+    <div class="modal-h">
+      <span class="ttl" id="sdTitle"></span>
+      <button class="x" onclick="closeStepDetail()">✕</button>
+    </div>
+    <div class="modal-b" id="sdBody"></div>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('show')">
+  <img id="lbImg" alt=""><div class="cap" id="lbCap"></div>
+</div>
+
 <script>
 /* ══════════════ 상수/상태 ══════════════ */
 const LS_KEY="fireProcess.v1";
@@ -296,7 +359,8 @@ let canStore=true, saveTimer=null, selStepId=null;
 function uid(){ return Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function activeDoc(){ return state.docs.find(d=>d.id===state.activeId)||null; }
-function newStep(type){ return {id:uid(),type:type||"task",title:"",desc:"",owner:"",next:"",branches:[]}; }
+function newStep(type){ return {id:uid(),type:type||"task",title:"",desc:"",owner:"",next:"",branches:[],links:[],images:[]}; }
+function attCnt(s){ return ((s.links||[]).length)+((s.images||[]).length); }
 
 function detectStorage(){
   try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); canStore=true; }
@@ -317,6 +381,10 @@ function load(){
     const raw=localStorage.getItem(LS_KEY);
     if(raw){ const s=JSON.parse(raw); if(s&&Array.isArray(s.docs)) state=s; }
   }catch(e){}
+  state.docs.forEach(d=>d.steps.forEach(s=>{
+    if(!Array.isArray(s.links)) s.links=[];
+    if(!Array.isArray(s.images)) s.images=[];
+  }));
 }
 
 /* ══════════════ 예시 템플릿 ══════════════ */
@@ -438,9 +506,147 @@ function brDel(i,bi){
 function selectStep(id){
   selStepId=id;
   renderTable();
-  const row=document.querySelector('tr[data-sid="'+id+'"]');
-  if(row) row.scrollIntoView({block:"center",behavior:"smooth"});
+  openStepDetail(id);
 }
+
+/* ══════════════ 단계 상세 모달 (링크·이미지) ══════════════ */
+let detailStepId=null;
+function stepById(id){ const d=activeDoc(); return d? d.steps.find(s=>s.id===id) : null; }
+function openStepDetail(id){
+  detailStepId=id;
+  const s=stepById(id);
+  if(s){ if(!Array.isArray(s.links)) s.links=[]; if(!Array.isArray(s.images)) s.images=[]; }
+  renderStepDetail();
+  document.getElementById("stepBack").classList.add("show");
+}
+function closeStepDetail(){
+  detailStepId=null;
+  document.getElementById("stepBack").classList.remove("show");
+  save(); render();
+}
+function sdSet(f,v){
+  const s=stepById(detailStepId); if(!s) return;
+  s[f]=v; save();
+  document.getElementById("sdTitle").textContent="["+TYPE_LABEL[s.type]+"] "+(s.title||"(무제)");
+}
+function renderStepDetail(){
+  const s=stepById(detailStepId); if(!s) return;
+  const d=activeDoc();
+  document.getElementById("sdTitle").textContent="["+TYPE_LABEL[s.type]+"] "+(s.title||"(무제)");
+  document.getElementById("sdBody").innerHTML=
+  '<div class="fgrid">'+
+    '<div><label>제목</label><input value="'+esc(s.title)+'" oninput="sdSet(\'title\',this.value)"></div>'+
+    '<div><label>유형</label><select onchange="sdSet(\'type\',this.value);renderStepDetail()">'+
+      TYPES.map(([v,l])=>'<option value="'+v+'"'+(v===s.type?" selected":"")+'>'+l+'</option>').join("")+'</select></div>'+
+    '<div><label>담당</label><input value="'+esc(s.owner)+'" oninput="sdSet(\'owner\',this.value)"></div>'+
+  '</div>'+
+  '<label style="font-size:11px;color:var(--muted)">내용 / 기준</label>'+
+  '<textarea class="sdesc" oninput="sdSet(\'desc\',this.value)">'+esc(s.desc)+'</textarea>'+
+  '<div class="sec-t">참고 링크 (매뉴얼·규정·양식 등)</div>'+
+  '<div id="sdLinks"></div>'+
+  '<button class="btn sm" onclick="lnkAdd()">+ 링크 추가</button>'+
+  '<div class="sec-t">이미지 (예시 화면·서식 캡처 등)</div>'+
+  '<div class="toolbar">'+
+    '<button class="btn sm" onclick="document.getElementById(\'sImgIn\').click()">'+
+      '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5.5 4.5l1-1.7h3l1 1.7" stroke-linejoin="round"/><rect x="1.5" y="4.5" width="13" height="9" rx="1.5"/><circle cx="8" cy="9" r="2.4"/></svg>이미지 업로드</button>'+
+    '<input type="file" id="sImgIn" class="file-in" accept="image/*" multiple onchange="sAddImageFiles(event)">'+
+    '<button class="btn sm" onclick="sAddImageUrl()">'+
+      '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6.5 9.5l3-3"/><path d="M7.6 4.6l1.1-1.1a2.47 2.47 0 0 1 3.5 3.5L11.1 8.1"/><path d="M8.4 11.4l-1.1 1.1a2.47 2.47 0 0 1-3.5-3.5L4.9 7.9"/></svg>이미지 URL 추가</button>'+
+    '<span class="sub" style="font-size:11px">업로드 시 자동 압축(긴 변 1280px) 후 브라우저에 저장</span>'+
+  '</div>'+
+  '<div class="img-grid" id="sdImgs"></div>'+
+  '<div class="storage" id="sdStorage"></div>';
+  renderSdLinks(); renderSdImgs();
+}
+function renderSdLinks(){
+  const s=stepById(detailStepId); if(!s) return;
+  document.getElementById("sdLinks").innerHTML=(s.links||[]).map((l,i)=>
+    '<div class="lnk-row">'+
+      '<input class="lb" value="'+esc(l.label)+'" placeholder="라벨 (예: 착공신고 양식)" oninput="lnkSet('+i+',\'label\',this.value)">'+
+      '<input class="ur" value="'+esc(l.url)+'" placeholder="https://…" oninput="lnkSet('+i+',\'url\',this.value)">'+
+      '<a href="'+esc(l.url||"#")+'" target="_blank" rel="noopener" title="새 탭에서 열기">열기</a>'+
+      '<button class="rm" onclick="lnkDel('+i+')">✕</button>'+
+    '</div>').join("") || '<div class="sub" style="font-size:11px;margin-bottom:5px">등록된 링크가 없습니다.</div>';
+}
+function lnkAdd(){ const s=stepById(detailStepId); if(!s) return; s.links.push({label:"",url:""}); save(); renderSdLinks(); }
+function lnkSet(i,f,v){ const s=stepById(detailStepId); if(s&&s.links[i]){ s.links[i][f]=v; save(); } }
+function lnkDel(i){ const s=stepById(detailStepId); if(!s) return; s.links.splice(i,1); save(); renderSdLinks(); }
+function renderSdImgs(){
+  const s=stepById(detailStepId); if(!s) return;
+  document.getElementById("sdImgs").innerHTML=(s.images||[]).map((im,i)=>
+    '<div class="img-card">'+
+      '<img class="thumb" src="'+esc(im.src)+'" alt="" loading="lazy" onclick="openLightbox('+i+')" onerror="this.style.opacity=.25">'+
+      '<input class="cap" value="'+esc(im.cap||"")+'" placeholder="설명…" oninput="sImgCap('+i+',this.value)">'+
+      '<button class="rm" onclick="sRmImage('+i+')">삭제</button>'+
+    '</div>').join("") || '<span class="sub" style="font-size:11px">등록된 이미지가 없습니다.</span>';
+  const used=new Blob([JSON.stringify(state)]).size;
+  const pct=Math.round(used/(5*1024*1024)*100);
+  document.getElementById("sdStorage").innerHTML=
+    '브라우저 저장 사용량 약 <b'+(pct>80?' style="color:var(--over)"':'')+'>'+(used/1024/1024).toFixed(2)+' MB / 5 MB ('+pct+'%)</b>';
+}
+function sResizeImage(file,maxEdge,q){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onerror=()=>rej(new Error("파일 읽기 실패"));
+    r.onload=()=>{
+      const img=new Image();
+      img.onerror=()=>rej(new Error("이미지 해석 실패"));
+      img.onload=()=>{
+        let w=img.width,h=img.height;
+        if(Math.max(w,h)>maxEdge){ const k=maxEdge/Math.max(w,h); w=Math.round(w*k); h=Math.round(h*k); }
+        const cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+        const ctx=cv.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img,0,0,w,h);
+        res(cv.toDataURL("image/jpeg",q));
+      };
+      img.src=r.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+async function sAddImageFiles(ev){
+  const s=stepById(detailStepId); if(!s) return;
+  const files=[...ev.target.files]; ev.target.value="";
+  for(const f of files){
+    try{ s.images.push({src:await sResizeImage(f,1280,0.75), cap:f.name.replace(/\.[^.]+$/,""), up:1}); }
+    catch(e){ alert(f.name+" 처리 실패"); }
+  }
+  save(); renderSdImgs();
+}
+function sAddImageUrl(){
+  const s=stepById(detailStepId); if(!s) return;
+  const u=prompt("이미지 URL을 붙여넣으세요 (https://…)");
+  if(!u||!u.trim()) return;
+  s.images.push({src:u.trim(),cap:"",up:0});
+  save(); renderSdImgs();
+}
+function sImgCap(i,v){ const s=stepById(detailStepId); if(s&&s.images[i]){ s.images[i].cap=v; save(); } }
+function sRmImage(i){
+  const s=stepById(detailStepId); if(!s) return;
+  if(!confirm("이미지를 삭제할까요?")) return;
+  s.images.splice(i,1); save(); renderSdImgs();
+}
+let lbCtx=null;
+function openLightbox(i){
+  const s=stepById(detailStepId)||lbCtx; if(!s||!s.images[i]) return;
+  document.getElementById("lbImg").src=s.images[i].src;
+  document.getElementById("lbCap").textContent=s.images[i].cap||"";
+  document.getElementById("lightbox").classList.add("show");
+}
+function openLightboxFor(stepId,i){
+  lbCtx=stepById(stepId)||null;
+  const s=lbCtx; if(!s||!s.images[i]) return;
+  document.getElementById("lbImg").src=s.images[i].src;
+  document.getElementById("lbCap").textContent=s.images[i].cap||"";
+  document.getElementById("lightbox").classList.add("show");
+}
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){
+    const lb=document.getElementById("lightbox");
+    if(lb.classList.contains("show")){ lb.classList.remove("show"); return; }
+    if(document.getElementById("stepBack").classList.contains("show")) closeStepDetail();
+  }
+});
 
 /* ══════════════ 렌더 ══════════════ */
 function render(){ renderDocSel(); renderTable(); renderFlow(); renderMan(); }
@@ -489,7 +695,9 @@ function renderTable(){
       '<td style="width:52px;white-space:nowrap;vertical-align:middle">'+
         '<button class="mv" '+(i===0?'disabled':'')+' onclick="mvStep('+i+',-1)">▲</button>'+
         '<button class="mv" '+(i===d.steps.length-1?'disabled':'')+' onclick="mvStep('+i+',1)">▼</button></td>'+
-      '<td style="width:40px;vertical-align:middle"><button class="mv" title="아래에 삽입" onclick="insStep('+i+')">+삽입</button></td>'+
+      '<td style="width:78px;vertical-align:middle;white-space:nowrap">'+
+        '<button class="mv" title="링크·이미지 첨부/상세" onclick="openStepDetail(\''+s.id+'\')">상세'+(attCnt(s)?'·'+attCnt(s):'')+'</button>'+
+        '<button class="mv" title="아래에 삽입" onclick="insStep('+i+')">+삽입</button></td>'+
       '<td class="row-del" onclick="delStep('+i+')" title="삭제">✕</td></tr>';
   });
   tbl.innerHTML=html+'</tbody>';
@@ -577,6 +785,11 @@ function renderFlow(){
     }
     if(s.owner&&s.type!=="decision")
       svg+='<text x="'+(CX+n.w/2+8)+'" y="'+(cy+3)+'" font-size="10" fill="#6b6b6b">'+esc(s.owner)+'</text>';
+    if(attCnt(s)){
+      const bx=CX+n.w/2-2, by=n.y-2;
+      svg+='<g class="flow-node" onclick="openStepDetail(\''+s.id+'\')"><circle cx="'+bx+'" cy="'+by+'" r="8" fill="#1a1a1a"/>'+
+        '<text x="'+bx+'" y="'+(by+3)+'" text-anchor="middle" font-size="9" fill="#fff" font-weight="600">'+attCnt(s)+'</text></g>';
+    }
   });
   area.innerHTML='<svg width="880" height="'+H+'" viewBox="0 0 880 '+H+'" style="min-width:880px;display:block;margin:0 auto">'+
     '<defs><marker id="arr" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#888"/></marker>'+
@@ -601,10 +814,20 @@ function renderMan(){
       else if(d.steps[i+1]) flow="다음: "+(i+2)+". "+esc(d.steps[i+1].title||"(무제)");
     }
     const ncls=s.type==="decision"?"dec":(s.type==="start"||s.type==="end"?"se":"");
+    const links=(s.links||[]).filter(l=>l.url);
+    const linkHtml=links.length?'<div class="man-links">'+links.map(l=>
+      '<a href="'+esc(l.url)+'" target="_blank" rel="noopener">'+
+      '<svg style="width:11px;height:11px;vertical-align:-1.5px;margin-right:2px" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6.5 9.5l3-3"/><path d="M7.6 4.6l1.1-1.1a2.47 2.47 0 0 1 3.5 3.5L11.1 8.1"/><path d="M8.4 11.4l-1.1 1.1a2.47 2.47 0 0 1-3.5-3.5L4.9 7.9"/></svg>'+
+      esc(l.label||l.url)+'</a>').join("")+'</div>':'';
+    const imgHtml=(s.images||[]).length?'<div class="man-imgs">'+s.images.map((im,ii)=>
+      '<img src="'+esc(im.src)+'" alt="'+esc(im.cap||"")+'" title="'+esc(im.cap||"")+'" loading="lazy" onclick="openLightboxFor(\''+s.id+'\','+ii+')">').join("")+'</div>':'';
     return '<div class="man-step"><div class="n '+ncls+'">'+(i+1)+'</div><div class="bd">'+
-      '<div class="t">['+TYPE_LABEL[s.type]+'] '+esc(s.title||"(무제)")+(s.owner?' <span style="font-weight:400;color:var(--muted)">— 담당: '+esc(s.owner)+'</span>':'')+'</div>'+
+      '<div class="t" style="cursor:pointer" onclick="openStepDetail(\''+s.id+'\')" title="클릭: 상세(링크·이미지)">['+TYPE_LABEL[s.type]+'] '+esc(s.title||"(무제)")+
+        (s.owner?' <span style="font-weight:400;color:var(--muted)">— 담당: '+esc(s.owner)+'</span>':'')+
+        (attCnt(s)?'<span class="att-cnt">첨부 '+attCnt(s)+'</span>':'')+'</div>'+
       (s.desc?'<div class="d">'+esc(s.desc)+'</div>':'')+
       (flow?'<div class="m">'+flow+'</div>':'')+
+      linkHtml+imgHtml+
     '</div></div>';
   }).join("");
 }
