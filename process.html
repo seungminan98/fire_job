@@ -61,6 +61,11 @@
     padding:2px 5px;font-size:10px;color:var(--muted);font-family:inherit}
   .mv:hover{color:var(--ink);border-color:var(--line-strong)}
   .mv:disabled{opacity:.3;cursor:default}
+  .mv.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .dep-chip{display:inline-flex;align-items:center;gap:4px;background:#eef3f9;border:1px solid #b9cbe2;
+    color:#2c5488;border-radius:11px;padding:2px 9px;font-size:11px}
+  .dep-chip button{border:none;background:none;cursor:pointer;color:#2c5488;font-size:11px;padding:0;font-family:inherit}
+  .dep-chip button:hover{color:var(--over)}
   .row-del{cursor:pointer;color:var(--muted);width:24px;text-align:center;vertical-align:middle}
   .row-del:hover{color:var(--over)}
   .br-list{display:flex;flex-direction:column;gap:3px}
@@ -330,8 +335,10 @@
     <div class="card-b">
       <div class="doc-desc" id="docDesc"></div>
       <div class="flow-scroll" id="flowArea"></div>
-      <div class="hint">사각형=작업 · 마름모=조건 판단(분기별 화살표에 라벨) · 노드를 클릭하면 상세 창(링크·이미지 첨부)이 열리고 편집 표의 해당 행이 강조됩니다.<br>
-        각 단계는 폴더처럼 <b>세부단계</b>를 담을 수 있습니다 — 노드 왼쪽 위의 폴더 표시, 편집 표의 "세부" 버튼, 상세 창의 "세부단계 열기"로 안에 들어가고, 위의 경로 표시줄로 되돌아옵니다.</div>
+      <div class="hint">사각형=작업 · 마름모=조건 판단(분기별 화살표에 라벨) · 노드를 클릭하면 상세 창(링크·이미지·선행 단계)이 열리고 편집 표의 해당 행이 강조됩니다.<br>
+        각 단계는 폴더처럼 <b>세부단계</b>를 담을 수 있습니다 — 노드 왼쪽 위의 폴더 표시, 편집 표의 "세부" 버튼, 상세 창의 "세부단계 열기"로 안에 들어가고, 위의 경로 표시줄로 되돌아옵니다.<br>
+        편집 표의 <b>"동시"</b>를 켜면 바로 위 단계와 나란히(같은 번호 4-1/4-2) 진행되는 것으로 표시되고,
+        <b>파란 점선</b>은 선행 조건(예: 설계도서가 나와야 입찰 가능), <b>왼쪽 붉은 점선</b>은 되돌아가는 재작업 루프입니다.</div>
     </div>
   </div>
 
@@ -376,9 +383,10 @@
         padding:6px 9px;font-family:inherit;font-size:12.5px;margin:3px 0 13px;box-sizing:border-box">
       <button class="tpl-card" onclick="createDoc('permit')">
         <b>건축허가 연계 소방공사 (동의 대상)</b>
-        <span>건축허가·소방 동의(허가용 러프 도면) → 실시설계 → 감리 지정·착공신고 → 시공
-        (샵드로잉 승인 → AFC 배포 → 설계변경 시 재작성 루프) → 완공검사 → 증명서 발급·건축사 제출
-        → 건축물 사용승인까지 전 과정 — 실무 디테일이 각 단계의 세부단계(폴더)에 들어 있습니다</span>
+        <span>건축허가·소방 동의(허가용 러프 도면) → 실시설계(AFD) → 입찰·시공사 선정 →
+        감리 지정 + 착공신고(동시 진행) → 시공(샵드로잉 승인 → AFC 배포 → 설계변경 재작성 루프)
+        → 완공검사 → 증명서 발급·건축사 제출 → 건축물 사용승인까지 전 과정 —
+        선행 조건(파란 점선)과 세부단계(폴더) 포함</span>
       </button>
       <button class="tpl-card" onclick="createDoc('solo')">
         <b>소방시설 단독공사</b>
@@ -423,7 +431,7 @@ const ICO_FOLDER_OPEN='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor
 function uid(){ return Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function activeDoc(){ return state.docs.find(d=>d.id===state.activeId)||null; }
-function newStep(type){ return {id:uid(),type:type||"task",title:"",desc:"",owner:"",next:"",branches:[],links:[],images:[],children:[]}; }
+function newStep(type){ return {id:uid(),type:type||"task",title:"",desc:"",owner:"",next:"",branches:[],links:[],images:[],children:[],par:false,deps:[]}; }
 function attCnt(s){ return ((s.links||[]).length)+((s.images||[]).length); }
 function kidCnt(s){ return (s.children||[]).length; }
 function normSteps(arr){
@@ -431,8 +439,20 @@ function normSteps(arr){
     if(!Array.isArray(s.links)) s.links=[];
     if(!Array.isArray(s.images)) s.images=[];
     if(!Array.isArray(s.children)) s.children=[];
+    if(!Array.isArray(s.deps)) s.deps=[];
+    s.par=!!s.par;
     normSteps(s.children);
   });
+}
+/* 표시 번호 계산 — 동시 진행(par) 단계는 같은 번호에 4-1, 4-2처럼 가지 번호 */
+function calcNums(arr){
+  const raw=[]; let major=0, sub=0;
+  (arr||[]).forEach((s,i)=>{
+    if(i>0&&s.par){ sub++; } else { major++; sub=1; }
+    raw.push({major,sub});
+  });
+  const cnt={}; raw.forEach(n=>cnt[n.major]=(cnt[n.major]||0)+1);
+  return raw.map(n=>cnt[n.major]>1? n.major+"-"+n.sub : ""+n.major);
 }
 
 /* ── 폴더 탐색 (세부단계 드릴다운) ── */
@@ -453,6 +473,17 @@ function stepByIdIn(arr,id){
     const r=stepByIdIn(s.children,id); if(r) return r;
   }
   return null;
+}
+function levelArrOf(id){ // 해당 단계가 속한 레벨(형제 배열)
+  const d=activeDoc(); if(!d) return null;
+  const walk=arr=>{
+    for(const s of arr||[]){
+      if(s.id===id) return arr;
+      const r=walk(s.children); if(r) return r;
+    }
+    return null;
+  };
+  return walk(d.steps);
 }
 function pathOf(id){
   const d=activeDoc(); if(!d) return null;
@@ -498,7 +529,7 @@ function load(){
 }
 
 /* ══════════════ 매뉴얼 템플릿 ══════════════ */
-function ts(title,desc,owner){ return {id:uid(),type:"task",title:title,desc:desc||"",owner:owner||"",next:"",branches:[],links:[],images:[],children:[]}; }
+function ts(title,desc,owner){ return {id:uid(),type:"task",title:title,desc:desc||"",owner:owner||"",next:"",branches:[],links:[],images:[],children:[],par:false,deps:[]}; }
 function dq(title,desc){ const s=ts(title,desc); s.type="decision"; return s; }
 function se(type,title,desc){ const s=ts(title,desc); s.type=type; return s; }
 
@@ -543,28 +574,36 @@ function tplPermit(){
 
   const s2=ts("건축허가·소방 동의","허가 단계 도면은 러프(기본설계) 수준 — 상세는 실시설계·샵드로잉에서 확정","건축사/설계");
   s2.children=[a1,a2,a3,a4];
-  const s3=ts("소방시설 실시설계","착공신고용 설계도서 확정 — 수리계산·장비 용량 산정 포함","설계사무소");
+  const s3=ts("소방시설 실시설계","산출물: AFD(설계 승인 도면)·내역서 — 이게 나와야 물량 산출과 입찰이 가능","설계사무소");
   s3.children=[
     ts("실시설계 도면 작성","수리계산서, 펌프·수조 등 장비 용량 산정 포함","설계사무소"),
-    ts("내역서·시방서 작성","","설계사무소"),
-    ts("착공신고용 설계도서 취합","도면·계산서·시방서 일체 — 착공신고 첨부","공무")];
-  const s4=ts("소방공사 감리자 지정 신고","공사 착공 전 감리자 지정 신고 필수 — 착공신고와 함께 준비","공무");
+    ts("내역서·시방서 작성","AFD 기준 물량 산출 — 입찰 내역의 근거","설계사무소"),
+    ts("설계도서(AFD) 확정·배포","입찰용·착공신고용 도서 일체 — 이후 변경은 리비전으로 관리","공무")];
+  const bid=ts("입찰·시공사 선정","실시설계(AFD)가 나와야 입찰이 가능하고, 여기서 시공사가 선정되어야 착공신고에 시공자를 지정할 수 있다","공무");
+  bid.children=[
+    ts("입찰 도서 배포","AFD 도면·물량내역서·시방 기준, 공사 범위·공기 명시","공무"),
+    ts("견적 접수·기술 검토","견적 비교표 작성, 소방시설공사업 등록·기술인력·실적 확인","공무"),
+    ts("시공사 계약 체결","계약 후 착공신고용 시공사 서류(등록증·기술인력 자격) 확보","공무")];
+  bid.deps=[s3.id];
+  const s4=ts("소방공사 감리자 지정 신고","공사 착공 전 감리자 지정 신고 필수 — 착공신고와 같이 들어간다","공무");
   s4.children=[
     ts("감리 계약 체결","감리 대상·등급(상주/일반) 확인 후 계약","공무"),
     ts("감리자 지정신고서 제출","관할 소방서 제출","감리"),
     ts("지정신고 수리 확인","수리 확인 후 착공신고 진행","공무")];
-  const s5=ts("소방시설공사 착공신고","착공 전 신고 — 보완 지시가 오면 서류 재작성 루프","공무");
+  const s5=ts("소방시설공사 착공신고","착공 전 신고 — 설계도서(AFD)와 선정된 시공사 서류가 있어야 제출 가능. 보완 지시가 오면 서류 재작성 루프","공무");
   s5.children=[e1,e2,e3,e4];
+  s5.par=true;                 // 감리자 지정 신고와 동시 진행 (같은 번호 5-1/5-2)
+  s5.deps=[s3.id,bid.id];      // 선행: 실시설계(AFD), 입찰·시공사 선정
   const s6=ts("소방시설 공사 (시공)","샵드로잉 승인 후 시공. 현장 간섭·설계변경으로 AFC 도면이 계속 갱신되므로 리비전 관리가 핵심","현장");
   s6.children=[b1,b2,b3,b4,b5,b6];
   const s7=ts("소방시설 완공검사","감리결과보고서 첨부하여 신청, 소방서 현장확인","공무/감리");
   s7.children=mkAcceptance();
 
   return {id:uid(),name:"건축허가 연계 소방공사 (동의 대상)",
-    desc:"건축허가(소방 동의)부터 건축물 사용승인까지 — 소방공사가 건축 인허가와 맞물려 진행되는 표준 흐름입니다. 각 단계의 세부단계(폴더)에 실무 디테일이 들어 있습니다.",
+    desc:"건축허가(소방 동의)부터 건축물 사용승인까지 — 소방공사가 건축 인허가와 맞물려 진행되는 표준 흐름입니다. 각 단계의 세부단계(폴더)에 실무 디테일이 들어 있고, 파란 점선은 선행 조건(AFD가 나와야 입찰, 시공사가 있어야 착공신고)입니다.",
     steps:[
       se("start","공사 수주·계약",""),
-      s2,s3,s4,s5,s6,s7,
+      s2,s3,bid,s4,s5,s6,s7,
       ts("소방시설완공검사 증명서 발급","증명서 원본 수령 — 건축물 사용승인 신청에 필요","공무"),
       ts("증명서 건축사 제출","사용승인(준공) 신청 서류에 첨부되도록 건축사무소에 전달","공무"),
       ts("건축물 사용승인 신청","건축주·건축사가 허가권자에 신청 — 소방완공검사증명서 등 첨부","건축사"),
@@ -588,6 +627,7 @@ function tplSolo(){
   d3.branches=[{label:"보완",to:d2.id},{label:"수리",to:d4.id}];
   const s3=ts("착공신고·감리자 지정","착공신고 대상 여부 판단부터 시작","공무");
   s3.children=[d0,d1,d2,d3,d4];
+  s3.deps=[s2.id]; // 설계도서가 있어야 착공신고 가능
 
   const s4=ts("소방시설 공사","","현장");
   s4.children=[
@@ -677,7 +717,13 @@ function delStep(i){
   arr.forEach(x=>{
     if(x.next===s.id) x.next="";
     (x.branches||[]).forEach(b=>{ if(b.to===s.id) b.to=""; });
+    x.deps=(x.deps||[]).filter(v=>v!==s.id);
   });
+  save(); render();
+}
+function togglePar(i){
+  const arr=currentSteps(); if(!arr||!arr[i]||i===0) return;
+  arr[i].par=!arr[i].par;
   save(); render();
 }
 function mvStep(i,dir){
@@ -725,7 +771,7 @@ function stepById(id){ const d=activeDoc(); return d? stepByIdIn(d.steps,id) : n
 function openStepDetail(id){
   detailStepId=id;
   const s=stepById(id);
-  if(s){ if(!Array.isArray(s.links)) s.links=[]; if(!Array.isArray(s.images)) s.images=[]; if(!Array.isArray(s.children)) s.children=[]; }
+  if(s){ if(!Array.isArray(s.links)) s.links=[]; if(!Array.isArray(s.images)) s.images=[]; if(!Array.isArray(s.children)) s.children=[]; if(!Array.isArray(s.deps)) s.deps=[]; }
   renderStepDetail();
   document.getElementById("stepBack").classList.add("show");
 }
@@ -752,6 +798,8 @@ function renderStepDetail(){
   '</div>'+
   '<label style="font-size:11px;color:var(--muted)">내용 / 기준</label>'+
   '<textarea class="sdesc" oninput="sdSet(\'desc\',this.value)">'+esc(s.desc)+'</textarea>'+
+  '<div class="sec-t">선행 단계 (이 단계를 하려면 먼저 끝나야 하는 것)</div>'+
+  '<div id="sdDeps"></div>'+
   '<div class="sec-t">세부단계 (이 단계를 폴더처럼 열기)</div>'+
   '<div class="toolbar">'+
     '<button class="btn sm" onclick="enterStep(\''+s.id+'\')">'+ICO_FOLDER_OPEN+
@@ -772,7 +820,36 @@ function renderStepDetail(){
   '</div>'+
   '<div class="img-grid" id="sdImgs"></div>'+
   '<div class="storage" id="sdStorage"></div>';
-  renderSdLinks(); renderSdImgs();
+  renderSdLinks(); renderSdImgs(); renderSdDeps();
+}
+function renderSdDeps(){
+  const s=stepById(detailStepId); if(!s) return;
+  const arr=levelArrOf(s.id)||[];
+  const nums=calcNums(arr);
+  const idxOf={}; arr.forEach((x,i)=>idxOf[x.id]=i);
+  const label=id=>{ const j=idxOf[id]; return j==null?"?":nums[j]+". "+(arr[j].title||"(무제)"); };
+  const chips=(s.deps||[]).map((dp,i)=>
+    '<span class="dep-chip">'+esc(label(dp))+'<button title="선행 해제" onclick="depDel('+i+')">✕</button></span>').join(" ");
+  const opts=arr.filter(x=>x.id!==s.id&&!(s.deps||[]).includes(x.id))
+    .map(x=>'<option value="'+x.id+'">'+esc(label(x.id))+'</option>').join("");
+  document.getElementById("sdDeps").innerHTML=
+    '<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:7px">'+
+      (chips||'<span class="sub" style="font-size:11px">지정된 선행 단계가 없습니다 — 예: 착공신고에는 설계도서(실시설계)와 시공사 선정이 먼저 필요</span>')+'</div>'+
+    (opts?'<div style="display:flex;gap:6px;align-items:center">'+
+      '<select id="depSel" class="next-sel" style="max-width:280px"><option value="">같은 레벨의 단계 선택…</option>'+opts+'</select>'+
+      '<button class="btn sm" onclick="depAdd()">+ 선행 추가</button>'+
+      '<span class="sub" style="font-size:11px">플로우차트에 파란 점선으로 표시</span></div>':'');
+}
+function depAdd(){
+  const s=stepById(detailStepId); if(!s) return;
+  const v=document.getElementById("depSel").value; if(!v) return;
+  (s.deps=s.deps||[]).push(v);
+  save(); renderSdDeps();
+}
+function depDel(i){
+  const s=stepById(detailStepId); if(!s) return;
+  s.deps.splice(i,1);
+  save(); renderSdDeps();
 }
 function renderSdLinks(){
   const s=stepById(detailStepId); if(!s) return;
@@ -892,11 +969,10 @@ function renderDocSel(){
     || '<option value="">— 매뉴얼 없음 (+ 새 매뉴얼) —</option>';
 }
 function stepOptions(arr,selfId,cur){
+  const nums=calcNums(arr);
   return '<option value="">(바로 아래 단계로)</option>'+
-    arr.filter(s=>s.id!==selfId).map(s=>{
-      const n=arr.indexOf(s)+1;
-      return '<option value="'+s.id+'"'+(s.id===cur?" selected":"")+'>'+n+'. '+esc(s.title||"(무제)")+'</option>';
-    }).join("");
+    arr.map((s,i)=>s.id===selfId?'':
+      '<option value="'+s.id+'"'+(s.id===cur?" selected":"")+'>'+nums[i]+'. '+esc(s.title||"(무제)")+'</option>').join("");
 }
 function renderTable(){
   const tbl=document.getElementById("stepTable");
@@ -907,6 +983,7 @@ function renderTable(){
     tbl.innerHTML='<tbody><tr><td style="padding:14px;color:var(--muted)">아직 세부단계가 없습니다. 위의 "+ 단계 추가"로 이 폴더 안의 프로세스를 만들어 주세요.</td></tr></tbody>';
     return;
   }
+  const nums=calcNums(arr);
   let html='<thead><tr><th>#</th><th>유형</th><th style="min-width:150px">제목</th><th style="min-width:200px">내용 / 기준</th>'+
     '<th>담당</th><th style="min-width:180px">다음 단계 / 분기</th><th></th><th></th><th></th></tr></thead><tbody>';
   arr.forEach((s,i)=>{
@@ -926,16 +1003,17 @@ function renderTable(){
       nextCell='<select class="next-sel" onchange="setStep('+i+',\'next\',this.value)">'+stepOptions(arr,s.id,s.next)+'</select>';
     }
     html+='<tr data-sid="'+s.id+'"'+(s.id===selStepId?' class="selrow"':'')+'>'+
-      '<td class="no">'+(i+1)+'</td>'+
+      '<td class="no">'+nums[i]+'</td>'+
       '<td style="width:70px"><select class="st-'+s.type+'" onchange="setStep('+i+',\'type\',this.value)">'+
         TYPES.map(([v,l])=>'<option value="'+v+'"'+(v===s.type?" selected":"")+'>'+l+'</option>').join("")+'</select></td>'+
       '<td><input value="'+esc(s.title)+'" placeholder="'+(s.type==="decision"?"판단 질문 (예: 보완 요구?)":"단계 제목")+'" oninput="setStep('+i+',\'title\',this.value)"></td>'+
       '<td><input value="'+esc(s.desc)+'" placeholder="상세 내용, 기준, 참고" oninput="setStep('+i+',\'desc\',this.value)"></td>'+
       '<td style="width:80px"><input value="'+esc(s.owner)+'" placeholder="-" oninput="setStep('+i+',\'owner\',this.value)"></td>'+
       '<td>'+nextCell+'</td>'+
-      '<td style="width:52px;white-space:nowrap;vertical-align:middle">'+
+      '<td style="width:96px;white-space:nowrap;vertical-align:middle">'+
         '<button class="mv" '+(i===0?'disabled':'')+' onclick="mvStep('+i+',-1)">▲</button>'+
-        '<button class="mv" '+(i===arr.length-1?'disabled':'')+' onclick="mvStep('+i+',1)">▼</button></td>'+
+        '<button class="mv" '+(i===arr.length-1?'disabled':'')+' onclick="mvStep('+i+',1)">▼</button>'+
+        '<button class="mv'+(s.par?' on':'')+'" '+(i===0?'disabled':'')+' title="바로 위 단계와 동시 진행 (같은 번호 4-1/4-2)" onclick="togglePar('+i+')">동시</button></td>'+
       '<td style="width:118px;vertical-align:middle;white-space:nowrap">'+
         '<button class="mv" title="링크·이미지 첨부/상세" onclick="openStepDetail(\''+s.id+'\')">상세'+(attCnt(s)?'·'+attCnt(s):'')+'</button>'+
         '<button class="mv" title="세부단계(폴더) 안으로 들어가기" onclick="enterStep(\''+s.id+'\')">세부'+(kidCnt(s)?'·'+kidCnt(s):'')+'</button>'+
@@ -966,16 +1044,40 @@ function renderFlow(){
 
   const CX=430, TW=280, DW=210, VGAP=42;
   const idxOf={}; steps.forEach((s,i)=>idxOf[s.id]=i);
-  // 노드 배치
+  const nums=calcNums(steps);
+
+  // 동시 진행 그룹 구성
+  const groups=[];
+  steps.forEach((s,i)=>{
+    if(i>0&&s.par&&groups.length) groups[groups.length-1].push(i);
+    else groups.push([i]);
+  });
+  const giOf={}; groups.forEach((g,k)=>g.forEach(i=>giOf[i]=k));
+
+  // 노드 크기·배치 (동시 그룹은 나란히)
   const nodes=steps.map((s,i)=>{
     const h = s.type==="decision"?66 : (s.type==="start"||s.type==="end")?36 : (s.desc?52:40);
     return {s,i,h,w:s.type==="decision"?DW:(s.type==="task"?TW:170)};
   });
   let y=8;
-  nodes.forEach(n=>{ n.y=y; y+=n.h+VGAP; });
+  groups.forEach(g=>{
+    if(g.length>1){
+      const gap=26;
+      g.forEach(i=>{ nodes[i].w=Math.min(nodes[i].w, Math.floor((820-gap*(g.length-1))/g.length)); });
+      const tot=g.reduce((a,i)=>a+nodes[i].w,0)+gap*(g.length-1);
+      let x=CX-tot/2;
+      g.forEach(i=>{ nodes[i].x=x+nodes[i].w/2; x+=nodes[i].w+gap; });
+    }else{
+      nodes[g[0]].x=CX;
+    }
+    const gh=Math.max.apply(null,g.map(i=>nodes[i].h));
+    g.forEach(i=>{ nodes[i].y=y; });
+    y+=gh+VGAP;
+  });
   const H=y+8;
 
-  // 엣지 수집: {from,to,label}
+  // 엣지 수집: {from,to,label} — 기본 다음은 다음 그룹(동시 단계 전부)으로
+  const nextGroup=i=>{ const gk=giOf[i]; return gk+1<groups.length? groups[gk+1] : []; };
   const edges=[];
   nodes.forEach(n=>{
     const s=n.s;
@@ -983,16 +1085,15 @@ function renderFlow(){
     if(s.type==="decision"){
       const brs=(s.branches||[]).length?(s.branches):[{label:"",to:""}];
       brs.forEach(b=>{
-        const ti = b.to? idxOf[b.to] : n.i+1;
-        if(ti==null||ti>=nodes.length) return;
-        edges.push({from:n.i,to:ti,label:b.label||""});
+        if(b.to){ const ti=idxOf[b.to]; if(ti!=null) edges.push({from:n.i,to:ti,label:b.label||""}); }
+        else{ const t=nextGroup(n.i)[0]; if(t!=null) edges.push({from:n.i,to:t,label:b.label||""}); }
       });
     }else{
-      const ti = s.next? idxOf[s.next] : n.i+1;
-      if(ti==null||ti>=nodes.length) return;
-      edges.push({from:n.i,to:ti,label:""});
+      if(s.next){ const ti=idxOf[s.next]; if(ti!=null) edges.push({from:n.i,to:ti,label:""}); }
+      else nextGroup(n.i).forEach(t=>edges.push({from:n.i,to:t,label:""}));
     }
   });
+  const edgeKey=new Set(edges.map(e=>e.from+">"+e.to));
 
   // 그리기
   let svg='';
@@ -1000,52 +1101,68 @@ function renderFlow(){
   edges.forEach(e=>{
     const a=nodes[e.from], b=nodes[e.to];
     const aBot=a.y+a.h, bTop=b.y;
-    if(e.to===e.from+1){ // 바로 아래
-      svg+='<line x1="'+CX+'" y1="'+aBot+'" x2="'+CX+'" y2="'+(bTop-6)+'" stroke="#888" stroke-width="1.4" marker-end="url(#arr)"/>';
-      if(e.label) svg+='<text x="'+(CX+8)+'" y="'+(aBot+(bTop-aBot)/2+3)+'" font-size="10.5" fill="#7b1fa2" font-weight="600">'+esc(e.label)+'</text>';
-    }else if(e.to>e.from){ // 앞으로 점프: 오른쪽 레인
+    if(giOf[e.to]===giOf[e.from]+1){ // 바로 다음 그룹 (동시 그룹이면 대각선 팬아웃)
+      svg+='<line x1="'+a.x+'" y1="'+aBot+'" x2="'+b.x+'" y2="'+(bTop-6)+'" stroke="#888" stroke-width="1.4" marker-end="url(#arr)"/>';
+      if(e.label) svg+='<text x="'+((a.x+b.x)/2+8)+'" y="'+(aBot+(bTop-aBot)/2+3)+'" font-size="10.5" fill="#7b1fa2" font-weight="600">'+esc(e.label)+'</text>';
+    }else if(giOf[e.to]>giOf[e.from]){ // 앞으로 점프: 오른쪽 레인
       rLane++;
       const lx=CX+Math.max(TW,DW)/2+26+rLane*20;
       const sy=a.y+a.h/2, ey=bTop-10;
       svg+='<polyline fill="none" stroke="#888" stroke-width="1.4" marker-end="url(#arr)" points="'+
-        (CX+a.w/2)+','+sy+' '+lx+','+sy+' '+lx+','+ey+' '+CX+','+ey+' '+CX+','+(bTop-6)+'"/>';
-      if(e.label) svg+='<text x="'+(CX+a.w/2+6)+'" y="'+(sy-5)+'" font-size="10.5" fill="#7b1fa2" font-weight="600">'+esc(e.label)+'</text>';
-    }else{ // 되돌아가기(루프): 왼쪽 레인
+        (a.x+a.w/2)+','+sy+' '+lx+','+sy+' '+lx+','+ey+' '+b.x+','+ey+' '+b.x+','+(bTop-6)+'"/>';
+      if(e.label) svg+='<text x="'+(a.x+a.w/2+6)+'" y="'+(sy-5)+'" font-size="10.5" fill="#7b1fa2" font-weight="600">'+esc(e.label)+'</text>';
+    }else{ // 되돌아가기(루프)·같은 그룹: 왼쪽 레인
       lLane++;
       const lx=CX-Math.max(TW,DW)/2-26-lLane*20;
       const sy=a.y+a.h/2, ey=bTop-10;
       svg+='<polyline fill="none" stroke="#b06060" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#arrR)" points="'+
-        (CX-a.w/2)+','+sy+' '+lx+','+sy+' '+lx+','+ey+' '+CX+','+ey+' '+CX+','+(bTop-6)+'"/>';
-      if(e.label) svg+='<text x="'+(CX-a.w/2-6)+'" y="'+(sy-5)+'" font-size="10.5" fill="#b06060" font-weight="600" text-anchor="end">'+esc(e.label)+'</text>';
+        (a.x-a.w/2)+','+sy+' '+lx+','+sy+' '+lx+','+ey+' '+b.x+','+ey+' '+b.x+','+(bTop-6)+'"/>';
+      if(e.label) svg+='<text x="'+(a.x-a.w/2-6)+'" y="'+(sy-5)+'" font-size="10.5" fill="#b06060" font-weight="600" text-anchor="end">'+esc(e.label)+'</text>';
     }
+  });
+  // 선행 조건(deps): 파란 점선 — 흐름 화살표와 겹치면 생략
+  nodes.forEach(n=>{
+    (n.s.deps||[]).forEach(dp=>{
+      const ai=idxOf[dp];
+      if(ai==null||edgeKey.has(ai+">"+n.i)) return;
+      const a=nodes[ai];
+      rLane++;
+      const lx=CX+Math.max(TW,DW)/2+26+rLane*20;
+      const sy=a.y+a.h/2, ey=n.y-10;
+      svg+='<polyline fill="none" stroke="#4a7ab5" stroke-width="1.3" stroke-dasharray="3 3" marker-end="url(#arrB)" points="'+
+        (a.x+a.w/2)+','+sy+' '+lx+','+sy+' '+lx+','+ey+' '+n.x+','+ey+' '+n.x+','+(n.y-6)+'"/>';
+      svg+='<text x="'+(lx+4)+'" y="'+((sy+ey)/2+3)+'" font-size="9.5" fill="#4a7ab5">선행</text>';
+    });
   });
   // 노드
   nodes.forEach(n=>{
-    const s=n.s, cy=n.y+n.h/2;
+    const s=n.s, cy=n.y+n.h/2, nx=n.x;
+    const solo=groups[giOf[n.i]].length===1;
     const click=' onclick="selectStep(\''+s.id+'\')"';
     if(s.type==="decision"){
-      const w=n.w/2,h=n.h/2;
-      svg+='<g class="flow-node"'+click+'><polygon class="nd" points="'+CX+','+n.y+' '+(CX+w)+','+cy+' '+CX+','+(n.y+n.h)+' '+(CX-w)+','+cy+
+      const w=n.w/2;
+      svg+='<g class="flow-node"'+click+'><polygon class="nd" points="'+nx+','+n.y+' '+(nx+w)+','+cy+' '+nx+','+(n.y+n.h)+' '+(nx-w)+','+cy+
         '" fill="#f6effa" stroke="#7b1fa2" stroke-width="1.4"/>'+
-        '<text x="'+CX+'" y="'+(cy+4)+'" text-anchor="middle" font-size="12" font-weight="650" fill="#4a1266">'+esc(clip(s.title||"(판단)",16))+'</text></g>';
+        '<text x="'+nx+'" y="'+(cy+4)+'" text-anchor="middle" font-size="12" font-weight="650" fill="#4a1266">'+esc(clip(s.title||"(판단)",16))+'</text></g>';
     }else if(s.type==="start"||s.type==="end"){
-      svg+='<g class="flow-node"'+click+'><rect class="nd" x="'+(CX-n.w/2)+'" y="'+n.y+'" width="'+n.w+'" height="'+n.h+'" rx="18" fill="'+(s.type==="start"?"#fff":"#1a1a1a")+'" stroke="#1a1a1a" stroke-width="1.4"/>'+
-        '<text x="'+CX+'" y="'+(cy+4)+'" text-anchor="middle" font-size="12" font-weight="650" fill="'+(s.type==="start"?"#1a1a1a":"#fff")+'">'+esc(clip(s.title||TYPE_LABEL[s.type],18))+'</text></g>';
+      svg+='<g class="flow-node"'+click+'><rect class="nd" x="'+(nx-n.w/2)+'" y="'+n.y+'" width="'+n.w+'" height="'+n.h+'" rx="18" fill="'+(s.type==="start"?"#fff":"#1a1a1a")+'" stroke="#1a1a1a" stroke-width="1.4"/>'+
+        '<text x="'+nx+'" y="'+(cy+4)+'" text-anchor="middle" font-size="12" font-weight="650" fill="'+(s.type==="start"?"#1a1a1a":"#fff")+'">'+esc(clip(s.title||TYPE_LABEL[s.type],18))+'</text></g>';
     }else{
-      svg+='<g class="flow-node"'+click+'><rect class="nd" x="'+(CX-n.w/2)+'" y="'+n.y+'" width="'+n.w+'" height="'+n.h+'" rx="5" fill="#fff" stroke="#555" stroke-width="1.4"/>'+
-        '<text x="'+CX+'" y="'+(n.y+(s.desc?20:n.h/2+4))+'" text-anchor="middle" font-size="12" font-weight="650">'+esc(clip((n.i+1)+". "+(s.title||"(무제)"),24))+'</text>'+
-        (s.desc?'<text x="'+CX+'" y="'+(n.y+37)+'" text-anchor="middle" font-size="10" fill="#6b6b6b">'+esc(clip(s.desc,32))+'</text>':'')+'</g>';
+      const maxT=Math.max(10,Math.floor(n.w/12));
+      svg+='<g class="flow-node"'+click+'><rect class="nd" x="'+(nx-n.w/2)+'" y="'+n.y+'" width="'+n.w+'" height="'+n.h+'" rx="5" fill="#fff" stroke="#555" stroke-width="1.4"/>'+
+        '<text x="'+nx+'" y="'+(n.y+(s.desc?20:n.h/2+4))+'" text-anchor="middle" font-size="12" font-weight="650">'+esc(clip(nums[n.i]+". "+(s.title||"(무제)"),maxT))+'</text>'+
+        (s.desc?'<text x="'+nx+'" y="'+(n.y+37)+'" text-anchor="middle" font-size="10" fill="#6b6b6b">'+esc(clip(s.desc,maxT+8))+'</text>':'')+'</g>';
     }
-    if(s.owner&&s.type!=="decision")
-      svg+='<text x="'+(CX+n.w/2+8)+'" y="'+(cy+3)+'" font-size="10" fill="#6b6b6b">'+esc(s.owner)+'</text>';
+    if(s.owner&&s.type!=="decision"&&solo)
+      svg+='<text x="'+(nx+n.w/2+8)+'" y="'+(cy+3)+'" font-size="10" fill="#6b6b6b">'+esc(s.owner)+'</text>';
     if(attCnt(s)){
-      const bx=CX+n.w/2-2, by=n.y-2;
+      const bx=nx+n.w/2-2, by=n.y-2;
       svg+='<g class="flow-node" onclick="openStepDetail(\''+s.id+'\')"><circle cx="'+bx+'" cy="'+by+'" r="8" fill="#1a1a1a"/>'+
         '<text x="'+bx+'" y="'+(by+3)+'" text-anchor="middle" font-size="9" fill="#fff" font-weight="600">'+attCnt(s)+'</text></g>';
     }
     if(kidCnt(s)){ // 폴더 표시(세부단계 있음) — 클릭하면 안으로
       const pw=kidCnt(s)>9?38:32;
-      const x0=CX-n.w/2-6, y0=n.y-11;
+      const x0=nx-n.w/2-6, y0=n.y-11;
       svg+='<g class="flow-node" onclick="enterStep(\''+s.id+'\')"><title>세부단계 '+kidCnt(s)+'개 — 클릭하여 열기</title>'+
         '<rect x="'+x0+'" y="'+y0+'" width="'+pw+'" height="18" rx="9" fill="#fff" stroke="#1a1a1a" stroke-width="1.2"/>'+
         '<g transform="translate('+(x0+5)+','+(y0+2.5)+') scale(0.8)"><path d="M1.5 4.5a1 1 0 0 1 1-1h2.8l1.4 1.8h6.8a1 1 0 0 1 1 1v5.7a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z" fill="none" stroke="#1a1a1a" stroke-width="1.7" stroke-linejoin="round"/></g>'+
@@ -1054,7 +1171,8 @@ function renderFlow(){
   });
   area.innerHTML='<svg width="880" height="'+H+'" viewBox="0 0 880 '+H+'" style="min-width:880px;display:block;margin:0 auto">'+
     '<defs><marker id="arr" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#888"/></marker>'+
-    '<marker id="arrR" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#b06060"/></marker></defs>'+
+    '<marker id="arrR" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#b06060"/></marker>'+
+    '<marker id="arrB" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#4a7ab5"/></marker></defs>'+
     svg+'</svg>';
 }
 function clip(s,n){ s=String(s); return s.length>n? s.slice(0,n-1)+"…" : s; }
@@ -1067,17 +1185,23 @@ function renderMan(){
   box.innerHTML=manLevel(d.steps,"",0);
 }
 function manLevel(arr,prefix,depth){
+  const nums=calcNums(arr);
   const idxOf={}; (arr||[]).forEach((s,i)=>idxOf[s.id]=i);
-  const ref=id=>{ const i=idxOf[id]; return i==null?"?":prefix+(i+1)+". "+(arr[i].title||"(무제)"); };
+  const ref=id=>{ const i=idxOf[id]; return i==null?"?":prefix+nums[i]+". "+(arr[i].title||"(무제)"); };
   return (arr||[]).map((s,i)=>{
-    const num=prefix+(i+1);
+    const num=prefix+nums[i];
+    // 기본 다음 = 다음 그룹의 첫 단계 (동시 진행 단계는 건너뜀)
+    let j=i+1; while(j<arr.length&&arr[j].par) j++;
+    const defNext=arr[j]? prefix+nums[j]+". "+(arr[j].title||"(무제)") : "";
     let flow="";
     if(s.type==="decision"){
-      flow=(s.branches||[]).map(b=>'<b>'+esc(b.label||"분기")+'</b> → '+esc(b.to?ref(b.to):(arr[i+1]?prefix+(i+2)+". "+(arr[i+1].title||"(무제)"):"다음"))).join(" · ");
+      flow=(s.branches||[]).map(b=>'<b>'+esc(b.label||"분기")+'</b> → '+esc(b.to?ref(b.to):(defNext||"다음"))).join(" · ");
     }else if(s.type!=="end"){
       if(s.next) flow="다음: "+esc(ref(s.next));
-      else if(arr[i+1]) flow="다음: "+prefix+(i+2)+". "+esc(arr[i+1].title||"(무제)");
+      else if(defNext) flow="다음: "+esc(defNext);
     }
+    const deps=(s.deps||[]).filter(v=>idxOf[v]!=null);
+    if(deps.length) flow=(flow?flow+' &nbsp;·&nbsp; ':'')+'<span style="color:#2c5488">선행: '+deps.map(v=>esc(ref(v))).join(" · ")+'</span>';
     const ncls=(s.type==="decision"?"dec":(s.type==="start"||s.type==="end"?"se":""))+(depth?" subn":"");
     const links=(s.links||[]).filter(l=>l.url);
     const linkHtml=links.length?'<div class="man-links">'+links.map(l=>
@@ -1087,11 +1211,12 @@ function manLevel(arr,prefix,depth){
     const imgHtml=(s.images||[]).length?'<div class="man-imgs">'+s.images.map((im,ii)=>
       '<img src="'+esc(im.src)+'" alt="'+esc(im.cap||"")+'" title="'+esc(im.cap||"")+'" loading="lazy" onclick="openLightboxFor(\''+s.id+'\','+ii+')">').join("")+'</div>':'';
     const foldBadge=kidCnt(s)?'<span class="fold-cnt" title="세부단계 열기" onclick="event.stopPropagation();enterStep(\''+s.id+'\')">'+ICO_FOLDER+'세부 '+kidCnt(s)+'</span>':'';
+    const parBadge=nums[i].indexOf("-")>=0?'<span class="att-cnt" title="같은 번호 단계와 동시 진행">동시 진행</span>':'';
     const kidsHtml=kidCnt(s)?'<div class="man-sub">'+manLevel(s.children,num+".",depth+1)+'</div>':'';
     return '<div class="man-step"><div class="n '+ncls+'">'+num+'</div><div class="bd">'+
       '<div class="t" style="cursor:pointer" onclick="openStepDetail(\''+s.id+'\')" title="클릭: 상세(링크·이미지)">['+TYPE_LABEL[s.type]+'] '+esc(s.title||"(무제)")+
         (s.owner?' <span style="font-weight:400;color:var(--muted)">— 담당: '+esc(s.owner)+'</span>':'')+
-        (attCnt(s)?'<span class="att-cnt">첨부 '+attCnt(s)+'</span>':'')+foldBadge+'</div>'+
+        (attCnt(s)?'<span class="att-cnt">첨부 '+attCnt(s)+'</span>':'')+parBadge+foldBadge+'</div>'+
       (s.desc?'<div class="d">'+esc(s.desc)+'</div>':'')+
       (flow?'<div class="m">'+flow+'</div>':'')+
       linkHtml+imgHtml+
