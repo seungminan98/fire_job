@@ -154,6 +154,13 @@
   .crumbs svg{width:13px;height:13px;flex:none}
   .crumbs .up{margin-left:auto}
 
+  /* 새 매뉴얼 템플릿 선택 */
+  .tpl-card{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--line-strong);
+    border-radius:7px;padding:10px 13px;margin-bottom:8px;cursor:pointer;font-family:inherit;font-size:12.5px}
+  .tpl-card:hover{border-color:var(--ink);background:var(--soft)}
+  .tpl-card b{display:block;font-size:13px;margin-bottom:3px}
+  .tpl-card span{color:var(--muted);font-size:11.5px;line-height:1.55;display:block}
+
   /* 본문 하위 프로세스 들여쓰기 */
   .man-sub{margin:4px 0 4px 36px;border-left:2px solid var(--line);padding-left:10px}
   .man-step .n.subn{width:auto;min-width:26px;border-radius:13px;padding:0 7px;font-size:10.5px}
@@ -356,6 +363,36 @@
   </footer>
 </div>
 
+<!-- 새 매뉴얼 템플릿 선택 모달 -->
+<div class="modal-back" id="tplBack" onclick="if(event.target===this)closeTpl()">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-h">
+      <span class="ttl">새 매뉴얼 만들기</span>
+      <button class="x" onclick="closeTpl()">✕</button>
+    </div>
+    <div class="modal-b">
+      <label style="font-size:11px;color:var(--muted)">매뉴얼 이름 (비워두면 템플릿 이름 사용)</label>
+      <input id="tplName" autocomplete="off" style="width:100%;border:1px solid var(--line-strong);border-radius:4px;
+        padding:6px 9px;font-family:inherit;font-size:12.5px;margin:3px 0 13px;box-sizing:border-box">
+      <button class="tpl-card" onclick="createDoc('permit')">
+        <b>건축허가 연계 소방공사 (동의 대상)</b>
+        <span>건축허가·소방 동의(허가용 러프 도면) → 실시설계 → 감리 지정·착공신고 → 시공
+        (샵드로잉 승인 → AFC 배포 → 설계변경 시 재작성 루프) → 완공검사 → 증명서 발급·건축사 제출
+        → 건축물 사용승인까지 전 과정 — 실무 디테일이 각 단계의 세부단계(폴더)에 들어 있습니다</span>
+      </button>
+      <button class="tpl-card" onclick="createDoc('solo')">
+        <b>소방시설 단독공사</b>
+        <span>소방시설 설계 → 착공신고 대상 여부 판단 → 감리자 지정·착공신고 → 시공(샵드로잉·AFC 관리)
+        → 완공검사 → 증명서 발급·준공 — 증설·개보수 등 건축 인허가 없이 소방만 단독 진행하는 흐름</span>
+      </button>
+      <button class="tpl-card" onclick="createDoc('blank')">
+        <b>빈 매뉴얼</b>
+        <span>시작-작업-종료 3단계만 있는 빈 문서에서 직접 작성</span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- 단계 상세 모달 (링크·이미지 첨부) -->
 <div class="modal-back" id="stepBack" onclick="if(event.target===this)closeStepDetail()">
   <div class="modal">
@@ -460,48 +497,140 @@ function load(){
   state.docs.forEach(d=>normSteps(d.steps));
 }
 
-/* ══════════════ 예시 템플릿 ══════════════ */
-function sampleDoc(){
-  const ids=Array.from({length:10},()=>uid());
-  return { id:uid(), name:"소방공사 착공-완공 표준 프로세스(예시)",
-    desc:"소방시설공사 착공신고부터 완공검사증명서 발급까지의 표준 업무 흐름 예시입니다. 자유롭게 수정하세요.",
+/* ══════════════ 매뉴얼 템플릿 ══════════════ */
+function ts(title,desc,owner){ return {id:uid(),type:"task",title:title,desc:desc||"",owner:owner||"",next:"",branches:[],links:[],images:[],children:[]}; }
+function dq(title,desc){ const s=ts(title,desc); s.type="decision"; return s; }
+function se(type,title,desc){ const s=ts(title,desc); s.type=type; return s; }
+
+/* 완공검사 세부 프로세스 — 두 템플릿 공용 (호출할 때마다 새 id) */
+function mkAcceptance(){
+  const c1=ts("감리결과보고서 작성","시험 성적서·검측 기록·사진대지 취합","감리");
+  const c2=ts("완공검사 서류 제출","완공검사 신청서 + 감리결과보고서 — 관할 소방서 제출","공무");
+  const c3=ts("소방서 현장확인","작동 시연 준비(펌프 기동, 자탐 연동, 비상방송 등) — 감리·시공 입회","현장/감리");
+  const c5=ts("지적사항 보완","보완 시공 후 재확인 요청","현장");
+  const c6=ts("현장확인 적합","완공검사 통과 — 증명서 발급 대기","공무");
+  const c4=dq("현장확인 지적?","");
+  c4.branches=[{label:"지적",to:c5.id},{label:"적합",to:c6.id}];
+  c5.next=c3.id;
+  return [c1,c2,c3,c4,c5,c6];
+}
+
+/* 건축허가 연계 소방공사 (동의 대상) */
+function tplPermit(){
+  // 건축허가·소방 동의 — 허가 단계는 러프 도면
+  const a1=ts("기본설계(허가용) 도면 작성","건축허가 단계는 실시설계 전이라 소방시설 개략 배치 수준의 러프한 도면으로 진행. 소화·경보·피난설비 등 법정 설비 누락 여부 위주로 검토 — 상세 치수·루팅은 실시설계와 샵드로잉에서 확정","설계사무소");
+  const a2=ts("건축허가 동의 요청","허가권자(건축과)가 관할 소방서에 동의 요청 — 연면적·용도별 동의 대상 여부 확인","건축사");
+  const a4=ts("건축허가서 발급","소방서 동의 회신 후 허가권자가 건축허가서 발급","건축사");
+  const a3=dq("소방서 동의 검토 결과?","법정 설비 반영 여부, 소방차 진입로·소화용수 등 검토");
+  a3.branches=[{label:"보완",to:a1.id},{label:"동의",to:a4.id}];
+
+  // 착공신고 — 보완 루프
+  const e1=ts("착공신고 서류 준비","착공신고서, 실시설계 도서, 시공사 등록·기술인력 서류, 감리자 지정신고 수리 확인","공무");
+  const e2=ts("관할 소방서 접수","공사 착공 전에 신고 — 착공 후 신고 지연 시 과태료 주의","공무");
+  const e4=ts("착공신고 필증 수령","필증 사본 현장 게시·보관","공무");
+  const e3=dq("소방서 보완 요구?","");
+  e3.branches=[{label:"보완",to:e1.id},{label:"수리",to:e4.id}];
+
+  // 시공 — 샵드로잉 승인·AFC 배포·설계변경 재작성 루프
+  const b1=ts("샵 드로잉 작성","실시설계를 시공 상세로 구체화 — 관경·루팅·행거 간격, 타 공종(덕트·전기·위생배관) 간섭 반영","시공사");
+  const b3=ts("AFC 도면 배포","감리 승인본을 AFC(시공용 승인도면)로 배포. 리비전 번호·배포 이력 관리, 구본은 반드시 회수 — 현장에 구본이 돌면 재시공 위험","공무");
+  const b4=ts("시공 (배관·기구·배선)","AFC 최신본 기준 시공. 매립·천장 은폐 전 감리 검측 필수(사진 기록)","현장");
+  const b6=ts("수압·연동·성능시험","배관 수압시험, 자탐 연동시험, 펌프 성능시험 — 감리 입회, 성적서 보관","현장/감리");
+  const b2=dq("감리 샵드로잉 승인?","");
+  b2.branches=[{label:"보완",to:b1.id},{label:"승인",to:b3.id}];
+  const b5=dq("설계변경·간섭 발생?","건축 변경, 타 공종 간섭, 자재 변경 등으로 시공 중 수시 발생 — AFC가 계속 갱신되는 이유");
+  b5.branches=[{label:"발생 — 샵드로잉 재작성",to:b1.id},{label:"없음",to:b6.id}];
+
+  const s2=ts("건축허가·소방 동의","허가 단계 도면은 러프(기본설계) 수준 — 상세는 실시설계·샵드로잉에서 확정","건축사/설계");
+  s2.children=[a1,a2,a3,a4];
+  const s3=ts("소방시설 실시설계","착공신고용 설계도서 확정 — 수리계산·장비 용량 산정 포함","설계사무소");
+  s3.children=[
+    ts("실시설계 도면 작성","수리계산서, 펌프·수조 등 장비 용량 산정 포함","설계사무소"),
+    ts("내역서·시방서 작성","","설계사무소"),
+    ts("착공신고용 설계도서 취합","도면·계산서·시방서 일체 — 착공신고 첨부","공무")];
+  const s4=ts("소방공사 감리자 지정 신고","공사 착공 전 감리자 지정 신고 필수 — 착공신고와 함께 준비","공무");
+  s4.children=[
+    ts("감리 계약 체결","감리 대상·등급(상주/일반) 확인 후 계약","공무"),
+    ts("감리자 지정신고서 제출","관할 소방서 제출","감리"),
+    ts("지정신고 수리 확인","수리 확인 후 착공신고 진행","공무")];
+  const s5=ts("소방시설공사 착공신고","착공 전 신고 — 보완 지시가 오면 서류 재작성 루프","공무");
+  s5.children=[e1,e2,e3,e4];
+  const s6=ts("소방시설 공사 (시공)","샵드로잉 승인 후 시공. 현장 간섭·설계변경으로 AFC 도면이 계속 갱신되므로 리비전 관리가 핵심","현장");
+  s6.children=[b1,b2,b3,b4,b5,b6];
+  const s7=ts("소방시설 완공검사","감리결과보고서 첨부하여 신청, 소방서 현장확인","공무/감리");
+  s7.children=mkAcceptance();
+
+  return {id:uid(),name:"건축허가 연계 소방공사 (동의 대상)",
+    desc:"건축허가(소방 동의)부터 건축물 사용승인까지 — 소방공사가 건축 인허가와 맞물려 진행되는 표준 흐름입니다. 각 단계의 세부단계(폴더)에 실무 디테일이 들어 있습니다.",
     steps:[
-      {id:ids[0],type:"start",title:"공사 수주",desc:"",owner:"",next:"",branches:[]},
-      {id:ids[1],type:"task",title:"착공신고 서류 작성",desc:"설계도서·시공자 자격·감리자 지정 서류 준비",owner:"공무",next:"",branches:[]},
-      {id:ids[2],type:"task",title:"관할 소방서 접수",desc:"소방시설공사 착공신고 제출",owner:"공무",next:"",branches:[]},
-      {id:ids[3],type:"decision",title:"보완 요구?",desc:"소방서 검토 결과 서류 보완 지시 여부",owner:"",next:"",
-        branches:[{label:"보완 필요",to:ids[1]},{label:"수리",to:ids[4]}]},
-      {id:ids[4],type:"task",title:"시공 개시",desc:"착공신고 수리 후 시공. 은폐 전 감리 검측 필수",owner:"현장",next:"",branches:[],children:[
-        {id:uid(),type:"task",title:"자재 반입·검수",desc:"승인자재 여부 확인, 반입검수 기록 작성",owner:"현장",next:"",branches:[]},
-        {id:uid(),type:"task",title:"배관·기구 설치",desc:"도면 기준 시공, 변경 발생 시 감리 협의",owner:"현장",next:"",branches:[]},
-        {id:uid(),type:"task",title:"은폐 전 감리 검측",desc:"매립·천장 은폐 전 검측 요청 및 사진 기록",owner:"현장/감리",next:"",branches:[]}
-      ]},
-      {id:ids[5],type:"task",title:"수압·연동시험",desc:"배관 수압시험, 자탐 연동시험, 성능시험 입회",owner:"현장/감리",next:"",branches:[]},
-      {id:ids[6],type:"task",title:"완공검사 신청",desc:"감리결과보고서 첨부하여 관할 소방서 신청",owner:"공무",next:"",branches:[]},
-      {id:ids[7],type:"decision",title:"현장확인 지적?",desc:"소방서 현장확인 결과",owner:"",next:"",
-        branches:[{label:"지적사항",to:ids[8]},{label:"적합",to:ids[9]}]},
-      {id:ids[8],type:"task",title:"지적사항 보완",desc:"보완 시공 후 재확인 요청",owner:"현장",next:ids[7],branches:[]},
-      {id:ids[9],type:"end",title:"완공검사증명서 발급",desc:"",owner:"",next:"",branches:[]}
+      se("start","공사 수주·계약",""),
+      s2,s3,s4,s5,s6,s7,
+      ts("소방시설완공검사 증명서 발급","증명서 원본 수령 — 건축물 사용승인 신청에 필요","공무"),
+      ts("증명서 건축사 제출","사용승인(준공) 신청 서류에 첨부되도록 건축사무소에 전달","공무"),
+      ts("건축물 사용승인 신청","건축주·건축사가 허가권자에 신청 — 소방완공검사증명서 등 첨부","건축사"),
+      se("end","건축물 사용승인 (준공)","")
+    ]};
+}
+
+/* 소방시설 단독공사 */
+function tplSolo(){
+  const s2=ts("소방시설 설계","단독공사는 설계부터 시공사가 주도하는 경우가 많음","설계사무소");
+  s2.children=[
+    ts("현장 실측·기존시설 조사","기존 건물은 준공도면이 없는 경우가 많음 — 현황 실측 후 현황도 작성","설계/시공"),
+    ts("설계도서 작성","용도·면적 기준 법정 소방시설 적용 검토 포함","설계사무소")];
+
+  const d1=ts("감리자 지정 신고","감리 대상이면 착공신고 전에 지정 신고","공무");
+  const d2=ts("착공신고 서류 제출","신고서 + 설계도서 + 시공사 서류 — 관할 소방서","공무");
+  const d4=ts("필증 수령·시공 준비","비대상 공사는 신고 없이 바로 시공 준비","공무");
+  const d0=dq("착공신고 대상 공사?","신설·증설·개설 등 신고 대상 여부부터 확인 — 비대상이면 신고 절차 생략");
+  const d3=dq("소방서 보완 요구?","");
+  d0.branches=[{label:"대상",to:d1.id},{label:"비대상",to:d4.id}];
+  d3.branches=[{label:"보완",to:d2.id},{label:"수리",to:d4.id}];
+  const s3=ts("착공신고·감리자 지정","착공신고 대상 여부 판단부터 시작","공무");
+  s3.children=[d0,d1,d2,d3,d4];
+
+  const s4=ts("소방시설 공사","","현장");
+  s4.children=[
+    ts("샵드로잉·AFC 관리","시공 상세도 작성 → 감리(또는 발주처) 승인 → AFC 배포. 변경 발생 시 리비전 갱신·구본 회수","시공사"),
+    ts("시공·은폐 전 검측","배관·기구·배선 설치, 매립·은폐 전 검측 및 사진 기록","현장"),
+    ts("수압·연동시험","성적서 보관 — 완공검사 서류에 첨부","현장/감리")];
+
+  const s5=ts("소방시설 완공검사","","공무/감리");
+  s5.children=mkAcceptance();
+
+  return {id:uid(),name:"소방시설 단독공사",
+    desc:"건축 인허가와 별개로 소방공사만 단독 진행되는 흐름(설비 증설·개보수·리모델링 등)입니다. 착공신고 대상 여부 판단 분기가 포함되어 있습니다.",
+    steps:[
+      se("start","공사 계약 (소방 단독)",""),
+      s2,s3,s4,s5,
+      ts("소방시설 완공검사 증명서 발급","원본 수령 후 발주처 전달","공무"),
+      se("end","준공·인수인계","준공도서(AFC 최종본·시험성적서·사용설명서) 인계")
     ]};
 }
 
 /* ══════════════ 매뉴얼 관리 ══════════════ */
 function newDoc(){
-  const name=prompt("새 매뉴얼 이름","");
-  if(name==null) return;
+  document.getElementById("tplName").value="";
+  document.getElementById("tplBack").classList.add("show");
+  setTimeout(()=>document.getElementById("tplName").focus(),50);
+}
+function closeTpl(){ document.getElementById("tplBack").classList.remove("show"); }
+function createDoc(kind){
   let d;
-  if(confirm("예시 프로세스(소방공사 착공-완공 흐름)로 시작할까요?\n(취소 = 빈 매뉴얼)")){
-    d=sampleDoc(); if(name.trim()) d.name=name.trim();
-  }else{
-    d={id:uid(),name:name.trim()||"새 매뉴얼",desc:"",steps:[
-      {id:uid(),type:"start",title:"시작",desc:"",owner:"",next:"",branches:[]},
-      newStep("task"),
-      {id:uid(),type:"end",title:"종료",desc:"",owner:"",next:"",branches:[]}
-    ]};
-  }
+  if(kind==="permit") d=tplPermit();
+  else if(kind==="solo") d=tplSolo();
+  else d={id:uid(),name:"새 매뉴얼",desc:"",steps:[
+    se("start","시작",""),
+    newStep("task"),
+    se("end","종료","")
+  ]};
+  const nm=document.getElementById("tplName").value.trim();
+  if(nm) d.name=nm;
   normSteps(d.steps);
   state.docs.push(d); state.activeId=d.id; navPath=[];
+  closeTpl();
   save(); render();
+  window.scrollTo({top:0});
 }
 function switchDoc(id){ state.activeId=id; selStepId=null; navPath=[]; save(); render(); }
 function renameDoc(){
@@ -731,6 +860,7 @@ document.addEventListener("keydown",e=>{
   if(e.key==="Escape"){
     const lb=document.getElementById("lightbox");
     if(lb.classList.contains("show")){ lb.classList.remove("show"); return; }
+    if(document.getElementById("tplBack").classList.contains("show")){ closeTpl(); return; }
     if(document.getElementById("stepBack").classList.contains("show")) closeStepDetail();
   }
 });
