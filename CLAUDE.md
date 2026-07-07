@@ -25,8 +25,9 @@
 | `hookup.html` | 공사별 소방 훅업 공정표 (사용자 정의 공종 + 머터리얼 셰이딩) | `fireHookup.v1` |
 | `bridge.html` | PPT/이미지를 Claude API로 읽어 훅업에 밀어넣는 브리지 | 동일 (`fireHookup.v1`) |
 | `process.html` | 업무 표준 매뉴얼 (단계·조건 분기 → 플로우차트 자동 렌더) | `fireProcess.v1` |
+| `calc.html` | 법규 계산기 (건폐율·용적률, 스프링클러 살수장애 시각화 판정) | `fireCalc.v1` |
 
-- 세 페이지 공통: 접속 암호 게이트(SHA-256 해시 비교, 소스에 평문 금지).
+- 전 페이지 공통: 접속 암호 게이트(SHA-256 해시 비교, 소스에 평문 금지).
 - hookup의 공종은 사용자 정의 그룹(`p.groups`, 머터리얼 컬러) — 작업은 `gid`로 참조하며
   같은 공종 안에서 순서대로 700→600→500… 셰이드로 옅어진다.
 - hookup 작업은 1단계 하위 작업(`parentId`)을 가질 수 있다(Epic=공종 > Task > Sub-Task).
