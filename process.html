@@ -85,6 +85,43 @@
   .flow-node:hover .nd{stroke:var(--ink);stroke-width:2}
   .flow-node.selnode .nd{stroke:var(--ink);stroke-width:2.4}
 
+  /* 한눈에 보기 (가로 전개) */
+  .ov-scroll{overflow-x:auto;overflow-y:hidden;padding:4px 2px 10px}
+  /* 뉴모피즘 가로 스크롤바 */
+  .ov-scroll::-webkit-scrollbar{height:16px}
+  .ov-scroll::-webkit-scrollbar-track{background:#eceef1;border-radius:10px;
+    box-shadow:inset 2px 2px 5px rgba(163,177,198,.55), inset -2px -2px 5px rgba(255,255,255,.95)}
+  .ov-scroll::-webkit-scrollbar-thumb{background:linear-gradient(145deg,#f4f6f9,#e2e6eb);border-radius:10px;
+    border:3px solid #eceef1;
+    box-shadow:2px 2px 4px rgba(163,177,198,.6), -2px -2px 4px rgba(255,255,255,.95)}
+  .ov-scroll::-webkit-scrollbar-thumb:hover{background:linear-gradient(145deg,#eef1f5,#dde2e8)}
+  .ov-scroll{scrollbar-color:#e6e9ee #eceef1}
+
+  .ov-row{display:flex;align-items:flex-start;min-width:max-content;padding:6px 4px 8px}
+  .ov-col{flex:0 0 auto;width:205px}
+  .ov-node{border:1.5px solid #555;border-radius:7px;background:#fff;padding:8px 10px;
+    font-weight:650;font-size:12px;cursor:grab;line-height:1.4}
+  .ov-node .ns{font-weight:400;font-size:10.5px;color:var(--muted);display:block}
+  .ov-node.t-start{border-radius:20px;text-align:center}
+  .ov-node.t-end{border-radius:20px;background:#1a1a1a;color:#fff;text-align:center}
+  .ov-node.t-decision{border-color:#7b1fa2;background:#f6effa;color:#4a1266}
+  .ov-node.selov,.ov-kid.selov{outline:2px solid var(--ink);outline-offset:1px}
+  .ov-br{font-size:10px;color:#7b1fa2;margin-top:4px;line-height:1.5}
+  .ov-kids{margin-top:8px;display:flex;flex-direction:column;gap:4px;border-left:2px solid var(--line);
+    padding-left:8px;margin-left:4px}
+  .ov-kid{border:1px solid var(--line);border-radius:5px;background:#fff;padding:3px 7px;font-size:11px;
+    cursor:grab;display:flex;gap:5px;align-items:baseline;min-width:0}
+  .ov-kid .tt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+  .ov-kid.t-decision{border-color:#c9a6dd;background:#faf5fd;color:#4a1266}
+  .ov-kid.t-end{background:var(--soft);color:var(--muted)}
+  .ov-grip{color:#c4c4c4;font-size:10px;flex:none;cursor:grab}
+  .ov-num{color:var(--muted);font-size:9.5px;font-variant-numeric:tabular-nums;flex:none}
+  .ov-over{outline:2px dashed #4a7ab5!important;outline-offset:2px}
+  .ov-arr{flex:0 0 34px;display:flex;justify-content:center;padding-top:14px;color:#888}
+  .ov-chip{display:inline-block;font-size:9.5px;background:var(--soft);border-radius:7px;padding:0 6px;
+    margin-left:5px;color:var(--muted);font-weight:400;vertical-align:1px}
+  .inline-panel.static{position:static;transform:none;margin:14px auto 4px;animation:none;max-width:680px}
+
   /* 인라인 상세 패널 — 클릭한 노드 아래로 펼쳐짐 */
   .inline-panel{position:absolute;left:50%;transform:translateX(-50%);width:min(680px,96%);
     background:#fff;border:1.5px solid var(--ink);border-radius:9px;box-shadow:0 8px 26px rgba(0,0,0,.13);
@@ -343,14 +380,14 @@
 
   <!-- 플로우차트 -->
   <div class="card" id="flowCard">
-    <div class="card-h">프로세스 플로우차트 <span class="sub" id="flowTitle"></span></div>
+    <div class="card-h">Process Flow Chart <span class="sub" id="flowTitle"></span>
+      <div class="spacer"></div>
+      <button class="btn sm" id="ovBtn" onclick="toggleOv()">한눈에 보기</button>
+    </div>
     <div class="card-b">
       <div class="doc-desc" id="docDesc"></div>
       <div class="flow-scroll" id="flowArea"></div>
-      <div class="hint">사각형=작업 · 마름모=조건 판단(분기별 화살표에 라벨) · 노드를 클릭하면 <b>그 자리에서 아래로 상세 패널이 펼쳐져</b> 제목·내용·링크·이미지·선행 단계를 바로 편집할 수 있습니다 — 같은 노드를 다시 클릭하거나 ✕ / Esc로 접힙니다.<br>
-        각 단계는 폴더처럼 <b>세부단계</b>를 담을 수 있습니다 — 노드 왼쪽 위의 폴더 표시, 편집 표의 "세부" 버튼, 상세 패널의 "세부단계 열기"로 안에 들어가고, 위의 경로 표시줄로 되돌아옵니다.<br>
-        편집 표의 <b>"동시"</b>를 켜면 바로 위 단계와 나란히(같은 번호 4-1/4-2) 진행되는 것으로 표시되고,
-        <b>파란 점선</b>은 선행 조건(예: 설계도서가 나와야 입찰 가능), <b>왼쪽 붉은 점선</b>은 되돌아가는 재작업 루프입니다.</div>
+      <div class="hint" id="flowHint"></div>
     </div>
   </div>
 
@@ -533,6 +570,7 @@ function load(){
     if(raw){ const s=JSON.parse(raw); if(s&&Array.isArray(s.docs)) state=s; }
   }catch(e){}
   state.docs.forEach(d=>normSteps(d.steps));
+  state.ov=!!state.ov;
 }
 
 /* ══════════════ 매뉴얼 템플릿 ══════════════ */
@@ -892,10 +930,12 @@ function openStepDetail(id){
   const s=stepById(id); if(!s) return;
   if(!Array.isArray(s.links)) s.links=[]; if(!Array.isArray(s.images)) s.images=[];
   if(!Array.isArray(s.children)) s.children=[]; if(!Array.isArray(s.deps)) s.deps=[];
-  // 다른 레벨의 단계면 그 단계가 있는 폴더 레벨로 이동해서 펼친다
-  const p=pathOf(id)||[];
-  const lvl=p.slice(0,-1);
-  if(lvl.join("/")!==navPath.join("/")) navPath=lvl;
+  // 다른 레벨의 단계면 그 단계가 있는 폴더 레벨로 이동해서 펼친다 (한눈에 보기에서는 그대로)
+  if(!state.ov){
+    const p=pathOf(id)||[];
+    const lvl=p.slice(0,-1);
+    if(lvl.join("/")!==navPath.join("/")) navPath=lvl;
+  }
   detailStepId=id; selStepId=id;
   render();
   const el=document.getElementById("inlinePanel");
@@ -1168,8 +1208,19 @@ function renderFlow(){
   }
   document.getElementById("flowTitle").textContent = title;
   document.getElementById("docDesc").textContent = d&&!navPath.length? (d.desc||"") : "";
+  const btn=document.getElementById("ovBtn");
+  if(btn) btn.textContent = state.ov? "세로 플로우" : "한눈에 보기";
+  const hint=document.getElementById("flowHint");
+  if(hint) hint.innerHTML = state.ov?
+    '가로 방향 = 진행 순서, 각 단계 아래 = 폴더(세부단계) 전체 전개. <b>카드를 잡아 끌어 같은 폴더 안의 다른 카드 위에 놓으면 순서가 그 자리로 옮겨집니다.</b> '+
+    '카드를 클릭하면 아래에 상세 패널이 열립니다. 분기 화살표·선행 점선은 세로 플로우에서 확인하세요.':
+    '사각형=작업 · 마름모=조건 판단(분기별 화살표에 라벨) · 노드를 클릭하면 <b>그 자리에서 아래로 상세 패널이 펼쳐져</b> 제목·내용·링크·이미지·선행 단계를 바로 편집할 수 있습니다 — 같은 노드를 다시 클릭하거나 ✕ / Esc로 접힙니다.<br>'+
+    '각 단계는 폴더처럼 <b>세부단계</b>를 담을 수 있습니다 — 노드 왼쪽 위의 폴더 표시, 편집 표의 "세부" 버튼, 상세 패널의 "세부단계 열기"로 안에 들어가고, 위의 경로 표시줄로 되돌아옵니다.<br>'+
+    '편집 표의 <b>"동시"</b>를 켜면 바로 위 단계와 나란히(같은 번호 4-1/4-2) 진행되는 것으로 표시되고, '+
+    '<b>파란 점선</b>은 선행 조건(예: 설계도서가 나와야 입찰 가능), <b>왼쪽 붉은 점선</b>은 되돌아가는 재작업 루프입니다.';
   if(!d||!steps.length){ area.innerHTML='<div style="color:var(--muted);font-size:12px;padding:10px">'+
     (navPath.length?'이 폴더는 비어 있습니다. 아래 "+ 단계 추가"로 세부단계를 만들어 주세요.':'단계를 추가하면 플로우차트가 그려집니다.')+'</div>'; return; }
+  if(state.ov){ renderOverview(area,steps); return; }
 
   const CX=430, TW=280, DW=210, VGAP=42;
   const idxOf={}; steps.forEach((s,i)=>idxOf[s.id]=i);
@@ -1330,6 +1381,96 @@ function renderFlow(){
 }
 function clip(s,n){ s=String(s); return s.length>n? s.slice(0,n-1)+"…" : s; }
 
+/* ══════════════ 한눈에 보기 (가로 전개 + 드래그 정렬) ══════════════ */
+function toggleOv(){ state.ov=!state.ov; save(); render(); }
+function ovKidsHTML(arr,prefix,depth,parentIds){
+  const nums=calcNums(arr);
+  return arr.map((s,i)=>{
+    const num=prefix+nums[i];
+    const path=parentIds.concat(s.id).join("/");
+    return '<div class="ov-kid t-'+s.type+(s.id===detailStepId?' selov':'')+'" draggable="true" data-path="'+path+'" style="margin-left:'+(depth*13)+'px"'+
+      ' ondragstart="ovDragStart(event)" ondragover="ovDragOver(event)" ondragleave="ovDragLeave(event)" ondrop="ovDrop(event)" ondragend="ovDragEnd(event)"'+
+      ' onclick="ovClick(\''+s.id+'\')">'+
+      '<span class="ov-grip">⠿</span><span class="ov-num">'+num+'</span>'+
+      '<span class="tt" title="'+esc(s.title||"")+'">'+(s.type==="decision"?'[판단] ':'')+esc(s.title||"(무제)")+'</span>'+
+      (attCnt(s)?'<span class="ov-num">첨부'+attCnt(s)+'</span>':'')+
+      '</div>'+
+      (kidCnt(s)? ovKidsHTML(s.children,num+".",depth+1,parentIds.concat(s.id)) : '');
+  }).join("");
+}
+function renderOverview(area,steps){
+  const nums=calcNums(steps);
+  const idxOf={}; steps.forEach((s,i)=>idxOf[s.id]=i);
+  const ref=id=>{ const i=idxOf[id]; return i==null?"?":nums[i]; };
+  const parentIds=navPath.slice();
+  let cols='';
+  steps.forEach((s,i)=>{
+    if(i>0) cols+='<div class="ov-arr"><svg width="26" height="16" viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8h17M14 3l7 5-7 5"/></svg></div>';
+    const path=parentIds.concat(s.id).join("/");
+    let br='';
+    if(s.type==="decision"&&(s.branches||[]).length)
+      br='<div class="ov-br">'+s.branches.map(b=>esc(b.label||"분기")+' → '+esc(b.to?ref(b.to):"다음")).join(' · ')+'</div>';
+    const chips=(nums[i].indexOf("-")>=0?'<span class="ov-chip">동시</span>':'')+
+      ((s.deps||[]).length?'<span class="ov-chip">선행 '+s.deps.map(ref).join("·")+'</span>':'');
+    cols+='<div class="ov-col">'+
+      '<div class="ov-node t-'+s.type+(s.id===detailStepId?' selov':'')+'" draggable="true" data-path="'+path+'"'+
+        ' ondragstart="ovDragStart(event)" ondragover="ovDragOver(event)" ondragleave="ovDragLeave(event)" ondrop="ovDrop(event)" ondragend="ovDragEnd(event)"'+
+        ' onclick="ovClick(\''+s.id+'\')">'+
+        (s.type==="start"||s.type==="end"?'':'<span class="ns">'+nums[i]+'. '+TYPE_LABEL[s.type]+'</span>')+
+        esc(s.title||TYPE_LABEL[s.type])+chips+br+
+      '</div>'+
+      (kidCnt(s)?'<div class="ov-kids">'+ovKidsHTML(s.children,nums[i]+".",0,parentIds.concat(s.id))+'</div>':'')+
+    '</div>';
+  });
+  const openStep=detailStepId? stepById(detailStepId):null;
+  area.innerHTML='<div class="ov-scroll" id="ovScroll"><div class="ov-row">'+cols+'</div></div>'+
+    (openStep? panelHTML(openStep).replace('class="inline-panel"','class="inline-panel static"') : '');
+  if(openStep){ renderSdLinks(); renderSdImgs(); renderSdDeps(); }
+}
+/* 드래그 정렬 — 같은 폴더(형제) 안에서만 */
+let ovDrag=null, ovDropT=0;
+function ovArrOfParent(ids){ // 부모 id 체인 → 그 부모의 형제 배열
+  const d=activeDoc(); if(!d) return null;
+  let arr=d.steps;
+  for(const id of ids){ const s=(arr||[]).find(x=>x.id===id); if(!s) return null; arr=s.children; }
+  return arr;
+}
+function ovDragStart(ev){
+  ev.stopPropagation();
+  ovDrag={path:ev.currentTarget.dataset.path.split("/")};
+  try{ ev.dataTransfer.effectAllowed="move"; ev.dataTransfer.setData("text/plain",""); }catch(e){}
+}
+function ovDragOver(ev){
+  if(!ovDrag) return;
+  const tgt=ev.currentTarget.dataset.path.split("/");
+  const same=tgt.length===ovDrag.path.length && tgt.slice(0,-1).join("/")===ovDrag.path.slice(0,-1).join("/");
+  if(!same) return;
+  ev.preventDefault(); ev.stopPropagation();
+  ev.currentTarget.classList.add("ov-over");
+}
+function ovDragLeave(ev){ ev.currentTarget.classList.remove("ov-over"); }
+function ovDragEnd(){ ovDrag=null; document.querySelectorAll(".ov-over").forEach(el=>el.classList.remove("ov-over")); }
+function ovDrop(ev){
+  ev.preventDefault(); ev.stopPropagation();
+  ev.currentTarget.classList.remove("ov-over");
+  if(!ovDrag) return;
+  const a=ovDrag.path, b=ev.currentTarget.dataset.path.split("/");
+  ovDrag=null; ovDropT=Date.now();
+  if(a.length!==b.length || a.slice(0,-1).join("/")!==b.slice(0,-1).join("/")) return; // 같은 폴더 안에서만
+  const arr=ovArrOfParent(a.slice(0,-1)); if(!arr) return;
+  const ai=arr.findIndex(x=>x.id===a[a.length-1]);
+  const bi=arr.findIndex(x=>x.id===b[b.length-1]);
+  if(ai<0||bi<0||ai===bi) return;
+  const [m]=arr.splice(ai,1);
+  arr.splice(bi,0,m);
+  save(); render();
+}
+function ovClick(id){
+  if(Date.now()-ovDropT<350) return; // 드롭 직후 클릭 무시
+  if(detailStepId===id){ closeStepDetail(); return; }
+  openStepDetail(id);
+}
+
 /* ══════════════ 매뉴얼 본문 ══════════════ */
 function renderMan(){
   const box=document.getElementById("manBody");
@@ -1397,6 +1538,7 @@ function importJSON(ev){
       if(!confirm("현재 데이터를 백업 파일 내용으로 대체할까요?")) return;
       state=s;
       state.docs.forEach(d=>normSteps(d.steps));
+      state.ov=!!state.ov;
       if(!state.docs.find(d=>d.id===state.activeId)) state.activeId=state.docs[0]?state.docs[0].id:null;
       navPath=[];
       save(); render();
