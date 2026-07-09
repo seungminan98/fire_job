@@ -120,6 +120,12 @@
   .ov-kids{margin-top:8px;display:flex;flex-direction:column;gap:4px;border-left:2px solid var(--line);
     padding-left:8px;margin-left:4px;animation:ovDown .16s ease-out}
   @keyframes ovDown{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+  .ov-col.open{width:456px}
+  .ov-mini{margin-top:8px;border:1px dashed var(--line-strong);border-radius:7px;background:var(--softer);
+    padding:6px 4px;animation:ovDown .16s ease-out;overflow:hidden}
+  .ov-mini-h{font-size:10.5px;font-weight:650;color:var(--muted);padding:0 8px 3px}
+  .mini-node{cursor:grab}
+  .mini-node:active{cursor:grabbing}
   .ov-kid{border:1px solid var(--line);border-radius:5px;background:#fff;padding:3px 7px;font-size:11px;
     cursor:grab;display:flex;gap:5px;align-items:baseline;min-width:0}
   .ov-kid .tt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
@@ -1223,9 +1229,9 @@ function renderFlow(){
   if(btn) btn.textContent = state.ov? "세로 플로우" : "한눈에 보기";
   const hint=document.getElementById("flowHint");
   if(hint) hint.innerHTML = state.ov?
-    '가로 방향 = 진행 순서. <b>단계 카드를 클릭하면 그 과정의 세부단계만 아래로 펼쳐지고</b>(다시 클릭하면 접힘, 루트는 한 번에 하나),'+
-    ' 판단 단계의 분기는 <span class="ov-bri ok" style="vertical-align:-1px">통과 → 다음</span> <span class="ov-bri back" style="vertical-align:-1px">보완 → 재작업</span> 식으로 표시됩니다.'+
-    ' <b>카드를 잡아 끌어 같은 폴더 안의 다른 카드 위에 놓으면 순서가 바뀌고</b>, 카드 오른쪽 ✎ 로 상세 패널을 엽니다.':
+    '가로 방향 = 진행 순서. <b>단계 카드를 클릭하면 그 과정의 세부 프로세스가 세로 플로우와 같은 미니 차트</b>(사각형=작업, 마름모=판단, 붉은 점선=재작업 루프)<b>로 아래에 펼쳐집니다</b>'+
+    ' — 다시 클릭하면 접히고, 루트는 한 번에 하나. 미니 차트 안의 폴더 배지를 누르면 더 깊은 폴더의 차트가 이어서 펼쳐집니다.'+
+    ' <b>미니 차트의 노드를 위아래로 끌면 같은 폴더 안에서 순서가 바뀌고</b>, 루트 카드는 좌우로 끌어 다른 카드 위에 놓으면 순서가 바뀝니다. 카드의 ✎ 또는 노드 클릭으로 상세 패널을 엽니다.':
     '사각형=작업 · 마름모=조건 판단(분기별 화살표에 라벨) · 노드를 클릭하면 <b>그 자리에서 아래로 상세 패널이 펼쳐져</b> 제목·내용·링크·이미지·선행 단계를 바로 편집할 수 있습니다 — 같은 노드를 다시 클릭하거나 ✕ / Esc로 접힙니다.<br>'+
     '각 단계는 폴더처럼 <b>세부단계</b>를 담을 수 있습니다 — 노드 왼쪽 위의 폴더 표시, 편집 표의 "세부" 버튼, 상세 패널의 "세부단계 열기"로 안에 들어가고, 위의 경로 표시줄로 되돌아옵니다.<br>'+
     '편집 표의 <b>"동시"</b>를 켜면 바로 위 단계와 나란히(같은 번호 4-1/4-2) 진행되는 것으로 표시되고, '+
@@ -1409,26 +1415,140 @@ function ovBranches(s,arr,nums,prefix){
     return '<span class="ov-bri '+(back?'back':'ok')+'">'+esc(b.label||"분기")+' → '+esc(ref)+'</span>';
   }).join('')+'</div>';
 }
-function ovKidsHTML(arr,prefix,depth,parentIds){
+/* 펼친 폴더를 세로 플로우와 같은 표현(마름모·분기 화살표·재작업 루프)의 미니 차트로 렌더 */
+let ovCharts={};
+function miniFlowSVG(arr,prefix,chartKey,parentIds){
+  const W=440, CX=220, TW=240, DW=150, VGAP=30;
   const nums=calcNums(arr);
-  return arr.map((s,i)=>{
-    const num=prefix+nums[i];
-    const path=parentIds.concat(s.id).join("/");
-    const open=ovOpen.has(s.id);
-    return '<div class="ov-kid t-'+s.type+(s.id===detailStepId?' selov':'')+'" draggable="true" data-path="'+path+'" style="margin-left:'+(depth*13)+'px"'+
-      ' ondragstart="ovDragStart(event)" ondragover="ovDragOver(event)" ondragleave="ovDragLeave(event)" ondrop="ovDrop(event)" ondragend="ovDragEnd(event)"'+
-      ' onclick="ovCardClick(\''+s.id+'\',0)">'+
-      '<span class="ov-grip">⠿</span><span class="ov-num">'+num+'</span>'+
-      '<span class="tt" title="'+esc(s.title||"")+'">'+(s.type==="decision"?'[판단] ':'')+esc(s.title||"(무제)")+'</span>'+
-      (kidCnt(s)?'<span class="ov-num">'+(open?'▾':'▸')+kidCnt(s)+'</span>':'')+
-      (attCnt(s)?'<span class="ov-num">첨부'+attCnt(s)+'</span>':'')+
-      '<button class="ov-edit" title="상세 열기" onclick="event.stopPropagation();ovClick(\''+s.id+'\')">✎</button>'+
-      '</div>'+
-      '<div style="margin-left:'+(depth*13)+'px">'+ovBranches(s,arr,nums,prefix)+'</div>'+
-      (kidCnt(s)&&open? ovKidsHTML(s.children,num+".",depth+1,parentIds.concat(s.id)) : '');
-  }).join("");
+  const idxOf={}; arr.forEach((s,i)=>idxOf[s.id]=i);
+  const groups=[];
+  arr.forEach((s,i)=>{ if(i>0&&s.par&&groups.length) groups[groups.length-1].push(i); else groups.push([i]); });
+  const giOf={}; groups.forEach((g,k)=>g.forEach(i=>giOf[i]=k));
+  const nodes=arr.map((s,i)=>{
+    const h=s.type==="decision"?50:(s.type==="start"||s.type==="end")?28:(s.desc?42:32);
+    return {s,i,h,w:s.type==="decision"?DW:(s.type==="task"?TW:120)};
+  });
+  let y=6;
+  groups.forEach(g=>{
+    if(g.length>1){
+      const gap=14;
+      g.forEach(i=>{ nodes[i].w=Math.min(nodes[i].w, Math.floor((W-40-gap*(g.length-1))/g.length)); });
+      const tot=g.reduce((a,i)=>a+nodes[i].w,0)+gap*(g.length-1);
+      let x=CX-tot/2;
+      g.forEach(i=>{ nodes[i].x=x+nodes[i].w/2; x+=nodes[i].w+gap; });
+    }else nodes[g[0]].x=CX;
+    const gh=Math.max.apply(null,g.map(i=>nodes[i].h));
+    g.forEach(i=>{ nodes[i].y=y; });
+    y+=gh+VGAP;
+  });
+  const H=y+4;
+  const nextGroup=i=>{ const gk=giOf[i]; return gk+1<groups.length? groups[gk+1] : []; };
+  const edges=[];
+  nodes.forEach(n=>{
+    const s=n.s;
+    if(s.type==="end") return;
+    if(s.type==="decision"){
+      const brs=(s.branches||[]).length?s.branches:[{label:"",to:""}];
+      brs.forEach(b=>{
+        if(b.to){ const ti=idxOf[b.to]; if(ti!=null) edges.push({from:n.i,to:ti,label:b.label||""}); }
+        else{ const t=nextGroup(n.i)[0]; if(t!=null) edges.push({from:n.i,to:t,label:b.label||""}); }
+      });
+    }else{
+      if(s.next){ const ti=idxOf[s.next]; if(ti!=null) edges.push({from:n.i,to:ti,label:""}); }
+      else nextGroup(n.i).forEach(t=>edges.push({from:n.i,to:t,label:""}));
+    }
+  });
+  const edgeKey=new Set(edges.map(e=>e.from+">"+e.to));
+  let svg=''; let rLane=0,lLane=0;
+  edges.forEach(e=>{
+    const a=nodes[e.from], b=nodes[e.to];
+    const aBot=a.y+a.h, bTop=b.y;
+    if(giOf[e.to]===giOf[e.from]+1){
+      svg+='<line x1="'+a.x+'" y1="'+aBot+'" x2="'+b.x+'" y2="'+(bTop-5)+'" stroke="#888" stroke-width="1.2" marker-end="url(#mArr)"/>';
+      if(e.label) svg+='<text x="'+((a.x+b.x)/2+6)+'" y="'+(aBot+(bTop-aBot)/2+3)+'" font-size="9" fill="#7b1fa2" font-weight="600">'+esc(clip(e.label,10))+'</text>';
+    }else if(giOf[e.to]>giOf[e.from]){
+      rLane++;
+      const lx=CX+Math.max(TW,DW)/2+10+rLane*12;
+      const sy=a.y+a.h/2, ey=bTop-8;
+      svg+='<polyline fill="none" stroke="#888" stroke-width="1.2" marker-end="url(#mArr)" points="'+
+        (a.x+a.w/2)+','+sy+' '+lx+','+sy+' '+lx+','+ey+' '+b.x+','+ey+' '+b.x+','+(bTop-5)+'"/>';
+      if(e.label) svg+='<text x="'+(a.x+a.w/2+4)+'" y="'+(sy-4)+'" font-size="9" fill="#7b1fa2" font-weight="600">'+esc(clip(e.label,10))+'</text>';
+    }else{
+      lLane++;
+      const lx=CX-Math.max(TW,DW)/2-10-lLane*12;
+      const sy=a.y+a.h/2, ey=bTop-8;
+      svg+='<polyline fill="none" stroke="#b06060" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#mArrR)" points="'+
+        (a.x-a.w/2)+','+sy+' '+lx+','+sy+' '+lx+','+ey+' '+b.x+','+ey+' '+b.x+','+(bTop-5)+'"/>';
+      if(e.label) svg+='<text x="'+(a.x-a.w/2-4)+'" y="'+(sy-4)+'" font-size="9" fill="#b06060" font-weight="600" text-anchor="end">'+esc(clip(e.label,10))+'</text>';
+    }
+  });
+  nodes.forEach(n=>{ // 선행 점선
+    (n.s.deps||[]).forEach(dp=>{
+      const ai=idxOf[dp];
+      if(ai==null||edgeKey.has(ai+">"+n.i)) return;
+      const a=nodes[ai];
+      rLane++;
+      const lx=CX+Math.max(TW,DW)/2+10+rLane*12;
+      const sy=a.y+a.h/2, ey=n.y-8;
+      svg+='<polyline fill="none" stroke="#4a7ab5" stroke-width="1.1" stroke-dasharray="3 3" marker-end="url(#mArrB)" points="'+
+        (a.x+a.w/2)+','+sy+' '+lx+','+sy+' '+lx+','+ey+' '+n.x+','+ey+' '+n.x+','+(n.y-5)+'"/>';
+    });
+  });
+  nodes.forEach(n=>{
+    const s=n.s, cy=n.y+n.h/2, nx=n.x;
+    const sel=s.id===detailStepId?' selnode':'';
+    const gAttr='<g class="flow-node mini-node'+sel+'" data-ch="'+chartKey+'" data-i="'+n.i+'" onclick="ovMiniClick(\''+s.id+'\')">';
+    if(s.type==="decision"){
+      const w=n.w/2;
+      svg+=gAttr+'<polygon class="nd" points="'+nx+','+n.y+' '+(nx+w)+','+cy+' '+nx+','+(n.y+n.h)+' '+(nx-w)+','+cy+
+        '" fill="#f6effa" stroke="#7b1fa2" stroke-width="1.2"/>'+
+        '<text x="'+nx+'" y="'+(cy+3.5)+'" text-anchor="middle" font-size="10" font-weight="650" fill="#4a1266">'+esc(clip(s.title||"(판단)",13))+'</text></g>';
+    }else if(s.type==="start"||s.type==="end"){
+      svg+=gAttr+'<rect class="nd" x="'+(nx-n.w/2)+'" y="'+n.y+'" width="'+n.w+'" height="'+n.h+'" rx="14" fill="'+(s.type==="start"?"#fff":"#1a1a1a")+'" stroke="#1a1a1a" stroke-width="1.2"/>'+
+        '<text x="'+nx+'" y="'+(cy+3.5)+'" text-anchor="middle" font-size="10" font-weight="650" fill="'+(s.type==="start"?"#1a1a1a":"#fff")+'">'+esc(clip(s.title||TYPE_LABEL[s.type],14))+'</text></g>';
+    }else{
+      const maxT=Math.max(9,Math.floor(n.w/10));
+      svg+=gAttr+'<rect class="nd" x="'+(nx-n.w/2)+'" y="'+n.y+'" width="'+n.w+'" height="'+n.h+'" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>'+
+        '<text x="'+nx+'" y="'+(n.y+(s.desc?16:n.h/2+3.5))+'" text-anchor="middle" font-size="10" font-weight="650">'+esc(clip(prefix+nums[n.i]+". "+(s.title||"(무제)"),maxT))+'</text>'+
+        (s.desc?'<text x="'+nx+'" y="'+(n.y+30)+'" text-anchor="middle" font-size="8.5" fill="#6b6b6b">'+esc(clip(s.desc,maxT+8))+'</text>':'')+'</g>';
+    }
+    if(attCnt(s)){
+      const bx=nx+n.w/2-2, by=n.y-1;
+      svg+='<g class="flow-node" onclick="event.stopPropagation();ovClick(\''+s.id+'\')"><circle cx="'+bx+'" cy="'+by+'" r="6.5" fill="#1a1a1a"/>'+
+        '<text x="'+bx+'" y="'+(by+2.7)+'" text-anchor="middle" font-size="8" fill="#fff" font-weight="600">'+attCnt(s)+'</text></g>';
+    }
+    if(kidCnt(s)){ // 폴더 배지 — 클릭하면 이 폴더의 미니 차트가 아래에 추가로 펼쳐짐
+      const open=ovOpen.has(s.id);
+      const pw=kidCnt(s)>9?32:27;
+      const x0=nx-n.w/2-5, y0=n.y-9;
+      svg+='<g class="flow-node" onclick="event.stopPropagation();ovCardClick(\''+s.id+'\',0)"><title>세부단계 '+kidCnt(s)+'개 — 클릭하여 '+(open?'접기':'펼치기')+'</title>'+
+        '<rect x="'+x0+'" y="'+y0+'" width="'+pw+'" height="15" rx="7.5" fill="'+(open?'#1a1a1a':'#fff')+'" stroke="#1a1a1a" stroke-width="1.1"/>'+
+        '<g transform="translate('+(x0+4)+','+(y0+2)+') scale(0.68)"><path d="M1.5 4.5a1 1 0 0 1 1-1h2.8l1.4 1.8h6.8a1 1 0 0 1 1 1v5.7a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z" fill="none" stroke="'+(open?'#fff':'#1a1a1a')+'" stroke-width="1.8" stroke-linejoin="round"/></g>'+
+        '<text x="'+(x0+pw-7)+'" y="'+(y0+11)+'" text-anchor="middle" font-size="8.5" font-weight="650" fill="'+(open?'#fff':'#1a1a1a')+'">'+kidCnt(s)+'</text></g>';
+    }
+  });
+  ovCharts[chartKey]={parentIds:parentIds.slice(), nodes:nodes.map(n=>({id:n.s.id,y:n.y,h:n.h}))};
+  return '<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" style="display:block">'+
+    '<defs><marker id="mArr" markerWidth="6" markerHeight="6" refX="4.5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#888"/></marker>'+
+    '<marker id="mArrR" markerWidth="6" markerHeight="6" refX="4.5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#b06060"/></marker>'+
+    '<marker id="mArrB" markerWidth="6" markerHeight="6" refX="4.5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#4a7ab5"/></marker></defs>'+svg+'</svg>';
+}
+/* 열려 있는 하위 폴더들의 미니 차트를 깊이 순으로 이어 붙임 */
+function ovDeepCharts(step,pfxNum,pathIds){
+  let out='';
+  const nums=calcNums(step.children||[]);
+  (step.children||[]).forEach((c,j)=>{
+    const cn=pfxNum+"."+nums[j];
+    if(kidCnt(c)&&ovOpen.has(c.id)){
+      out+='<div class="ov-mini"><div class="ov-mini-h">↳ '+esc(cn+'. '+(c.title||"(무제)"))+' 내부</div>'+
+        miniFlowSVG(c.children,cn+".",c.id,pathIds.concat(c.id))+'</div>';
+      out+=ovDeepCharts(c,cn,pathIds.concat(c.id));
+    }
+  });
+  return out;
 }
 function renderOverview(area,steps){
+  ovCharts={};
   const nums=calcNums(steps);
   const idxOf={}; steps.forEach((s,i)=>idxOf[s.id]=i);
   const ref=id=>{ const i=idxOf[id]; return i==null?"?":nums[i]; };
@@ -1440,7 +1560,7 @@ function renderOverview(area,steps){
     const open=ovOpen.has(s.id);
     const chips=(nums[i].indexOf("-")>=0?'<span class="ov-chip">동시</span>':'')+
       ((s.deps||[]).length?'<span class="ov-chip">선행 '+s.deps.map(ref).join("·")+'</span>':'');
-    cols+='<div class="ov-col">'+
+    cols+='<div class="ov-col'+(open?' open':'')+'">'+
       '<div class="ov-node t-'+s.type+(s.id===detailStepId?' selov':'')+'" draggable="true" data-path="'+path+'"'+
         ' ondragstart="ovDragStart(event)" ondragover="ovDragOver(event)" ondragleave="ovDragLeave(event)" ondrop="ovDrop(event)" ondragend="ovDragEnd(event)"'+
         ' onclick="ovCardClick(\''+s.id+'\',1)">'+
@@ -1450,7 +1570,10 @@ function renderOverview(area,steps){
         '<button class="ov-edit" title="상세 열기" onclick="event.stopPropagation();ovClick(\''+s.id+'\')">✎</button>'+
       '</div>'+
       ovBranches(s,steps,nums,"")+
-      (kidCnt(s)&&open?'<div class="ov-kids">'+ovKidsHTML(s.children,nums[i]+".",0,parentIds.concat(s.id))+'</div>':'')+
+      (kidCnt(s)&&open?
+        '<div class="ov-mini">'+miniFlowSVG(s.children,nums[i]+".",s.id,parentIds.concat(s.id))+'</div>'+
+        ovDeepCharts(s,String(nums[i]),parentIds.concat(s.id))
+        :'')+
     '</div>';
   });
   const openStep=detailStepId? stepById(detailStepId):null;
@@ -1515,6 +1638,39 @@ function ovClick(id){
   if(detailStepId===id){ closeStepDetail(); return; }
   openStepDetail(id);
 }
+function ovMiniClick(id){ ovClick(id); }
+/* 미니 차트 노드를 위아래로 끌어 같은 폴더 안 순서 변경 */
+let mDrag=null;
+document.addEventListener("pointerdown",e=>{
+  if(!state.ov||e.button!==0) return;
+  const g=e.target.closest(".mini-node"); if(!g) return;
+  mDrag={ch:g.dataset.ch,i:+g.dataset.i,y0:e.clientY,el:g,moved:false};
+});
+document.addEventListener("pointermove",e=>{
+  if(!mDrag) return;
+  const dy=e.clientY-mDrag.y0;
+  if(!mDrag.moved&&Math.abs(dy)>7){ mDrag.moved=true; mDrag.el.style.opacity="0.55"; }
+  if(mDrag.moved){ e.preventDefault(); mDrag.el.setAttribute("transform","translate(0,"+dy+")"); }
+});
+document.addEventListener("pointerup",e=>{
+  const d=mDrag; mDrag=null;
+  if(!d||!d.moved) return;
+  ovDropT=Date.now();
+  d.el.style.opacity="";
+  const info=ovCharts[d.ch]; if(!info){ render(); return; }
+  const dy=e.clientY-d.y0;
+  const me=info.nodes[d.i];
+  const cy=me.y+me.h/2+dy;
+  let ti=0;
+  info.nodes.forEach((n,j)=>{ if(cy>n.y+n.h/2-1) ti=j; });
+  if(ti===d.i){ render(); return; }
+  const arr=ovArrOfParent(info.parentIds); if(!arr){ render(); return; }
+  const ai=arr.findIndex(x=>x.id===info.nodes[d.i].id);
+  if(ai<0){ render(); return; }
+  const [m]=arr.splice(ai,1);
+  arr.splice(ti,0,m);
+  save(); render();
+});
 
 /* ══════════════ 매뉴얼 본문 ══════════════ */
 function renderMan(){
