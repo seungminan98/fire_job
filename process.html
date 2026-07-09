@@ -106,9 +106,20 @@
   .ov-node.t-end{border-radius:20px;background:#1a1a1a;color:#fff;text-align:center}
   .ov-node.t-decision{border-color:#7b1fa2;background:#f6effa;color:#4a1266}
   .ov-node.selov,.ov-kid.selov{outline:2px solid var(--ink);outline-offset:1px}
-  .ov-br{font-size:10px;color:#7b1fa2;margin-top:4px;line-height:1.5}
+  .ov-node{position:relative;padding-right:22px}
+  .ov-tg{display:block;font-size:10px;color:var(--muted);font-weight:400;margin-top:3px}
+  .ov-edit{border:none;background:none;color:#bdbdbd;cursor:pointer;font-size:11.5px;padding:0 2px;flex:none;font-family:inherit}
+  .ov-edit:hover{color:var(--ink)}
+  .ov-node .ov-edit{position:absolute;top:6px;right:6px}
+  .ov-brs{display:flex;flex-direction:column;gap:2px;margin:3px 0 2px 22px}
+  .ov-node .ov-brs,.ov-col>.ov-brs{margin-left:0;margin-top:5px}
+  .ov-bri{font-size:10px;border-radius:4px;padding:1px 7px;display:inline-flex;gap:3px;align-items:center;
+    width:max-content;font-weight:600;max-width:100%}
+  .ov-bri.ok{background:var(--ok-bg);color:var(--ok);border:1px solid #b7d3c4}
+  .ov-bri.back{background:var(--over-bg);color:var(--over);border:1px solid #e0b9b9}
   .ov-kids{margin-top:8px;display:flex;flex-direction:column;gap:4px;border-left:2px solid var(--line);
-    padding-left:8px;margin-left:4px}
+    padding-left:8px;margin-left:4px;animation:ovDown .16s ease-out}
+  @keyframes ovDown{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
   .ov-kid{border:1px solid var(--line);border-radius:5px;background:#fff;padding:3px 7px;font-size:11px;
     cursor:grab;display:flex;gap:5px;align-items:baseline;min-width:0}
   .ov-kid .tt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
@@ -1212,8 +1223,9 @@ function renderFlow(){
   if(btn) btn.textContent = state.ov? "세로 플로우" : "한눈에 보기";
   const hint=document.getElementById("flowHint");
   if(hint) hint.innerHTML = state.ov?
-    '가로 방향 = 진행 순서, 각 단계 아래 = 폴더(세부단계) 전체 전개. <b>카드를 잡아 끌어 같은 폴더 안의 다른 카드 위에 놓으면 순서가 그 자리로 옮겨집니다.</b> '+
-    '카드를 클릭하면 아래에 상세 패널이 열립니다. 분기 화살표·선행 점선은 세로 플로우에서 확인하세요.':
+    '가로 방향 = 진행 순서. <b>단계 카드를 클릭하면 그 과정의 세부단계만 아래로 펼쳐지고</b>(다시 클릭하면 접힘, 루트는 한 번에 하나),'+
+    ' 판단 단계의 분기는 <span class="ov-bri ok" style="vertical-align:-1px">통과 → 다음</span> <span class="ov-bri back" style="vertical-align:-1px">보완 → 재작업</span> 식으로 표시됩니다.'+
+    ' <b>카드를 잡아 끌어 같은 폴더 안의 다른 카드 위에 놓으면 순서가 바뀌고</b>, 카드 오른쪽 ✎ 로 상세 패널을 엽니다.':
     '사각형=작업 · 마름모=조건 판단(분기별 화살표에 라벨) · 노드를 클릭하면 <b>그 자리에서 아래로 상세 패널이 펼쳐져</b> 제목·내용·링크·이미지·선행 단계를 바로 편집할 수 있습니다 — 같은 노드를 다시 클릭하거나 ✕ / Esc로 접힙니다.<br>'+
     '각 단계는 폴더처럼 <b>세부단계</b>를 담을 수 있습니다 — 노드 왼쪽 위의 폴더 표시, 편집 표의 "세부" 버튼, 상세 패널의 "세부단계 열기"로 안에 들어가고, 위의 경로 표시줄로 되돌아옵니다.<br>'+
     '편집 표의 <b>"동시"</b>를 켜면 바로 위 단계와 나란히(같은 번호 4-1/4-2) 진행되는 것으로 표시되고, '+
@@ -1383,19 +1395,37 @@ function clip(s,n){ s=String(s); return s.length>n? s.slice(0,n-1)+"…" : s; }
 
 /* ══════════════ 한눈에 보기 (가로 전개 + 드래그 정렬) ══════════════ */
 function toggleOv(){ state.ov=!state.ov; save(); render(); }
+let ovOpen=new Set(); // 펼쳐 놓은 카드 id (세션 한정)
+/* 판단 분기를 yes/no · pass/fail 느낌으로 — 앞으로 가면 초록(통과), 되돌아가면 빨강(재작업) */
+function ovBranches(s,arr,nums,prefix){
+  if(s.type!=="decision") return '';
+  const idx={}; arr.forEach((x,i)=>idx[x.id]=i);
+  const si=idx[s.id];
+  const brs=(s.branches||[]).length?s.branches:[{label:"",to:""}];
+  return '<div class="ov-brs">'+brs.map(b=>{
+    const ti=b.to!=null&&b.to!==""? idx[b.to] : (si+1<arr.length? si+1 : null);
+    const back = ti!=null && ti<=si;
+    const ref = ti==null? "다음" : prefix+nums[ti]+". "+clip(arr[ti].title||"(무제)",14);
+    return '<span class="ov-bri '+(back?'back':'ok')+'">'+esc(b.label||"분기")+' → '+esc(ref)+'</span>';
+  }).join('')+'</div>';
+}
 function ovKidsHTML(arr,prefix,depth,parentIds){
   const nums=calcNums(arr);
   return arr.map((s,i)=>{
     const num=prefix+nums[i];
     const path=parentIds.concat(s.id).join("/");
+    const open=ovOpen.has(s.id);
     return '<div class="ov-kid t-'+s.type+(s.id===detailStepId?' selov':'')+'" draggable="true" data-path="'+path+'" style="margin-left:'+(depth*13)+'px"'+
       ' ondragstart="ovDragStart(event)" ondragover="ovDragOver(event)" ondragleave="ovDragLeave(event)" ondrop="ovDrop(event)" ondragend="ovDragEnd(event)"'+
-      ' onclick="ovClick(\''+s.id+'\')">'+
+      ' onclick="ovCardClick(\''+s.id+'\',0)">'+
       '<span class="ov-grip">⠿</span><span class="ov-num">'+num+'</span>'+
       '<span class="tt" title="'+esc(s.title||"")+'">'+(s.type==="decision"?'[판단] ':'')+esc(s.title||"(무제)")+'</span>'+
+      (kidCnt(s)?'<span class="ov-num">'+(open?'▾':'▸')+kidCnt(s)+'</span>':'')+
       (attCnt(s)?'<span class="ov-num">첨부'+attCnt(s)+'</span>':'')+
+      '<button class="ov-edit" title="상세 열기" onclick="event.stopPropagation();ovClick(\''+s.id+'\')">✎</button>'+
       '</div>'+
-      (kidCnt(s)? ovKidsHTML(s.children,num+".",depth+1,parentIds.concat(s.id)) : '');
+      '<div style="margin-left:'+(depth*13)+'px">'+ovBranches(s,arr,nums,prefix)+'</div>'+
+      (kidCnt(s)&&open? ovKidsHTML(s.children,num+".",depth+1,parentIds.concat(s.id)) : '');
   }).join("");
 }
 function renderOverview(area,steps){
@@ -1407,25 +1437,40 @@ function renderOverview(area,steps){
   steps.forEach((s,i)=>{
     if(i>0) cols+='<div class="ov-arr"><svg width="26" height="16" viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8h17M14 3l7 5-7 5"/></svg></div>';
     const path=parentIds.concat(s.id).join("/");
-    let br='';
-    if(s.type==="decision"&&(s.branches||[]).length)
-      br='<div class="ov-br">'+s.branches.map(b=>esc(b.label||"분기")+' → '+esc(b.to?ref(b.to):"다음")).join(' · ')+'</div>';
+    const open=ovOpen.has(s.id);
     const chips=(nums[i].indexOf("-")>=0?'<span class="ov-chip">동시</span>':'')+
       ((s.deps||[]).length?'<span class="ov-chip">선행 '+s.deps.map(ref).join("·")+'</span>':'');
     cols+='<div class="ov-col">'+
       '<div class="ov-node t-'+s.type+(s.id===detailStepId?' selov':'')+'" draggable="true" data-path="'+path+'"'+
         ' ondragstart="ovDragStart(event)" ondragover="ovDragOver(event)" ondragleave="ovDragLeave(event)" ondrop="ovDrop(event)" ondragend="ovDragEnd(event)"'+
-        ' onclick="ovClick(\''+s.id+'\')">'+
+        ' onclick="ovCardClick(\''+s.id+'\',1)">'+
         (s.type==="start"||s.type==="end"?'':'<span class="ns">'+nums[i]+'. '+TYPE_LABEL[s.type]+'</span>')+
-        esc(s.title||TYPE_LABEL[s.type])+chips+br+
+        esc(s.title||TYPE_LABEL[s.type])+chips+
+        (kidCnt(s)?'<span class="ov-tg">'+(open?'▾ 세부단계 접기':'▸ 세부단계 '+kidCnt(s)+'개 — 클릭하여 펼치기')+'</span>':'')+
+        '<button class="ov-edit" title="상세 열기" onclick="event.stopPropagation();ovClick(\''+s.id+'\')">✎</button>'+
       '</div>'+
-      (kidCnt(s)?'<div class="ov-kids">'+ovKidsHTML(s.children,nums[i]+".",0,parentIds.concat(s.id))+'</div>':'')+
+      ovBranches(s,steps,nums,"")+
+      (kidCnt(s)&&open?'<div class="ov-kids">'+ovKidsHTML(s.children,nums[i]+".",0,parentIds.concat(s.id))+'</div>':'')+
     '</div>';
   });
   const openStep=detailStepId? stepById(detailStepId):null;
   area.innerHTML='<div class="ov-scroll" id="ovScroll"><div class="ov-row">'+cols+'</div></div>'+
     (openStep? panelHTML(openStep).replace('class="inline-panel"','class="inline-panel static"') : '');
   if(openStep){ renderSdLinks(); renderSdImgs(); renderSdDeps(); }
+}
+function ovCardClick(id,isRoot){
+  if(Date.now()-ovDropT<350) return; // 드롭 직후 클릭 무시
+  const s=stepById(id);
+  if(s&&kidCnt(s)){
+    if(ovOpen.has(id)){ ovOpen.delete(id); }
+    else{
+      if(isRoot){ (currentSteps()||[]).forEach(x=>ovOpen.delete(x.id)); } // 루트는 한 번에 하나만 (아코디언)
+      ovOpen.add(id);
+    }
+    renderFlow();
+  }else{
+    ovClick(id); // 세부단계 없는 카드는 상세 패널 토글
+  }
 }
 /* 드래그 정렬 — 같은 폴더(형제) 안에서만 */
 let ovDrag=null, ovDropT=0;
