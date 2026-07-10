@@ -159,8 +159,13 @@
   .seg-tabs button{background:#fff;border:1px solid var(--line);border-radius:5px;padding:4px 11px;
     font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit}
   .seg-tabs button.active{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:600}
-  .hbar{position:absolute;top:50%;transform:translateY(-50%);height:18px;border-radius:3px;cursor:pointer;
-    overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.4) inset;display:flex;align-items:center}
+  .hbar{position:absolute;top:50%;transform:translateY(-50%);height:18px;border-radius:3px;cursor:grab;
+    overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.4) inset;display:flex;align-items:center;
+    user-select:none;touch-action:none}
+  .hbar:active{cursor:grabbing}
+  .hbar .hh{position:absolute;top:0;bottom:0;width:7px;cursor:col-resize;z-index:2}
+  .hbar .hh.l{left:0}
+  .hbar .hh.r{right:0}
   .hbar:hover{filter:brightness(1.12);box-shadow:0 0 0 1.5px var(--ink)}
   .hbar .fill{position:absolute;left:0;top:0;bottom:0;background:rgba(0,0,0,.32)}
   .hbar .lbl{position:relative;color:#fff;font-size:9.5px;font-weight:600;padding:0 5px;white-space:nowrap;
@@ -169,7 +174,10 @@
   .hbar.soft,.hbar.line{box-shadow:none}
   .hbar.soft .lbl,.hbar.line .lbl{font-weight:650}
   .hms{position:absolute;top:50%;width:13px;height:13px;transform:translate(-50%,-50%) rotate(45deg);
-    cursor:pointer;border-radius:2px;box-shadow:0 0 0 1px rgba(255,255,255,.5) inset}
+    cursor:grab;border-radius:2px;box-shadow:0 0 0 1px rgba(255,255,255,.5) inset;touch-action:none}
+  #dragTip{position:fixed;z-index:99;background:#1a1a1a;color:#fff;font-size:10.5px;padding:3px 9px;
+    border-radius:4px;pointer-events:none;display:none;white-space:nowrap}
+  .dep-svg{position:absolute;left:0;top:0;pointer-events:none;z-index:1}
   .hms:hover{box-shadow:0 0 0 1.5px var(--ink)}
   .hms-lbl{position:absolute;top:50%;transform:translateY(-50%);font-size:9px;color:var(--muted);
     white-space:nowrap;pointer-events:none;padding-left:10px}
@@ -397,8 +405,9 @@
     <div class="card-b">
       <div class="legend" id="legend"></div>
       <div class="hscroll"><div class="hchart" id="gantt"></div></div>
-      <div class="hint">막대(또는 좌측 작업명)를 <b>클릭하면 상세 창</b>이 열립니다 — 실제 착수/완료, 메모, 현장 사진을 기록하세요.
-        막대 안 짙은 부분은 <b>진척률</b>, 빨간 점선은 <b>오늘</b>, ◆는 <b>마일스톤</b>, 빨간 테두리는 <b>지연</b>(계획완료 경과 &amp; 미완료)입니다.
+      <div class="hint"><b>막대를 잡아 끌면 일정이 바로 바뀝니다</b> — 몸통 드래그 = 기간 통째로 이동, 양 끝 드래그 = 착수일/완료일 늘리고 줄이기(드래그 중 날짜 툴팁, 놓으면 저장). 움직이지 않고 <b>클릭만 하면 상세 창</b>(실제 착수/완료·메모·사진)이 열립니다.
+        <b>회색 점선 화살표는 선행 관계</b>(앞 공정이 끝나야 시작) — 상세 창의 "선행 작업"에서 작업을 선택하면 연결됩니다.
+        막대 안 짙은 부분은 <b>진척률</b>, 빨간 점선은 <b>오늘</b>, ◆는 <b>마일스톤</b>, 빨간 테두리는 <b>지연</b>.
         막대 스타일: <b>채움</b>=진한 색, <b>소프트</b>=연한 색 + 색 테두리, <b>라인</b>=테두리만.</div>
     </div>
   </div>
@@ -1239,7 +1248,7 @@ function renderGantt(){
       const tip=esc(t.name)+" | "+fmtShort(t.planStart)+"~"+fmtShort(t.planEnd)+" ("+(diffD(s,e)+1)+"일) · "+(t.progress||0)+"%"
         +(t.company?" · "+esc(t.company):"");
       if(t.milestone){
-        barHtml='<div class="hms" style="left:'+(x+ppd/2)+'px;background:'+col+'" title="'+tip+'" onclick="openDetail(\''+t.id+'\')"></div>'+
+        barHtml='<div class="hms" data-tid="'+t.id+'" style="left:'+(x+ppd/2)+'px;background:'+col+'" title="'+tip+'" onclick="openDetail(\''+t.id+'\')" onpointerdown="barDown(event,\''+t.id+'\',\'move\')"></div>'+
           '<div class="hms-lbl" style="left:'+(x+ppd/2+4)+'px">'+esc(t.name)+'</div>';
       }else{
         // 막대 스타일: fill=진한 채움 / soft=연한 채움+색 테두리 / line=테두리만
@@ -1254,7 +1263,9 @@ function renderGantt(){
           barCss='background:#fff;border:1.5px solid '+col;
           lblCol=matS(g.color)[800]; fillCss=';background:'+rgbaOf(col,0.26);
         }
-        barHtml='<div class="hbar '+bs+(isLate(t)?" late":"")+'" style="left:'+x+'px;width:'+w+'px;'+barCss+'" title="'+tip+'" onclick="openDetail(\''+t.id+'\')">'+
+        barHtml='<div class="hbar '+bs+(isLate(t)?" late":"")+'" data-tid="'+t.id+'" style="left:'+x+'px;width:'+w+'px;'+barCss+'" title="'+tip+'" onclick="openDetail(\''+t.id+'\')" onpointerdown="barDown(event,\''+t.id+'\',\'move\')">'+
+          '<div class="hh l" onpointerdown="event.stopPropagation();barDown(event,\''+t.id+'\',\'l\')"></div>'+
+          '<div class="hh r" onpointerdown="event.stopPropagation();barDown(event,\''+t.id+'\',\'r\')"></div>'+
           '<div class="fill" style="width:'+(t.progress||0)+'%'+fillCss+'"></div>'+
           (w>46?'<span class="lbl" style="color:'+lblCol+'">'+esc(t.name)+'</span>':"")+'</div>';
       }
@@ -1283,11 +1294,84 @@ function renderGantt(){
     overlay+='<div class="htoday" style="left:'+(NAMEW+diffD(rs,t0)*ppd)+'px"><span class="lbl">오늘</span></div>';
   }
   el.innerHTML=html+overlay;
+  gRS=rs; gPPD=ppd;               // 막대 드래그 편집에서 사용
+  drawDeps(arr);                  // 선행 연결 점선
+}
+
+/* ══════════════ 막대 드래그 편집 (이동·늘리기·줄이기) ══════════════ */
+let gRS=null, gPPD=6;
+let bDrag=null, bDragT=0;
+function barDown(ev,id,mode){
+  if(ev.button!==0) return;
+  const p=activeProj(); if(!p) return;
+  const t=p.tasks.find(x=>x.id===id); if(!t) return;
+  const s=pd(t.planStart), e=pd(t.planEnd); if(!s||!e) return;
+  bDrag={id,mode,x0:ev.clientX,s,e,ns:s,ne:e,moved:false};
+}
+document.addEventListener("pointermove",ev=>{
+  if(!bDrag) return;
+  const dx=ev.clientX-bDrag.x0;
+  if(!bDrag.moved && Math.abs(dx)<4) return;
+  bDrag.moved=true;
+  const dd=Math.round(dx/gPPD);
+  let ns=bDrag.s, ne=bDrag.e;
+  if(bDrag.mode==="move"){ ns=addD(bDrag.s,dd); ne=addD(bDrag.e,dd); }
+  else if(bDrag.mode==="l"){ ns=addD(bDrag.s,dd); if(ns>ne) ns=new Date(ne); }
+  else{ ne=addD(bDrag.e,dd); if(ne<ns) ne=new Date(ns); }
+  bDrag.ns=ns; bDrag.ne=ne;
+  const el=document.querySelector('[data-tid="'+bDrag.id+'"]');
+  if(el && gRS){
+    if(el.classList.contains("hms")) el.style.left=(diffD(gRS,ns)*gPPD+gPPD/2)+"px";
+    else{ el.style.left=(diffD(gRS,ns)*gPPD)+"px"; el.style.width=Math.max(gPPD,(diffD(ns,ne)+1)*gPPD)+"px"; }
+  }
+  const tip=document.getElementById("dragTip");
+  tip.style.display="block";
+  tip.style.left=(ev.clientX+14)+"px"; tip.style.top=(ev.clientY-32)+"px";
+  tip.textContent=fmtShort(fd(ns))+" ~ "+fmtShort(fd(ne))+" ("+(diffD(ns,ne)+1)+"일)";
+  ev.preventDefault();
+});
+document.addEventListener("pointerup",()=>{
+  const d=bDrag; bDrag=null;
+  const tip=document.getElementById("dragTip"); if(tip) tip.style.display="none";
+  if(!d||!d.moved) return;
+  bDragT=Date.now();                                    // 직후 click(상세 열림) 억제
+  const p=activeProj(); const t=p&&p.tasks.find(x=>x.id===d.id); if(!t) return;
+  t.planStart=fd(d.ns); t.planEnd=fd(d.ne);
+  save(); render();
+});
+
+/* ══════════════ 선행 연결 점선 (pred: WBS 코드, 쉼표로 여러 개) ══════════════ */
+function drawDeps(arr){
+  const el=document.getElementById("gantt");
+  const old=el.querySelector(".dep-svg"); if(old) old.remove();
+  const rc=el.getBoundingClientRect();
+  const byWbs={}; arr.forEach(t=>{ if(t._wbs) byWbs[t._wbs]=t; });
+  const pos={};
+  el.querySelectorAll("[data-tid]").forEach(b=>{
+    const r=b.getBoundingClientRect();
+    pos[b.dataset.tid]={x1:r.left-rc.left,x2:r.right-rc.left,y:r.top-rc.top+r.height/2};
+  });
+  let lines='';
+  arr.forEach(t=>{
+    if(!t.pred) return;
+    String(t.pred).split(/[,\s]+/).forEach(code=>{
+      const pt=byWbs[code.trim()]; if(!pt||pt.id===t.id) return;
+      const a=pos[pt.id], b=pos[t.id]; if(!a||!b) return;
+      const sx=a.x2, sy=a.y, ex=b.x1-4, ey=b.y;
+      lines+='<path d="M'+sx+' '+sy+' H'+(sx+7)+' V'+ey+' H'+ex+'" fill="none" stroke="#7c8db5" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#depArr)"/>';
+    });
+  });
+  if(!lines) return;
+  el.insertAdjacentHTML("beforeend",
+    '<svg class="dep-svg" width="'+el.scrollWidth+'" height="'+el.scrollHeight+'">'+
+    '<defs><marker id="depArr" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#7c8db5"/></marker></defs>'+
+    lines+'</svg>');
 }
 
 /* ══════════════ 상세 모달 ══════════════ */
 let detailId=null;
 function openDetail(id){
+  if(Date.now()-bDragT<350) return;                     // 드래그 직후 클릭 무시
   detailId=id;
   renderDetail();
   document.getElementById("detailBack").classList.add("show");
@@ -1320,7 +1404,13 @@ function renderDetail(){
         '</select></div>')+
     '<div><label>담당업체</label><input value="'+esc(t.company)+'" oninput="dSet(\'company\',this.value)"></div>'+
     '<div><label>담당자 / 연락처</label><input value="'+esc(t.owner)+'" oninput="dSet(\'owner\',this.value)"></div>'+
-    '<div><label>선행 작업(코드)</label><input value="'+esc(t.pred)+'" placeholder="예: 기-3" oninput="dSet(\'pred\',this.value)"></div>'+
+    '<div><label>선행 작업 — 이 작업보다 먼저 끝나야 함 (쉼표로 여러 개)</label><div style="display:flex;gap:4px">'+
+      '<input value="'+esc(t.pred)+'" placeholder="예: 기-3, 전-1" oninput="dSet(\'pred\',this.value)" style="flex:1;min-width:0">'+
+      '<select style="max-width:130px" onchange="if(this.value){dSet(\'pred\',(curTask().pred?curTask().pred+\', \':\'\')+this.value);renderDetail();}">'+
+        '<option value="">작업 선택…</option>'+
+        sortedTasks(activeProj()).filter(x=>x.id!==t.id&&!x.milestone)
+          .map(x=>'<option value="'+x._wbs+'">'+x._wbs+' '+esc((x.name||"").slice(0,14))+'</option>').join("")+
+      '</select></div></div>'+
     '<div><label>계획 착수</label><input type="date" value="'+t.planStart+'" onchange="dSet(\'planStart\',this.value)"></div>'+
     '<div><label>계획 완료</label><input type="date" value="'+t.planEnd+'" onchange="dSet(\'planEnd\',this.value)"></div>'+
     '<div><label>실제 착수</label><input type="date" value="'+(t.actStart||"")+'" onchange="dSet(\'actStart\',this.value)"></div>'+
@@ -1491,6 +1581,7 @@ load();
 tryRestoreFromHash();
 if(!state.projects.length) flag("＋ 새 공사로 시작하세요");
 else flag("불러옴");
+document.body.insertAdjacentHTML("beforeend",'<div id="dragTip"></div>');
 syncZoomTabs();
 syncStyleTabs();
 render();
