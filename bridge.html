@@ -113,7 +113,8 @@
     <svg width="34" height="34" viewBox="0 0 16 16" fill="none" stroke="#1a1a1a" stroke-width="1.3" style="margin-bottom:8px"><rect x="3" y="7" width="10" height="6.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
     <div style="font-size:15px;font-weight:650;margin-bottom:4px">소방공사 일정 관리</div>
     <div style="font-size:12px;color:#6b6b6b;margin-bottom:16px">접속 암호를 입력하세요</div>
-    <input type="password" id="authPw" autocomplete="off" placeholder="암호"
+    <input type="text" id="authPw" autocomplete="off" autocapitalize="off" autocorrect="off"
+      spellcheck="false" placeholder="암호"
       style="width:100%;border:1px solid #c9c9c9;border-radius:6px;padding:9px 11px;
       font-family:inherit;font-size:14px;text-align:center;box-sizing:border-box">
     <div id="authErr" style="font-size:11.5px;color:#9a3434;min-height:17px;margin-top:6px"></div>
@@ -142,11 +143,50 @@
     }
     return Promise.resolve(null);
   }
+  /* 한글 IME가 막힌 환경(윈도우 password 입력칸 등)에서 자모가 낱자로 들어온 경우 음절로 조합 */
+  function composeJamo(s){
+    var CHO="\u3131\u3132\u3134\u3137\u3138\u3139\u3141\u3142\u3143\u3145\u3146\u3147\u3148\u3149\u314a\u314b\u314c\u314d\u314e";
+    var JUNG="\u314f\u3150\u3151\u3152\u3153\u3154\u3155\u3156\u3157\u3158\u3159\u315a\u315b\u315c\u315d\u315e\u315f\u3160\u3161\u3162\u3163";
+    var JONG="\u3131\u3132\u3133\u3134\u3135\u3136\u3137\u3139\u313a\u313b\u313c\u313d\u313e\u313f\u3140\u3141\u3142\u3144\u3145\u3146\u3147\u3148\u314a\u314b\u314c\u314d\u314e";
+    var VC={"\u3157\u314f":"\u3158","\u3157\u3150":"\u3159","\u3157\u3163":"\u315a","\u315c\u3153":"\u315d","\u315c\u3154":"\u315e","\u315c\u3163":"\u315f","\u3161\u3163":"\u3162"};
+    var JC={"\u3131\u3145":"\u3133","\u3134\u3148":"\u3135","\u3134\u314e":"\u3136","\u3139\u3131":"\u313a","\u3139\u3141":"\u313b","\u3139\u3142":"\u313c","\u3139\u3145":"\u313d","\u3139\u314c":"\u313e","\u3139\u314d":"\u313f","\u3139\u314e":"\u3140","\u3142\u3145":"\u3144"};
+    var JSPLIT={}; for(var k in JC){ JSPLIT[JC[k]]=k; }
+    var out="", cho=null, jung=null, jong=null;
+    function syl(){ return String.fromCharCode(0xAC00 + CHO.indexOf(cho)*588 + JUNG.indexOf(jung)*28 + (jong?JONG.indexOf(jong)+1:0)); }
+    function flush(){ if(cho&&jung){ out+=syl(); } else { if(cho)out+=cho; if(jung)out+=jung; } cho=jung=jong=null; }
+    for(var i=0;i<s.length;i++){
+      var c=s[i];
+      if(JUNG.indexOf(c)>=0){
+        if(cho&&jung&&jong){ var mv;
+          if(JSPLIT[jong]){ mv=JSPLIT[jong][1]; jong=JSPLIT[jong][0]; } else { mv=jong; jong=null; }
+          flush(); cho=mv; jung=c;
+        }else if(cho&&jung){ var vc=VC[jung+c];
+          if(vc){ jung=vc; } else { flush(); out+=c; }
+        }else if(cho){ jung=c; }
+        else { flush(); out+=c; }
+      }else if(CHO.indexOf(c)>=0||JONG.indexOf(c)>=0){
+        if(cho&&jung){
+          if(!jong&&JONG.indexOf(c)>=0){ jong=c; }
+          else if(jong&&JC[jong+c]){ jong=JC[jong+c]; }
+          else { flush(); cho=c; }
+        }else if(cho){ flush(); cho=c; }
+        else { cho=c; }
+      }else{ flush(); out+=c; }
+    }
+    flush();
+    return out;
+  }
   function tryOpen(){
-    var v=(document.getElementById("authPw").value||"").trim();
-    if(!v) return;
-    sha256(v).then(function(h){
-      var ok = h ? (h===HASH) : (djb2(v)===FB);
+    var raw=(document.getElementById("authPw").value||"").trim();
+    if(!raw) return;
+    var nfc=raw.normalize?raw.normalize("NFC"):raw;
+    var cands=[raw]; if(cands.indexOf(nfc)<0)cands.push(nfc);
+    var comp=composeJamo(nfc); if(cands.indexOf(comp)<0)cands.push(comp);
+    Promise.all(cands.map(sha256)).then(function(hs){
+      var ok=false;
+      for(var i=0;i<cands.length;i++){
+        if(hs[i] ? (hs[i]===HASH) : (djb2(cands[i])===FB)){ ok=true; break; }
+      }
       if(ok){
         try{
           sessionStorage.setItem("fireAuth","1");
@@ -173,7 +213,7 @@
       <h1>AI 자료 밀어넣기 <span style="font-weight:400;color:var(--muted)">— 훅업 공정표 브리지</span></h1>
       <div class="sub">PPT·이미지·텍스트를 Claude API가 읽고 → 소방 훅업 공정표 데이터로 변환 → <a href="hookup.html">훅업 공정표</a>에 자동 입력</div>
     </div>
-    <div class="sub"><a href="hookup.html">훅업 공정표 →</a> · <a href="index.html">전체 일정 →</a></div>
+    <div class="sub"><a href="hookup.html">훅업 공정표 →</a> · <a href="index.html">전체 일정 →</a> · <a href="calc.html">법규 계산 →</a></div>
   </header>
 
   <!-- STEP 1: API 키 -->

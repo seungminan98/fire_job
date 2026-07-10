@@ -71,6 +71,22 @@
   td.wbs{font-variant-numeric:tabular-nums;color:var(--muted);font-size:11px;text-align:center;width:44px}
   tr.done td, tr.done td input, tr.done td select{color:var(--muted)}
   tr.done td .tname input{text-decoration:line-through}
+  /* 계층(Epic > Task > Sub-Task) */
+  .tgl{cursor:pointer;color:var(--muted);font-size:10px;display:inline-block;width:14px;text-align:center;
+    user-select:none;flex:none}
+  .tgl:hover{color:var(--ink)}
+  .tgl-sp{display:inline-block;width:14px;flex:none}
+  td.tname{white-space:nowrap}
+  td.tname input{width:calc(100% - 18px);display:inline-block;vertical-align:middle}
+  td.tname.sub{padding-left:24px}
+  .subhook{color:var(--line-strong);font-size:11px;margin-right:4px;flex:none}
+  tr.subrow td, tr.subrow td input{font-size:11.5px}
+  tr.subrow .wbs{font-size:10px}
+  .kids-n{font-size:10px;color:var(--muted);background:var(--soft);border-radius:8px;padding:0 6px;margin-left:4px}
+  .hrow.subrow{background:var(--softer)}
+  .hrow .nm{display:flex;align-items:center;gap:2px}
+  .hrow .nm>span[onclick]{cursor:pointer;overflow:hidden;text-overflow:ellipsis}
+  .hrow .nm>span[onclick]:hover{text-decoration:underline}
   select.d0{color:var(--mech);font-weight:600} select.d1{color:var(--elec);font-weight:600}
   select.d2{color:var(--supv);font-weight:600} select.d3{color:var(--perm);font-weight:600}
   select.d4{color:var(--etc);font-weight:600}
@@ -143,15 +159,25 @@
   .seg-tabs button{background:#fff;border:1px solid var(--line);border-radius:5px;padding:4px 11px;
     font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit}
   .seg-tabs button.active{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:600}
-  .hbar{position:absolute;top:50%;transform:translateY(-50%);height:18px;border-radius:3px;cursor:pointer;
-    overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.4) inset;display:flex;align-items:center}
+  .hbar{position:absolute;top:50%;transform:translateY(-50%);height:18px;border-radius:3px;cursor:grab;
+    overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.4) inset;display:flex;align-items:center;
+    user-select:none;touch-action:none}
+  .hbar:active{cursor:grabbing}
+  .hbar .hh{position:absolute;top:0;bottom:0;width:7px;cursor:col-resize;z-index:2}
+  .hbar .hh.l{left:0}
+  .hbar .hh.r{right:0}
   .hbar:hover{filter:brightness(1.12);box-shadow:0 0 0 1.5px var(--ink)}
   .hbar .fill{position:absolute;left:0;top:0;bottom:0;background:rgba(0,0,0,.32)}
   .hbar .lbl{position:relative;color:#fff;font-size:9.5px;font-weight:600;padding:0 5px;white-space:nowrap;
     overflow:hidden;text-overflow:ellipsis;pointer-events:none}
   .hbar.late{outline:1.5px solid var(--over);outline-offset:1px}
+  .hbar.soft,.hbar.line{box-shadow:none}
+  .hbar.soft .lbl,.hbar.line .lbl{font-weight:650}
   .hms{position:absolute;top:50%;width:13px;height:13px;transform:translate(-50%,-50%) rotate(45deg);
-    cursor:pointer;border-radius:2px;box-shadow:0 0 0 1px rgba(255,255,255,.5) inset}
+    cursor:grab;border-radius:2px;box-shadow:0 0 0 1px rgba(255,255,255,.5) inset;touch-action:none}
+  #dragTip{position:fixed;z-index:99;background:#1a1a1a;color:#fff;font-size:10.5px;padding:3px 9px;
+    border-radius:4px;pointer-events:none;display:none;white-space:nowrap}
+  .dep-svg{position:absolute;left:0;top:0;pointer-events:none;z-index:1}
   .hms:hover{box-shadow:0 0 0 1.5px var(--ink)}
   .hms-lbl{position:absolute;top:50%;transform:translateY(-50%);font-size:9px;color:var(--muted);
     white-space:nowrap;pointer-events:none;padding-left:10px}
@@ -225,7 +251,8 @@
     <svg width="34" height="34" viewBox="0 0 16 16" fill="none" stroke="#1a1a1a" stroke-width="1.3" style="margin-bottom:8px"><rect x="3" y="7" width="10" height="6.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
     <div style="font-size:15px;font-weight:650;margin-bottom:4px">소방공사 일정 관리</div>
     <div style="font-size:12px;color:#6b6b6b;margin-bottom:16px">접속 암호를 입력하세요</div>
-    <input type="password" id="authPw" autocomplete="off" placeholder="암호"
+    <input type="text" id="authPw" autocomplete="off" autocapitalize="off" autocorrect="off"
+      spellcheck="false" placeholder="암호"
       style="width:100%;border:1px solid #c9c9c9;border-radius:6px;padding:9px 11px;
       font-family:inherit;font-size:14px;text-align:center;box-sizing:border-box">
     <div id="authErr" style="font-size:11.5px;color:#9a3434;min-height:17px;margin-top:6px"></div>
@@ -254,11 +281,50 @@
     }
     return Promise.resolve(null);
   }
+  /* 한글 IME가 막힌 환경(윈도우 password 입력칸 등)에서 자모가 낱자로 들어온 경우 음절로 조합 */
+  function composeJamo(s){
+    var CHO="\u3131\u3132\u3134\u3137\u3138\u3139\u3141\u3142\u3143\u3145\u3146\u3147\u3148\u3149\u314a\u314b\u314c\u314d\u314e";
+    var JUNG="\u314f\u3150\u3151\u3152\u3153\u3154\u3155\u3156\u3157\u3158\u3159\u315a\u315b\u315c\u315d\u315e\u315f\u3160\u3161\u3162\u3163";
+    var JONG="\u3131\u3132\u3133\u3134\u3135\u3136\u3137\u3139\u313a\u313b\u313c\u313d\u313e\u313f\u3140\u3141\u3142\u3144\u3145\u3146\u3147\u3148\u314a\u314b\u314c\u314d\u314e";
+    var VC={"\u3157\u314f":"\u3158","\u3157\u3150":"\u3159","\u3157\u3163":"\u315a","\u315c\u3153":"\u315d","\u315c\u3154":"\u315e","\u315c\u3163":"\u315f","\u3161\u3163":"\u3162"};
+    var JC={"\u3131\u3145":"\u3133","\u3134\u3148":"\u3135","\u3134\u314e":"\u3136","\u3139\u3131":"\u313a","\u3139\u3141":"\u313b","\u3139\u3142":"\u313c","\u3139\u3145":"\u313d","\u3139\u314c":"\u313e","\u3139\u314d":"\u313f","\u3139\u314e":"\u3140","\u3142\u3145":"\u3144"};
+    var JSPLIT={}; for(var k in JC){ JSPLIT[JC[k]]=k; }
+    var out="", cho=null, jung=null, jong=null;
+    function syl(){ return String.fromCharCode(0xAC00 + CHO.indexOf(cho)*588 + JUNG.indexOf(jung)*28 + (jong?JONG.indexOf(jong)+1:0)); }
+    function flush(){ if(cho&&jung){ out+=syl(); } else { if(cho)out+=cho; if(jung)out+=jung; } cho=jung=jong=null; }
+    for(var i=0;i<s.length;i++){
+      var c=s[i];
+      if(JUNG.indexOf(c)>=0){
+        if(cho&&jung&&jong){ var mv;
+          if(JSPLIT[jong]){ mv=JSPLIT[jong][1]; jong=JSPLIT[jong][0]; } else { mv=jong; jong=null; }
+          flush(); cho=mv; jung=c;
+        }else if(cho&&jung){ var vc=VC[jung+c];
+          if(vc){ jung=vc; } else { flush(); out+=c; }
+        }else if(cho){ jung=c; }
+        else { flush(); out+=c; }
+      }else if(CHO.indexOf(c)>=0||JONG.indexOf(c)>=0){
+        if(cho&&jung){
+          if(!jong&&JONG.indexOf(c)>=0){ jong=c; }
+          else if(jong&&JC[jong+c]){ jong=JC[jong+c]; }
+          else { flush(); cho=c; }
+        }else if(cho){ flush(); cho=c; }
+        else { cho=c; }
+      }else{ flush(); out+=c; }
+    }
+    flush();
+    return out;
+  }
   function tryOpen(){
-    var v=(document.getElementById("authPw").value||"").trim();
-    if(!v) return;
-    sha256(v).then(function(h){
-      var ok = h ? (h===HASH) : (djb2(v)===FB);
+    var raw=(document.getElementById("authPw").value||"").trim();
+    if(!raw) return;
+    var nfc=raw.normalize?raw.normalize("NFC"):raw;
+    var cands=[raw]; if(cands.indexOf(nfc)<0)cands.push(nfc);
+    var comp=composeJamo(nfc); if(cands.indexOf(comp)<0)cands.push(comp);
+    Promise.all(cands.map(sha256)).then(function(hs){
+      var ok=false;
+      for(var i=0;i<cands.length;i++){
+        if(hs[i] ? (hs[i]===HASH) : (djb2(cands[i])===FB)){ ok=true; break; }
+      }
       if(ok){
         try{
           sessionStorage.setItem("fireAuth","1");
@@ -286,7 +352,7 @@
       <div class="sub">공종을 직접 구성하고(전기·기계·인허가·감리 등) 머터리얼 테마색 지정 — 공사별 공정표 + 간트차트 (막대 클릭 → 상세 메모/사진)</div>
     </div>
     <div style="text-align:right">
-      <div class="sub"><a href="bridge.html">AI 자료 밀어넣기</a> · <a href="index.html">전체 공사 일정·M/M →</a></div>
+      <div class="sub"><a href="bridge.html">AI 자료 밀어넣기</a> · <a href="process.html">업무 매뉴얼</a> · <a href="calc.html">법규 계산</a> · <a href="index.html">전체 공사 일정·M/M →</a></div>
       <div class="sub" id="saveState"></div>
     </div>
   </header>
@@ -323,7 +389,13 @@
     <div class="card-h">
       간트차트
       <div class="spacer"></div>
-      <span class="sub">최소 단위</span>
+      <span class="sub">막대 스타일</span>
+      <div class="seg-tabs" id="styleTabs">
+        <button data-s="fill" onclick="setBarStyle('fill')">채움</button>
+        <button data-s="soft" onclick="setBarStyle('soft')">소프트</button>
+        <button data-s="line" onclick="setBarStyle('line')">라인</button>
+      </div>
+      <span class="sub" style="margin-left:8px">최소 단위</span>
       <div class="seg-tabs" id="zoomTabs">
         <button data-z="month" onclick="setZoom('month')">월</button>
         <button data-z="week" class="active" onclick="setZoom('week')">주</button>
@@ -333,8 +405,10 @@
     <div class="card-b">
       <div class="legend" id="legend"></div>
       <div class="hscroll"><div class="hchart" id="gantt"></div></div>
-      <div class="hint">막대(또는 좌측 작업명)를 <b>클릭하면 상세 창</b>이 열립니다 — 실제 착수/완료, 메모, 현장 사진을 기록하세요.
-        막대 안 어두운 부분은 <b>진척률</b>, 빨간 점선은 <b>오늘</b>, ◆는 <b>마일스톤</b>, 빨간 테두리는 <b>지연</b>(계획완료 경과 &amp; 미완료)입니다.</div>
+      <div class="hint"><b>막대를 잡아 끌면 일정이 바로 바뀝니다</b> — 몸통 드래그 = 기간 통째로 이동, 양 끝 드래그 = 착수일/완료일 늘리고 줄이기(드래그 중 날짜 툴팁, 놓으면 저장). 움직이지 않고 <b>클릭만 하면 상세 창</b>(실제 착수/완료·메모·사진)이 열립니다.
+        <b>회색 점선 화살표는 선행 관계</b>(앞 공정이 끝나야 시작) — 상세 창의 "선행 작업"에서 작업을 선택하면 연결됩니다.
+        막대 안 짙은 부분은 <b>진척률</b>, 빨간 점선은 <b>오늘</b>, ◆는 <b>마일스톤</b>, 빨간 테두리는 <b>지연</b>.
+        막대 스타일: <b>채움</b>=진한 색, <b>소프트</b>=연한 색 + 색 테두리, <b>라인</b>=테두리만.</div>
     </div>
   </div>
 
@@ -519,18 +593,28 @@ let canStore = true;
 let saveTimer = null;
 
 function uid(){ return Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
-function activeProj(){ return state.projects.find(p=>p.id===state.activeId) || null; }
+function activeProj(){
+  const p=state.projects.find(x=>x.id===state.activeId) || null;
+  if(p){ if(!Array.isArray(p.collapsed)) p.collapsed=[]; if(!Array.isArray(p.gcol)) p.gcol=[]; }
+  return p;
+}
 function newTask(gid){
-  return { id:uid(), gid:gid||"", name:"", company:"", owner:"",
+  return { id:uid(), gid:gid||"", parentId:"", name:"", company:"", owner:"",
     planStart:"", planEnd:"", actStart:"", actEnd:"",
     progress:0, status:0, pred:"", milestone:false, memo:"", images:[] };
 }
+function childrenOf(p,id){ return p.tasks.filter(t=>t.parentId===id); }
 function makeGroup(name,color,company){ return { id:uid(), name, color:color||"grey", company:company||"" }; }
 function groupOf(p,gid){ return (p.groups||[]).find(g=>g.id===gid) || null; }
 function firstGroup(p){ return (p.groups&&p.groups[0]) || null; }
 /* 구버전 데이터(t.disc 고정 공종) → 사용자 정의 그룹으로 변환 */
 function migrate(){
   state.projects.forEach(p=>{
+    if(!Array.isArray(p.collapsed)) p.collapsed=[];   // 접힌 상위 작업 id 목록
+    if(!Array.isArray(p.gcol)) p.gcol=[];             // 접힌 공종(Epic) gid 목록
+    p.tasks.forEach(t=>{ if(t.parentId==null) t.parentId=""; });
+    // 상위 작업이 삭제/유실됐으면 최상위로 승격
+    p.tasks.forEach(t=>{ if(t.parentId && !p.tasks.some(x=>x.id===t.parentId)) t.parentId=""; });
     if(Array.isArray(p.groups) && p.groups.length){
       // gid 유실 작업 보정
       p.tasks.forEach(t=>{ if(!groupOf(p,t.gid)) t.gid=p.groups[0].id; });
@@ -778,8 +862,11 @@ function addTask(){
 function delTask(id){
   const p=activeProj(); if(!p) return;
   const t=p.tasks.find(x=>x.id===id);
-  if(!confirm('작업 "'+(t&&t.name||"(무제)")+'" 삭제?')) return;
-  p.tasks = p.tasks.filter(x=>x.id!==id);
+  const kids=childrenOf(p,id);
+  const msg='작업 "'+(t&&t.name||"(무제)")+'" 삭제?'+(kids.length?'\n(하위 작업 '+kids.length+'건도 함께 삭제됩니다)':'');
+  if(!confirm(msg)) return;
+  const rm=new Set([id, ...kids.map(k=>k.id)]);
+  p.tasks = p.tasks.filter(x=>!rm.has(x.id));
   save(); render();
 }
 function setField(id, field, val){
@@ -788,28 +875,79 @@ function setField(id, field, val){
   if(field==="progress"){ val=Math.max(0,Math.min(100,Number(val)||0)); if(val===100 && t.status!==2) t.status=2; }
   if(field==="status") val=Number(val);
   if(field==="milestone") val=!!val;
+  if(field==="gid"){
+    childrenOf(p,t.id).forEach(k=>k.gid=val);            // 상위 이동 시 하위도 함께
+    if(t.parentId){ const par=p.tasks.find(x=>x.id===t.parentId);
+      if(par && par.gid!==val) t.parentId="";            // 하위만 다른 공종으로 → 분리
+    }
+  }
+  if(field==="parentId"){
+    if(val===t.id) val="";                               // 자기 자신 금지
+    if(val && childrenOf(p,t.id).length) val="";         // 하위를 가진 작업은 하위가 될 수 없음(1단계)
+    const par=val ? p.tasks.find(x=>x.id===val) : null;
+    if(par) t.gid=par.gid;                               // 상위의 공종을 따라감
+  }
   t[field]=val;
   if(field==="status" && val===2 && t.progress<100) t.progress=100;
   save(); renderStats(); renderGantt();
-  if(field==="gid"||field==="planStart"||field==="status") renderTable();
+  if(field==="gid"||field==="planStart"||field==="status"||field==="parentId") renderTable();
 }
-/* 공종(그룹 순서) → 계획착수 → 이름 순 정렬 + WBS 코드 + 그룹 내 순번(_gi: 색 톤 계산용) */
+/* 접기/펼치기 (Epic=공종, 상위 작업) */
+function toggleGroupCol(gid){
+  const p=activeProj(); if(!p) return;
+  const i=p.gcol.indexOf(gid);
+  if(i<0) p.gcol.push(gid); else p.gcol.splice(i,1);
+  save(); renderTable(); renderGantt();
+}
+function toggleTaskCol(id){
+  const p=activeProj(); if(!p) return;
+  const i=p.collapsed.indexOf(id);
+  if(i<0) p.collapsed.push(id); else p.collapsed.splice(i,1);
+  save(); renderTable(); renderGantt();
+}
+function addSubTask(parentId){
+  const p=activeProj(); if(!p) return;
+  const par=p.tasks.find(x=>x.id===parentId); if(!par) return;
+  const t=newTask(par.gid);
+  t.parentId=parentId;
+  t.company=par.company||"";
+  t.planStart=par.planStart||""; t.planEnd=par.planEnd||"";
+  const i=p.collapsed.indexOf(parentId); if(i>=0) p.collapsed.splice(i,1); // 펼쳐서 보이게
+  p.tasks.push(t); save(); render();
+  openDetail(t.id);
+}
+/* 계층 정렬: 공종(Epic) → 상위 작업(착수일순) → 그 하위 작업(착수일순)
+   _lvl(0/1), _hasKids, _wbs(기-1 / 기-1.1), _gi(그룹 내 순번: 톤 계산) 부여 */
 function sortedTasks(p){
   const gidx={}; (p.groups||[]).forEach((g,i)=>gidx[g.id]=i);
-  const arr=[...p.tasks].sort((a,b)=>{
-    const ga=gidx[a.gid]??999, gb=gidx[b.gid]??999;
-    if(ga!==gb) return ga-gb;
+  const byDate=(a,b)=>{
     const da=a.planStart||"9999", db=b.planStart||"9999";
     if(da!==db) return da<db?-1:1;
     return (a.name||"").localeCompare(b.name||"","ko");
+  };
+  const tops=p.tasks.filter(t=>!t.parentId).sort((a,b)=>{
+    const ga=gidx[a.gid]??999, gb=gidx[b.gid]??999;
+    if(ga!==gb) return ga-gb;
+    return byDate(a,b);
   });
   const codeMap={};
   (p.groups||[]).forEach(g=>codeMap[g.id]=groupCode(g,p.groups));
-  const cnt={};
-  arr.forEach(t=>{
+  const arr=[], cnt={}, giCnt={};
+  tops.forEach(t=>{
     cnt[t.gid]=(cnt[t.gid]||0)+1;
-    t._gi=cnt[t.gid]-1; // 그룹 내 0-base 순번 → 700,600,500… 톤
-    t._wbs=(codeMap[t.gid]||"?")+"-"+cnt[t.gid];
+    giCnt[t.gid]=(giCnt[t.gid]||0)+1;
+    t._lvl=0; t._wbs=(codeMap[t.gid]||"?")+"-"+cnt[t.gid];
+    t._gi=giCnt[t.gid]-1;
+    const kids=childrenOf(p,t.id).sort(byDate);
+    t._hasKids=kids.length>0;
+    arr.push(t);
+    kids.forEach((k,ki)=>{
+      giCnt[t.gid]=(giCnt[t.gid]||0)+1;
+      k._lvl=1; k._hasKids=false;
+      k._wbs=t._wbs+"."+(ki+1);
+      k._gi=giCnt[t.gid]-1;   // 아래로 갈수록 계속 옅어짐
+      arr.push(k);
+    });
   });
   return arr;
 }
@@ -964,18 +1102,29 @@ function renderTable(){
     if(t.gid!==lastGid){
       lastGid=t.gid;
       const n=arr.filter(x=>x.gid===t.gid).length;
+      const gCol=p.gcol.includes(t.gid);
       html+='<tr class="grp"><td colspan="14" style="color:'+gBase(g)+'">'+
+        '<span class="tgl" onclick="toggleGroupCol(\''+t.gid+'\')" title="'+(gCol?'펼치기':'접기')+'">'+(gCol?'▸':'▾')+'</span>'+
         '■ '+esc(g.name)+' <span class="cnt">('+n+'건'+(g.company?' · '+esc(g.company):'')+')</span></td></tr>';
     }
+    if(p.gcol.includes(t.gid)) return;                            // Epic 접힘
+    if(t._lvl===1 && p.collapsed.includes(t.parentId)) return;    // 상위 작업 접힘
     const s=pd(t.planStart), e=pd(t.planEnd);
     const dur=(s&&e&&e>=s)?(diffD(s,e)+1):"";
     const si=statusIdx(t);
     const att=(t.memo?ICO_MEMO:"")+((t.images&&t.images.length)?" "+ICO_IMG+t.images.length:"");
-    html+='<tr class="'+(si===2?"done":"")+'">'+
+    const tCol=p.collapsed.includes(t.id);
+    const nameCell = t._lvl===1
+      ? '<td class="tname sub"><span class="subhook">└</span><input value="'+esc(t.name)+'" placeholder="하위 작업명" oninput="setField(\''+t.id+'\',\'name\',this.value)"></td>'
+      : '<td class="tname">'+
+          (t._hasKids?'<span class="tgl" onclick="toggleTaskCol(\''+t.id+'\')" title="'+(tCol?'하위 펼치기':'하위 접기')+'">'+(tCol?'▸':'▾')+'</span>':'<span class="tgl-sp"></span>')+
+          '<input value="'+esc(t.name)+'" placeholder="작업명" oninput="setField(\''+t.id+'\',\'name\',this.value)">'+
+          (tCol&&t._hasKids?'<span class="kids-n">+'+childrenOf(p,t.id).length+'</span>':'')+'</td>';
+    html+='<tr class="'+(si===2?"done":"")+(t._lvl===1?" subrow":"")+'">'+
       '<td class="wbs"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:'+taskShade(g,t._gi)+';margin-right:3px"></span>'+t._wbs+'</td>'+
       '<td><select style="color:'+gBase(g)+';font-weight:600" onchange="setField(\''+t.id+'\',\'gid\',this.value)">'+
         (p.groups||[]).map(gg=>'<option value="'+gg.id+'"'+(gg.id===t.gid?" selected":"")+'>'+esc(gg.name)+'</option>').join("")+'</select></td>'+
-      '<td class="tname"><input value="'+esc(t.name)+'" placeholder="작업명" oninput="setField(\''+t.id+'\',\'name\',this.value)"></td>'+
+      nameCell+
       '<td><input value="'+esc(t.company)+'" oninput="setField(\''+t.id+'\',\'company\',this.value)"></td>'+
       '<td><input value="'+esc(t.owner)+'" style="min-width:60px" oninput="setField(\''+t.id+'\',\'owner\',this.value)"></td>'+
       '<td><input type="date" value="'+t.planStart+'" onchange="setField(\''+t.id+'\',\'planStart\',this.value)"></td>'+
@@ -987,7 +1136,9 @@ function renderTable(){
         STATUSES.map((sName,i)=>i===3?"":'<option value="'+i+'"'+(i===t.status?" selected":"")+'>'+sName+'</option>').join("")+'</select></td>'+
       '<td><input value="'+esc(t.pred)+'" style="min-width:42px" placeholder="-" oninput="setField(\''+t.id+'\',\'pred\',this.value)"></td>'+
       '<td style="text-align:center"><input type="checkbox"'+(t.milestone?" checked":"")+' onchange="setField(\''+t.id+'\',\'milestone\',this.checked)"></td>'+
-      '<td><button class="detail-btn" onclick="openDetail(\''+t.id+'\')">열기</button><span class="att-badge">'+att+'</span></td>'+
+      '<td><button class="detail-btn" onclick="openDetail(\''+t.id+'\')">열기</button>'+
+        (t._lvl===0?'<button class="detail-btn" style="margin-left:3px" title="하위 작업 추가" onclick="addSubTask(\''+t.id+'\')">+하위</button>':'')+
+        '<span class="att-badge">'+att+'</span></td>'+
       '<td class="row-del" onclick="delTask(\''+t.id+'\')" title="삭제">✕</td></tr>';
   });
   html+='</tbody>';
@@ -998,6 +1149,18 @@ function ganttZoom(){ return (state.ui&&state.ui.ganttZoom)||"week"; }
 function setZoom(z){
   if(!state.ui) state.ui={};
   state.ui.ganttZoom=z; save(); syncZoomTabs(); renderGantt();
+}
+function barStyle(){ return (state.ui&&state.ui.barStyle)||"soft"; }
+function setBarStyle(s){
+  if(!state.ui) state.ui={};
+  state.ui.barStyle=s; save(); syncStyleTabs(); renderGantt();
+}
+function syncStyleTabs(){
+  document.querySelectorAll("#styleTabs button").forEach(b=>b.classList.toggle("active",b.dataset.s===barStyle()));
+}
+function rgbaOf(hex,a){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return "rgba("+r+","+g+","+b+","+a+")";
 }
 function syncZoomTabs(){
   document.querySelectorAll("#zoomTabs button").forEach(b=>b.classList.toggle("active",b.dataset.z===ganttZoom()));
@@ -1067,9 +1230,14 @@ function renderGantt(){
     const g=groupOf(p,t.gid)||{name:"?",color:"grey"};
     if(t.gid!==lastGid){
       lastGid=t.gid;
-      html+='<div class="hrow hgrp"><div class="hname" style="color:'+gBase(g)+'">■ '+esc(g.name)+'</div>'+
+      const gCol=p.gcol.includes(t.gid);
+      html+='<div class="hrow hgrp"><div class="hname" style="color:'+gBase(g)+'">'+
+        '<span class="tgl" onclick="toggleGroupCol(\''+t.gid+'\')">'+(gCol?'▸':'▾')+'</span>'+
+        '■ '+esc(g.name)+'</div>'+
         '<div class="htrack" style="width:'+(total*ppd)+'px"></div></div>';
     }
+    if(p.gcol.includes(t.gid)) return;
+    if(t._lvl===1 && p.collapsed.includes(t.parentId)) return;
     const s=pd(t.planStart), e=pd(t.planEnd);
     const ok = s&&e&&e>=s;
     let barHtml="";
@@ -1080,19 +1248,39 @@ function renderGantt(){
       const tip=esc(t.name)+" | "+fmtShort(t.planStart)+"~"+fmtShort(t.planEnd)+" ("+(diffD(s,e)+1)+"일) · "+(t.progress||0)+"%"
         +(t.company?" · "+esc(t.company):"");
       if(t.milestone){
-        barHtml='<div class="hms" style="left:'+(x+ppd/2)+'px;background:'+col+'" title="'+tip+'" onclick="openDetail(\''+t.id+'\')"></div>'+
+        barHtml='<div class="hms" data-tid="'+t.id+'" style="left:'+(x+ppd/2)+'px;background:'+col+'" title="'+tip+'" onclick="openDetail(\''+t.id+'\')" onpointerdown="barDown(event,\''+t.id+'\',\'move\')"></div>'+
           '<div class="hms-lbl" style="left:'+(x+ppd/2+4)+'px">'+esc(t.name)+'</div>';
       }else{
-        barHtml='<div class="hbar'+(isLate(t)?" late":"")+'" style="left:'+x+'px;width:'+w+'px;background:'+col+'" title="'+tip+'" onclick="openDetail(\''+t.id+'\')">'+
-          '<div class="fill" style="width:'+(t.progress||0)+'%"></div>'+
-          (w>46?'<span class="lbl" style="color:'+txt+'">'+esc(t.name)+'</span>':"")+'</div>';
+        // 막대 스타일: fill=진한 채움 / soft=연한 채움+색 테두리 / line=테두리만
+        const bs=barStyle();
+        let barCss, lblCol, fillCss;
+        if(bs==="fill"){
+          barCss='background:'+col; lblCol=txt; fillCss='';
+        }else if(bs==="soft"){
+          barCss='background:'+rgbaOf(col,0.16)+';border:1.5px solid '+col;
+          lblCol=matS(g.color)[800]; fillCss=';background:'+rgbaOf(col,0.38);
+        }else{
+          barCss='background:#fff;border:1.5px solid '+col;
+          lblCol=matS(g.color)[800]; fillCss=';background:'+rgbaOf(col,0.26);
+        }
+        barHtml='<div class="hbar '+bs+(isLate(t)?" late":"")+'" data-tid="'+t.id+'" style="left:'+x+'px;width:'+w+'px;'+barCss+'" title="'+tip+'" onclick="openDetail(\''+t.id+'\')" onpointerdown="barDown(event,\''+t.id+'\',\'move\')">'+
+          '<div class="hh l" onpointerdown="event.stopPropagation();barDown(event,\''+t.id+'\',\'l\')"></div>'+
+          '<div class="hh r" onpointerdown="event.stopPropagation();barDown(event,\''+t.id+'\',\'r\')"></div>'+
+          '<div class="fill" style="width:'+(t.progress||0)+'%'+fillCss+'"></div>'+
+          (w>46?'<span class="lbl" style="color:'+lblCol+'">'+esc(t.name)+'</span>':"")+'</div>';
       }
     }
     const meta=[t._wbs, t.company||"", ok?fmtShort(t.planStart)+"~"+fmtShort(t.planEnd):"날짜 미정"].filter(Boolean).join(" · ");
     const att=(t.memo?" "+ICO_MEMO:"")+((t.images&&t.images.length)?" "+ICO_IMG:"");
-    html+='<div class="hrow"><div class="hname">'+
-      '<div class="nm" onclick="openDetail(\''+t.id+'\')">'+esc(t.name||"(무제)")+att+'</div>'+
-      '<div class="meta">'+esc(meta)+'</div></div>'+
+    const tCol=p.collapsed.includes(t.id);
+    const namePad = t._lvl===1 ? 'padding-left:24px' : '';
+    const tglHtml = t._lvl===0
+      ? (t._hasKids?'<span class="tgl" onclick="toggleTaskCol(\''+t.id+'\')">'+(tCol?'▸':'▾')+'</span>':'<span class="tgl-sp"></span>')
+      : '<span class="subhook">└</span>';
+    html+='<div class="hrow'+(t._lvl===1?' subrow':'')+'"><div class="hname" style="'+namePad+'">'+
+      '<div class="nm">'+tglHtml+'<span onclick="openDetail(\''+t.id+'\')">'+esc(t.name||"(무제)")+'</span>'+att+
+      (tCol&&t._hasKids?'<span class="kids-n">+'+childrenOf(p,t.id).length+'</span>':'')+'</div>'+
+      '<div class="meta" style="padding-left:14px">'+esc(meta)+'</div></div>'+
       '<div class="htrack" style="width:'+(total*ppd)+'px">'+barHtml+'</div></div>';
   });
   if(!arr.length) html+='<div class="undated">작업이 없습니다 — “＋ 작업 추가” 또는 새 공사에서 템플릿을 사용하세요.</div>';
@@ -1106,11 +1294,84 @@ function renderGantt(){
     overlay+='<div class="htoday" style="left:'+(NAMEW+diffD(rs,t0)*ppd)+'px"><span class="lbl">오늘</span></div>';
   }
   el.innerHTML=html+overlay;
+  gRS=rs; gPPD=ppd;               // 막대 드래그 편집에서 사용
+  drawDeps(arr);                  // 선행 연결 점선
+}
+
+/* ══════════════ 막대 드래그 편집 (이동·늘리기·줄이기) ══════════════ */
+let gRS=null, gPPD=6;
+let bDrag=null, bDragT=0;
+function barDown(ev,id,mode){
+  if(ev.button!==0) return;
+  const p=activeProj(); if(!p) return;
+  const t=p.tasks.find(x=>x.id===id); if(!t) return;
+  const s=pd(t.planStart), e=pd(t.planEnd); if(!s||!e) return;
+  bDrag={id,mode,x0:ev.clientX,s,e,ns:s,ne:e,moved:false};
+}
+document.addEventListener("pointermove",ev=>{
+  if(!bDrag) return;
+  const dx=ev.clientX-bDrag.x0;
+  if(!bDrag.moved && Math.abs(dx)<4) return;
+  bDrag.moved=true;
+  const dd=Math.round(dx/gPPD);
+  let ns=bDrag.s, ne=bDrag.e;
+  if(bDrag.mode==="move"){ ns=addD(bDrag.s,dd); ne=addD(bDrag.e,dd); }
+  else if(bDrag.mode==="l"){ ns=addD(bDrag.s,dd); if(ns>ne) ns=new Date(ne); }
+  else{ ne=addD(bDrag.e,dd); if(ne<ns) ne=new Date(ns); }
+  bDrag.ns=ns; bDrag.ne=ne;
+  const el=document.querySelector('[data-tid="'+bDrag.id+'"]');
+  if(el && gRS){
+    if(el.classList.contains("hms")) el.style.left=(diffD(gRS,ns)*gPPD+gPPD/2)+"px";
+    else{ el.style.left=(diffD(gRS,ns)*gPPD)+"px"; el.style.width=Math.max(gPPD,(diffD(ns,ne)+1)*gPPD)+"px"; }
+  }
+  const tip=document.getElementById("dragTip");
+  tip.style.display="block";
+  tip.style.left=(ev.clientX+14)+"px"; tip.style.top=(ev.clientY-32)+"px";
+  tip.textContent=fmtShort(fd(ns))+" ~ "+fmtShort(fd(ne))+" ("+(diffD(ns,ne)+1)+"일)";
+  ev.preventDefault();
+});
+document.addEventListener("pointerup",()=>{
+  const d=bDrag; bDrag=null;
+  const tip=document.getElementById("dragTip"); if(tip) tip.style.display="none";
+  if(!d||!d.moved) return;
+  bDragT=Date.now();                                    // 직후 click(상세 열림) 억제
+  const p=activeProj(); const t=p&&p.tasks.find(x=>x.id===d.id); if(!t) return;
+  t.planStart=fd(d.ns); t.planEnd=fd(d.ne);
+  save(); render();
+});
+
+/* ══════════════ 선행 연결 점선 (pred: WBS 코드, 쉼표로 여러 개) ══════════════ */
+function drawDeps(arr){
+  const el=document.getElementById("gantt");
+  const old=el.querySelector(".dep-svg"); if(old) old.remove();
+  const rc=el.getBoundingClientRect();
+  const byWbs={}; arr.forEach(t=>{ if(t._wbs) byWbs[t._wbs]=t; });
+  const pos={};
+  el.querySelectorAll("[data-tid]").forEach(b=>{
+    const r=b.getBoundingClientRect();
+    pos[b.dataset.tid]={x1:r.left-rc.left,x2:r.right-rc.left,y:r.top-rc.top+r.height/2};
+  });
+  let lines='';
+  arr.forEach(t=>{
+    if(!t.pred) return;
+    String(t.pred).split(/[,\s]+/).forEach(code=>{
+      const pt=byWbs[code.trim()]; if(!pt||pt.id===t.id) return;
+      const a=pos[pt.id], b=pos[t.id]; if(!a||!b) return;
+      const sx=a.x2, sy=a.y, ex=b.x1-4, ey=b.y;
+      lines+='<path d="M'+sx+' '+sy+' H'+(sx+7)+' V'+ey+' H'+ex+'" fill="none" stroke="#7c8db5" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#depArr)"/>';
+    });
+  });
+  if(!lines) return;
+  el.insertAdjacentHTML("beforeend",
+    '<svg class="dep-svg" width="'+el.scrollWidth+'" height="'+el.scrollHeight+'">'+
+    '<defs><marker id="depArr" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#7c8db5"/></marker></defs>'+
+    lines+'</svg>');
 }
 
 /* ══════════════ 상세 모달 ══════════════ */
 let detailId=null;
 function openDetail(id){
+  if(Date.now()-bDragT<350) return;                     // 드래그 직후 클릭 무시
   detailId=id;
   renderDetail();
   document.getElementById("detailBack").classList.add("show");
@@ -1134,9 +1395,22 @@ function renderDetail(){
     '<div style="grid-column:1/-1"><label>작업명</label><input value="'+esc(t.name)+'" oninput="dSet(\'name\',this.value)"></div>'+
     '<div><label>공종</label><select onchange="dSet(\'gid\',this.value)">'+
       ((activeProj()&&activeProj().groups)||[]).map(g=>'<option value="'+g.id+'"'+(g.id===t.gid?" selected":"")+'>'+esc(g.name)+'</option>').join("")+'</select></div>'+
+    (childrenOf(activeProj(),t.id).length
+      ? '<div><label>상위 작업</label><input value="(하위 작업 '+childrenOf(activeProj(),t.id).length+'건 보유)" disabled style="color:var(--muted)"></div>'
+      : '<div><label>상위 작업 (같은 공종)</label><select onchange="dSet(\'parentId\',this.value)">'+
+          '<option value="">(없음 — 최상위)</option>'+
+          activeProj().tasks.filter(x=>x.gid===t.gid && !x.parentId && x.id!==t.id)
+            .map(x=>'<option value="'+x.id+'"'+(x.id===t.parentId?" selected":"")+'>'+esc(x.name||"(무제)")+'</option>').join("")+
+        '</select></div>')+
     '<div><label>담당업체</label><input value="'+esc(t.company)+'" oninput="dSet(\'company\',this.value)"></div>'+
     '<div><label>담당자 / 연락처</label><input value="'+esc(t.owner)+'" oninput="dSet(\'owner\',this.value)"></div>'+
-    '<div><label>선행 작업(코드)</label><input value="'+esc(t.pred)+'" placeholder="예: 기-3" oninput="dSet(\'pred\',this.value)"></div>'+
+    '<div><label>선행 작업 — 이 작업보다 먼저 끝나야 함 (쉼표로 여러 개)</label><div style="display:flex;gap:4px">'+
+      '<input value="'+esc(t.pred)+'" placeholder="예: 기-3, 전-1" oninput="dSet(\'pred\',this.value)" style="flex:1;min-width:0">'+
+      '<select style="max-width:130px" onchange="if(this.value){dSet(\'pred\',(curTask().pred?curTask().pred+\', \':\'\')+this.value);renderDetail();}">'+
+        '<option value="">작업 선택…</option>'+
+        sortedTasks(activeProj()).filter(x=>x.id!==t.id&&!x.milestone)
+          .map(x=>'<option value="'+x._wbs+'">'+x._wbs+' '+esc((x.name||"").slice(0,14))+'</option>').join("")+
+      '</select></div></div>'+
     '<div><label>계획 착수</label><input type="date" value="'+t.planStart+'" onchange="dSet(\'planStart\',this.value)"></div>'+
     '<div><label>계획 완료</label><input type="date" value="'+t.planEnd+'" onchange="dSet(\'planEnd\',this.value)"></div>'+
     '<div><label>실제 착수</label><input type="date" value="'+(t.actStart||"")+'" onchange="dSet(\'actStart\',this.value)"></div>'+
@@ -1283,13 +1557,14 @@ function importJSON(ev){
 }
 function exportCSV(){
   const p=activeProj(); if(!p){ alert("공사가 없습니다."); return; }
-  const head=["코드","공종","작업명","담당업체","담당자","계획착수","계획완료","기간(일)","실제착수","실제완료","진척률(%)","상태","선행","마일스톤","메모"];
+  const head=["코드","공종","상위작업","작업명","담당업체","담당자","계획착수","계획완료","기간(일)","실제착수","실제완료","진척률(%)","상태","선행","마일스톤","메모"];
   const q=s=>'"'+String(s==null?"":s).replace(/"/g,'""')+'"';
   const rows=[head.map(q).join(",")];
   sortedTasks(p).forEach(t=>{
     const s=pd(t.planStart),e=pd(t.planEnd);
     const g=groupOf(p,t.gid);
-    rows.push([t._wbs,(g?g.name:""),t.name,t.company,t.owner,t.planStart,t.planEnd,
+    const par=t.parentId ? p.tasks.find(x=>x.id===t.parentId) : null;
+    rows.push([t._wbs,(g?g.name:""),(par?par.name:""),t.name,t.company,t.owner,t.planStart,t.planEnd,
       (s&&e&&e>=s)?diffD(s,e)+1:"",t.actStart||"",t.actEnd||"",t.progress||0,
       STATUSES[statusIdx(t)],t.pred,t.milestone?"◆":"",t.memo].map(q).join(","));
   });
@@ -1306,7 +1581,9 @@ load();
 tryRestoreFromHash();
 if(!state.projects.length) flag("＋ 새 공사로 시작하세요");
 else flag("불러옴");
+document.body.insertAdjacentHTML("beforeend",'<div id="dragTip"></div>');
 syncZoomTabs();
+syncStyleTabs();
 render();
 </script>
 </body>

@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<style>html{visibility:hidden}</style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>법규 계산기 · 건폐율·용적률 / 살수장애</title>
+<style>
+  :root{
+    --bg:#ffffff; --ink:#1a1a1a; --muted:#6b6b6b; --line:#e2e2e2;
+    --line-strong:#c9c9c9; --soft:#f7f7f7; --softer:#fafafa;
+    --ok:#2f6f4f; --ok-bg:#e8f3ed; --warn:#8a6d1a; --warn-bg:#f6efd9; --over:#9a3434; --over-bg:#f6e4e4;
+    --blue:#1d5fc4;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1250px;margin:0 auto;padding:18px 18px 60px}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+    border-bottom:1.5px solid var(--ink);padding-bottom:10px;margin-bottom:14px}
+  h1{font-size:17px;font-weight:650;letter-spacing:-.01em;margin:0}
+  .sub{color:var(--muted);font-size:12px}
+  .sub a{color:var(--muted)}
+  .card{border:1px solid var(--line);border-radius:7px;margin-bottom:14px;overflow:hidden}
+  .card-h{display:flex;align-items:center;gap:8px;padding:9px 13px;background:var(--soft);
+    border-bottom:1px solid var(--line);font-size:13px;font-weight:600;flex-wrap:wrap}
+  .card-b{padding:14px 15px}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.65}
+  .hint a{color:var(--blue)}
+  .cols{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+  .col-in{flex:0 0 320px;min-width:280px}
+  .col-vis{flex:1;min-width:320px}
+
+  .fld{margin-bottom:12px}
+  .fld label{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;
+    font-weight:600;margin-bottom:4px}
+  .fld label .u{font-weight:400;color:var(--muted);font-size:11px}
+  .fld .pair{display:flex;gap:8px;align-items:center}
+  .fld input[type=number]{width:110px;border:1px solid var(--line-strong);border-radius:5px;
+    padding:6px 8px;font-family:inherit;font-size:13px;font-variant-numeric:tabular-nums}
+  .fld input[type=range]{flex:1;accent-color:var(--ink)}
+  .fld input:focus{outline:1.5px solid var(--ink);outline-offset:1px}
+
+  .res{display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 10px}
+  .stat{border:1px solid var(--line);border-radius:7px;padding:8px 13px;min-width:120px;background:var(--softer)}
+  .stat .k{font-size:11px;color:var(--muted)}
+  .stat .v{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  .stat .v small{font-size:11px;font-weight:400;color:var(--muted)}
+  .stat.good{background:var(--ok-bg);border-color:var(--ok)}
+  .stat.good .v{color:var(--ok)}
+  .stat.bad{background:var(--over-bg);border-color:var(--over)}
+  .stat.bad .v{color:var(--over)}
+  .badge{display:inline-block;border-radius:5px;padding:2px 9px;font-size:12px;font-weight:650}
+  .badge.ok{background:var(--ok-bg);color:var(--ok);border:1px solid var(--ok)}
+  .badge.ng{background:var(--over-bg);color:var(--over);border:1px solid var(--over)}
+
+  .vis-title{font-size:11.5px;color:var(--muted);font-weight:600;margin:2px 0 4px}
+  svg text{font-family:inherit}
+  .svgbox{border:1px solid var(--line);border-radius:7px;background:#fff;overflow:hidden}
+
+  table.ref{border-collapse:collapse;font-size:11.5px;margin-top:8px}
+  table.ref th,table.ref td{border:1px solid var(--line);padding:3px 9px;text-align:center}
+  table.ref th{background:var(--soft);font-weight:600}
+  table.ref tr.hit td{background:#fdf6df;font-weight:650}
+
+  footer{margin-top:26px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);
+    font-size:11.5px;line-height:1.7}
+  @media print{
+    #authGate{display:none!important}
+    html{visibility:visible!important}
+  }
+</style>
+</head>
+<body>
+<!-- ── 접속 인증 게이트 (공통) ────────────────────────────────
+  주의: 프론트엔드 전용 간이 잠금입니다. 소스에는 비밀번호의 SHA-256 해시만 있지만,
+  코드를 아는 사람이 우회할 수 있으므로 기밀 데이터 보호 용도로는 백엔드 인증이 필요합니다. -->
+<div id="authGate" style="position:fixed;inset:0;z-index:9999;background:#f7f7f7;display:flex;
+  align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border:1px solid #c9c9c9;border-radius:10px;padding:30px 28px;
+    width:100%;max-width:360px;box-shadow:0 8px 30px rgba(0,0,0,.1);text-align:center">
+    <svg width="34" height="34" viewBox="0 0 16 16" fill="none" stroke="#1a1a1a" stroke-width="1.3" style="margin-bottom:8px"><rect x="3" y="7" width="10" height="6.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
+    <div style="font-size:15px;font-weight:650;margin-bottom:4px">소방공사 일정 관리</div>
+    <div style="font-size:12px;color:#6b6b6b;margin-bottom:16px">접속 암호를 입력하세요</div>
+    <input type="text" id="authPw" autocomplete="off" autocapitalize="off" autocorrect="off"
+      spellcheck="false" placeholder="암호"
+      style="width:100%;border:1px solid #c9c9c9;border-radius:6px;padding:9px 11px;
+      font-family:inherit;font-size:14px;text-align:center;box-sizing:border-box">
+    <div id="authErr" style="font-size:11.5px;color:#9a3434;min-height:17px;margin-top:6px"></div>
+    <button id="authBtn" style="width:100%;background:#1a1a1a;color:#fff;border:none;border-radius:6px;
+      padding:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:2px">열기</button>
+    <label style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#6b6b6b;margin-top:12px;cursor:pointer">
+      <input type="checkbox" id="authKeep"> 이 브라우저에서 로그인 유지
+    </label>
+  </div>
+</div>
+<script>
+(function(){
+  var HASH="420b78ec6f83cb93315497071fb79d65637187537b50ecd5c36cfc17d889da74"; // SHA-256
+  var FB="74d63e48-18"; // crypto.subtle 불가 환경용 보조 해시
+  var gate=document.getElementById("authGate");
+  function authed(){ try{ return sessionStorage.getItem("fireAuth")==="1"||localStorage.getItem("fireAuth.keep")==="1"; }catch(e){ return false; } }
+  function unlock(){ gate.parentNode.removeChild(gate); document.documentElement.style.visibility="visible"; }
+  if(authed()){ unlock(); return; }
+  document.documentElement.style.visibility="visible";  // 게이트만 보이게 (아래 컨텐츠는 게이트가 가림)
+  function djb2(s){ var h=5381,b=new TextEncoder().encode(s); for(var i=0;i<b.length;i++){ h=((h*33)^b[i])>>>0; } return h.toString(16)+"-"+b.length; }
+  function sha256(s){
+    if(window.crypto&&crypto.subtle&&window.isSecureContext!==false){
+      return crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)).then(function(buf){
+        return Array.from(new Uint8Array(buf)).map(function(x){return x.toString(16).padStart(2,"0");}).join("");
+      });
+    }
+    return Promise.resolve(null);
+  }
+  /* 한글 IME가 막힌 환경(윈도우 password 입력칸 등)에서 자모가 낱자로 들어온 경우 음절로 조합 */
+  function composeJamo(s){
+    var CHO="ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
+    var JUNG="ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ";
+    var JONG="ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ";
+    var VC={"ㅗㅏ":"ㅘ","ㅗㅐ":"ㅙ","ㅗㅣ":"ㅚ","ㅜㅓ":"ㅝ","ㅜㅔ":"ㅞ","ㅜㅣ":"ㅟ","ㅡㅣ":"ㅢ"};
+    var JC={"ㄱㅅ":"ㄳ","ㄴㅈ":"ㄵ","ㄴㅎ":"ㄶ","ㄹㄱ":"ㄺ","ㄹㅁ":"ㄻ","ㄹㅂ":"ㄼ","ㄹㅅ":"ㄽ","ㄹㅌ":"ㄾ","ㄹㅍ":"ㄿ","ㄹㅎ":"ㅀ","ㅂㅅ":"ㅄ"};
+    var JSPLIT={}; for(var k in JC){ JSPLIT[JC[k]]=k; }
+    var out="", cho=null, jung=null, jong=null;
+    function syl(){ return String.fromCharCode(0xAC00 + CHO.indexOf(cho)*588 + JUNG.indexOf(jung)*28 + (jong?JONG.indexOf(jong)+1:0)); }
+    function flush(){ if(cho&&jung){ out+=syl(); } else { if(cho)out+=cho; if(jung)out+=jung; } cho=jung=jong=null; }
+    for(var i=0;i<s.length;i++){
+      var c=s[i];
+      if(JUNG.indexOf(c)>=0){
+        if(cho&&jung&&jong){ var mv;
+          if(JSPLIT[jong]){ mv=JSPLIT[jong][1]; jong=JSPLIT[jong][0]; } else { mv=jong; jong=null; }
+          flush(); cho=mv; jung=c;
+        }else if(cho&&jung){ var vc=VC[jung+c];
+          if(vc){ jung=vc; } else { flush(); out+=c; }
+        }else if(cho){ jung=c; }
+        else { flush(); out+=c; }
+      }else if(CHO.indexOf(c)>=0||JONG.indexOf(c)>=0){
+        if(cho&&jung){
+          if(!jong&&JONG.indexOf(c)>=0){ jong=c; }
+          else if(jong&&JC[jong+c]){ jong=JC[jong+c]; }
+          else { flush(); cho=c; }
+        }else if(cho){ flush(); cho=c; }
+        else { cho=c; }
+      }else{ flush(); out+=c; }
+    }
+    flush();
+    return out;
+  }
+  function tryOpen(){
+    var raw=(document.getElementById("authPw").value||"").trim();
+    if(!raw) return;
+    var nfc=raw.normalize?raw.normalize("NFC"):raw;
+    var cands=[raw]; if(cands.indexOf(nfc)<0)cands.push(nfc);
+    var comp=composeJamo(nfc); if(cands.indexOf(comp)<0)cands.push(comp);
+    Promise.all(cands.map(sha256)).then(function(hs){
+      var ok=false;
+      for(var i=0;i<cands.length;i++){
+        if(hs[i] ? (hs[i]===HASH) : (djb2(cands[i])===FB)){ ok=true; break; }
+      }
+      if(ok){
+        try{
+          sessionStorage.setItem("fireAuth","1");
+          if(document.getElementById("authKeep").checked) localStorage.setItem("fireAuth.keep","1");
+        }catch(e){}
+        unlock();
+      }else{
+        var err=document.getElementById("authErr");
+        err.textContent="암호가 올바르지 않습니다";
+        document.getElementById("authPw").value="";
+        document.getElementById("authPw").focus();
+      }
+    });
+  }
+  document.getElementById("authBtn").addEventListener("click",tryOpen);
+  document.getElementById("authPw").addEventListener("keydown",function(e){ if(e.key==="Enter") tryOpen(); });
+  setTimeout(function(){ document.getElementById("authPw").focus(); },50);
+})();
+</script>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>법규 계산기 <span style="font-weight:400;color:var(--muted)">— 시각화</span></h1>
+      <div class="sub">건폐율·용적률과 스프링클러 살수장애를 숫자만 넣으면 그림으로 판정합니다</div>
+    </div>
+    <div style="text-align:right">
+      <div class="sub"><a href="index.html">전체 일정</a> · <a href="hookup.html">훅업 공정표</a> · <a href="process.html">업무 매뉴얼</a> · <a href="bridge.html">AI 밀어넣기</a></div>
+      <div class="sub" id="saveState"></div>
+    </div>
+  </header>
+
+  <!-- ══════════ 1. 건폐율 · 용적률 ══════════ -->
+  <div class="card">
+    <div class="card-h">건폐율 · 용적률 계산 <span class="sub">— 건축법 제55조(건폐율) · 제56조(용적률)</span></div>
+    <div class="card-b">
+      <div class="cols">
+        <div class="col-in">
+          <div class="fld"><label>대지면적 <span class="u">제곱미터</span></label>
+            <div class="pair"><input type="range" id="siteR" min="100" max="50000" step="50"><input type="number" id="site" min="1" step="10"></div></div>
+          <div class="fld"><label>건축면적 (수평투영, 가장 넓은 층) <span class="u">제곱미터</span></label>
+            <div class="pair"><input type="range" id="footR" min="10" max="30000" step="10"><input type="number" id="foot" min="1" step="10"></div></div>
+          <div class="fld"><label>지상층 연면적 합계 <span class="u">제곱미터 · 지하층 제외</span></label>
+            <div class="pair"><input type="range" id="gfaR" min="10" max="200000" step="50"><input type="number" id="gfa" min="1" step="10"></div></div>
+          <div class="fld"><label>법정 한도 — 건폐율 <span class="u">% (용도지역·조례 확인)</span></label>
+            <div class="pair"><input type="range" id="capLimR" min="20" max="90" step="5"><input type="number" id="capLim" min="1" max="100" step="5"></div></div>
+          <div class="fld"><label>법정 한도 — 용적률 <span class="u">%</span></label>
+            <div class="pair"><input type="range" id="farLimR" min="50" max="1500" step="10"><input type="number" id="farLim" min="1" step="10"></div></div>
+        </div>
+        <div class="col-vis">
+          <div class="res" id="bcrRes"></div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap">
+            <div>
+              <div class="vis-title">평면 — 대지 위 건축면적 (건폐율)</div>
+              <div class="svgbox"><svg id="svgTop" width="300" height="230" viewBox="0 0 300 230"></svg></div>
+            </div>
+            <div>
+              <div class="vis-title">입면 — 층으로 쌓은 연면적 (용적률)</div>
+              <div class="svgbox"><svg id="svgSide" width="300" height="230" viewBox="0 0 300 230"></svg></div>
+            </div>
+          </div>
+          <div class="hint">
+            건폐율 = 건축면적 / 대지면적, 용적률 = 지상 연면적 / 대지면적.
+            용적률 계산 시 지하층·지상 부속 주차장 면적은 제외됩니다. 입면의 층수는 "연면적 / 건축면적"으로 셈한
+            개념도이며 실제 층별 면적과 다를 수 있습니다.
+            한도는 <a href="https://www.law.go.kr/법령/건축법/제55조" target="_blank" rel="noopener">건축법 제55조</a> ·
+            <a href="https://www.law.go.kr/법령/건축법/제56조" target="_blank" rel="noopener">제56조</a>와
+            국토계획법·지자체 조례로 정해집니다.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 2. 스프링클러 살수장애 — 보 인근 헤드 ══════════ -->
+  <div class="card">
+    <div class="card-h">살수장애 검토 1 — 보(장애물) 인근 헤드 <span class="sub">— NFTC 103 (수평거리별 허용 단차)</span></div>
+    <div class="card-b">
+      <div class="cols">
+        <div class="col-in">
+          <div class="fld"><label>헤드 반사판 ~ 보 측면 수평거리 <span class="u">m</span></label>
+            <div class="pair"><input type="range" id="beamAR" min="0" max="2.5" step="0.05"><input type="number" id="beamA" min="0" step="0.05"></div></div>
+          <div class="fld"><label>반사판이 보 하단보다 높은 정도 <span class="u">m · 음수 = 보 하단보다 낮음</span></label>
+            <div class="pair"><input type="range" id="beamBR" min="-0.3" max="0.6" step="0.01"><input type="number" id="beamB" step="0.01"></div></div>
+          <table class="ref" id="beamRef">
+            <tr><th>보와의 수평거리</th><th>반사판 높이 (보 하단 기준)</th></tr>
+            <tr data-k="0"><td>0.75m 미만</td><td>보 하단보다 낮게</td></tr>
+            <tr data-k="1"><td>0.75m 이상 1m 미만</td><td>0.1m 미만</td></tr>
+            <tr data-k="2"><td>1m 이상 1.5m 미만</td><td>0.15m 미만</td></tr>
+            <tr data-k="3"><td>1.5m 이상</td><td>0.3m 미만</td></tr>
+          </table>
+        </div>
+        <div class="col-vis">
+          <div class="res" id="beamRes"></div>
+          <div class="svgbox" style="max-width:620px"><svg id="svgBeam" width="620" height="250" viewBox="0 0 620 250"></svg></div>
+          <div class="hint">
+            천장에 보·덕트 같은 장애물이 있으면 헤드 살수 패턴이 가려지므로, 보에서 떨어진 거리만큼
+            반사판을 보 하단 기준 어느 높이까지 둘 수 있는지 표로 정해져 있습니다 — 멀수록 여유가 커집니다.
+            근거: <a href="https://www.law.go.kr/행정규칙/스프링클러설비의화재안전기술기준(NFTC103)" target="_blank" rel="noopener">스프링클러설비의 화재안전기술기준(NFTC 103)</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 3. 살수공간 반경 60cm ══════════ -->
+  <div class="card">
+    <div class="card-h">살수장애 검토 2 — 헤드 주위 살수공간 <span class="sub">— 반경 60cm 확보 (벽은 10cm 이상)</span></div>
+    <div class="card-b">
+      <div class="cols">
+        <div class="col-in">
+          <div class="fld"><label>헤드 ~ 장애물 수평거리 <span class="u">m</span></label>
+            <div class="pair"><input type="range" id="obsDR" min="0" max="1.2" step="0.05"><input type="number" id="obsD" min="0" step="0.05"></div></div>
+          <div class="fld"><label>장애물 종류</label>
+            <div class="pair">
+              <select id="obsKind" style="border:1px solid var(--line-strong);border-radius:5px;padding:6px 8px;font-family:inherit;font-size:12.5px">
+                <option value="obj">일반 장애물 (덕트·조명·랙 등) — 60cm</option>
+                <option value="wall">벽 — 10cm</option>
+              </select>
+            </div></div>
+          <div class="hint" style="margin-top:4px">
+            헤드 반사판을 중심으로 반경 60cm 안에는 살수를 가리는 물건이 없어야 합니다.
+            벽과 헤드 사이 간격은 10cm 이상이면 됩니다. 부착면(천장)과 반사판 거리는 30cm 이하.
+          </div>
+        </div>
+        <div class="col-vis">
+          <div class="res" id="obsRes"></div>
+          <div class="svgbox" style="max-width:420px"><svg id="svgObs" width="420" height="250" viewBox="0 0 420 250"></svg></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    이 페이지의 판정은 실무 참고용 개념 확인 도구입니다. 실제 인허가·설계 적용 전에는 반드시
+    법제처 국가법령정보센터의 현행 법령·화재안전기준 원문과 관할 소방서 지침을 확인하세요.
+    입력값은 이 브라우저(localStorage)에 자동 저장됩니다.
+  </footer>
+</div>
+
+<script>
+/* ══════════════ 상태 ══════════════ */
+const LS_KEY="fireCalc.v1";
+let st={site:1000,foot:450,gfa:3200,capLim:60,farLim:400,beamA:0.6,beamB:0.05,obsD:0.4,obsKind:"obj"};
+let saveTimer=null;
+function load(){ try{ const r=localStorage.getItem(LS_KEY); if(r){ st=Object.assign(st,JSON.parse(r)); } }catch(e){} }
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{ try{ localStorage.setItem(LS_KEY,JSON.stringify(st));
+    document.getElementById("saveState").innerHTML='<span style="color:var(--ok);font-size:11px">저장됨</span>'; }catch(e){} },250);
+}
+function fmt(n,d){ return Number(n).toLocaleString("ko-KR",{maximumFractionDigits:d==null?1:d}); }
+
+/* 숫자 입력 + 슬라이더 동기화 */
+function bind(key,inputId,rangeId,fn){
+  const inp=document.getElementById(inputId), rng=document.getElementById(rangeId);
+  inp.value=st[key]; rng.value=st[key];
+  const on=v=>{ if(v===""||isNaN(+v)) return; st[key]=+v; inp.value=v; rng.value=v; save(); fn(); };
+  inp.addEventListener("input",()=>on(inp.value));
+  rng.addEventListener("input",()=>on(rng.value));
+}
+
+/* ══════════════ 1. 건폐율·용적률 ══════════════ */
+function calcBCR(){
+  const {site,foot,gfa,capLim,farLim}=st;
+  const bcr=site>0? foot/site*100 : 0;
+  const far=site>0? gfa/site*100 : 0;
+  const bcrOk=bcr<=capLim, farOk=far<=farLim;
+  const footMax=site*capLim/100, gfaMax=site*farLim/100;
+  document.getElementById("bcrRes").innerHTML=
+    '<div class="stat '+(bcrOk?'good':'bad')+'"><div class="k">건폐율</div><div class="v">'+fmt(bcr)+'%<small> / 한도 '+fmt(capLim,0)+'%</small></div></div>'+
+    '<div class="stat '+(farOk?'good':'bad')+'"><div class="k">용적률</div><div class="v">'+fmt(far)+'%<small> / 한도 '+fmt(farLim,0)+'%</small></div></div>'+
+    '<div class="stat"><div class="k">건축면적 여유</div><div class="v">'+(bcrOk?fmt(footMax-foot,0):'<span style="color:var(--over)">'+fmt(foot-footMax,0)+' 초과</span>')+'<small> ㎡</small></div></div>'+
+    '<div class="stat"><div class="k">연면적 여유</div><div class="v">'+(farOk?fmt(gfaMax-gfa,0):'<span style="color:var(--over)">'+fmt(gfa-gfaMax,0)+' 초과</span>')+'<small> ㎡</small></div></div>';
+
+  // 평면: 대지 260x180, 건축면적은 면적비의 제곱근 비율 사각형
+  const W=260,H=180,x0=20,y0=26;
+  const r=Math.max(0,Math.min(site>0?foot/site:0,1.35));
+  const k=Math.sqrt(Math.min(r,1)), ko=Math.sqrt(r); // 1 초과분은 넘치게 표시
+  const bw=W*ko, bh=H*ko;
+  const bx=x0+(W-bw)/2, by=y0+(H-bh)/2;
+  document.getElementById("svgTop").innerHTML=
+    '<text x="150" y="16" text-anchor="middle" font-size="11" fill="#6b6b6b">대지 '+fmt(st.site,0)+'㎡</text>'+
+    '<rect x="'+x0+'" y="'+y0+'" width="'+W+'" height="'+H+'" fill="#f0f4ee" stroke="#8a9a80" stroke-width="1.4"/>'+
+    '<rect x="'+bx+'" y="'+by+'" width="'+bw+'" height="'+bh+'" fill="'+(bcrOk?'#dce7f5':'#f6e4e4')+'" stroke="'+(bcrOk?'#4a7ab5':'#9a3434')+'" stroke-width="1.6"'+(r>1?' stroke-dasharray="5 3"':'')+'/>'+
+    '<text x="150" y="'+(y0+H/2+4)+'" text-anchor="middle" font-size="13" font-weight="650" fill="'+(bcrOk?'#2c5488':'#9a3434')+'">'+fmt(bcr)+'%</text>'+
+    '<text x="150" y="'+(y0+H+18)+'" text-anchor="middle" font-size="10.5" fill="#6b6b6b">건축면적 '+fmt(st.foot,0)+'㎡ · 공지 '+fmt(Math.max(site-foot,0),0)+'㎡</text>';
+
+  // 입면: 층수 = 연면적/건축면적
+  const nF=foot>0? gfa/foot : 0;
+  const full=Math.floor(nF), frac=nF-full;
+  const maxShow=Math.max(nF,1);
+  const fh=Math.min(26, 170/Math.max(maxShow,1)); // 층 높이
+  const gw=120, gx=150-gw/2, groundY=205;
+  let s='<line x1="15" y1="'+groundY+'" x2="285" y2="'+groundY+'" stroke="#8a9a80" stroke-width="2"/>';
+  const col=farOk?'#dce7f5':'#f6e4e4', stc=farOk?'#4a7ab5':'#9a3434';
+  for(let i=0;i<full&&i<80;i++){
+    s+='<rect x="'+gx+'" y="'+(groundY-(i+1)*fh)+'" width="'+gw+'" height="'+(fh-1.5)+'" fill="'+col+'" stroke="'+stc+'" stroke-width="1"/>';
+  }
+  if(frac>0.02&&full<80){
+    s+='<rect x="'+gx+'" y="'+(groundY-(full+1)*fh)+'" width="'+(gw*frac)+'" height="'+(fh-1.5)+'" fill="'+col+'" opacity="0.55" stroke="'+stc+'" stroke-width="1" stroke-dasharray="3 2"/>';
+  }
+  s+='<text x="150" y="16" text-anchor="middle" font-size="11" fill="#6b6b6b">지상 연면적 '+fmt(st.gfa,0)+'㎡ = 약 '+fmt(nF)+'개 층 (건축면적 기준)</text>'+
+     '<text x="'+(gx+gw+10)+'" y="'+(groundY-4)+'" font-size="12" font-weight="650" fill="'+(farOk?'#2c5488':'#9a3434')+'">'+fmt(far)+'%</text>';
+  document.getElementById("svgSide").innerHTML=s;
+}
+
+/* ══════════════ 2. 보 인근 헤드 (수평거리별 허용 단차) ══════════════ */
+function beamRule(a){
+  if(a<0.75) return {k:0,lim:0,txt:"보 하단보다 낮게"};
+  if(a<1.0)  return {k:1,lim:0.10,txt:"0.1m 미만"};
+  if(a<1.5)  return {k:2,lim:0.15,txt:"0.15m 미만"};
+  return {k:3,lim:0.30,txt:"0.3m 미만"};
+}
+function calcBeam(){
+  const a=st.beamA, b=st.beamB;
+  const rule=beamRule(a);
+  const ok = rule.k===0 ? b<0 : b<rule.lim;
+  document.getElementById("beamRes").innerHTML=
+    '<div class="stat"><div class="k">수평거리</div><div class="v">'+fmt(a,2)+'<small> m</small></div></div>'+
+    '<div class="stat"><div class="k">허용 기준</div><div class="v" style="font-size:14px;padding-top:3px">'+rule.txt+'</div></div>'+
+    '<div class="stat '+(ok?'good':'bad')+'"><div class="k">판정</div><div class="v" style="font-size:15px;padding-top:2px">'+(ok?'적합':'살수장애 — 부적합')+'</div></div>';
+  document.querySelectorAll("#beamRef tr[data-k]").forEach(tr=>tr.classList.toggle("hit",+tr.dataset.k===rule.k));
+
+  // 단면도: 천장, 헤드(왼쪽), 보(오른쪽)
+  const S=170;                    // 1m = 170px
+  const ceilY=40, headX=90;
+  const beamX=headX+a*S;
+  const beamW=52, beamD=0.38*S;   // 보 깊이 0.38m 가정(개념도)
+  const beamBot=ceilY+beamD;
+  const defY=beamBot-b*S;         // 반사판 y (b>0 이면 보 하단보다 위)
+  const okc=ok?'#2f6f4f':'#9a3434';
+  let s='<rect x="0" y="0" width="620" height="'+ceilY+'" fill="#efefef"/>'+
+    '<line x1="0" y1="'+ceilY+'" x2="620" y2="'+ceilY+'" stroke="#555" stroke-width="2"/>'+
+    '<text x="10" y="'+(ceilY-8)+'" font-size="10.5" fill="#6b6b6b">천장</text>'+
+    // 보
+    '<rect x="'+beamX+'" y="'+ceilY+'" width="'+beamW+'" height="'+beamD+'" fill="#d9cfc0" stroke="#8a795d" stroke-width="1.5"/>'+
+    '<text x="'+(beamX+beamW/2)+'" y="'+(ceilY+beamD/2+4)+'" text-anchor="middle" font-size="11" fill="#5d5240">보</text>'+
+    // 보 하단 기준선
+    '<line x1="40" y1="'+beamBot+'" x2="600" y2="'+beamBot+'" stroke="#8a795d" stroke-width="1" stroke-dasharray="4 3"/>'+
+    '<text x="598" y="'+(beamBot-4)+'" font-size="9.5" fill="#8a795d" text-anchor="end">보 하단</text>'+
+    // 헤드 (배관+몸통+반사판)
+    '<line x1="'+headX+'" y1="'+ceilY+'" x2="'+headX+'" y2="'+(defY-7)+'" stroke="#555" stroke-width="3"/>'+
+    '<rect x="'+(headX-5)+'" y="'+(defY-7)+'" width="10" height="6" fill="#555"/>'+
+    '<line x1="'+(headX-13)+'" y1="'+defY+'" x2="'+(headX+13)+'" y2="'+defY+'" stroke="'+okc+'" stroke-width="3.5"/>'+
+    '<text x="'+(headX-18)+'" y="'+(defY+4)+'" font-size="10" fill="'+okc+'" text-anchor="end">반사판</text>'+
+    // 살수 패턴 (개념)
+    '<path d="M'+headX+' '+(defY+2)+' L'+(headX-95)+' '+(defY+120)+'" stroke="'+okc+'" stroke-width="1" stroke-dasharray="3 3" fill="none"/>'+
+    '<path d="M'+headX+' '+(defY+2)+' L'+(headX+95)+' '+(defY+120)+'" stroke="'+(ok?'#2f6f4f':'#9a3434')+'" stroke-width="1" stroke-dasharray="3 3" fill="none"/>'+
+    // 치수: 수평거리 a
+    '<line x1="'+headX+'" y1="24" x2="'+beamX+'" y2="24" stroke="#4a7ab5" stroke-width="1.2"/>'+
+    '<line x1="'+headX+'" y1="19" x2="'+headX+'" y2="29" stroke="#4a7ab5" stroke-width="1.2"/>'+
+    '<line x1="'+beamX+'" y1="19" x2="'+beamX+'" y2="29" stroke="#4a7ab5" stroke-width="1.2"/>'+
+    '<text x="'+((headX+beamX)/2)+'" y="18" text-anchor="middle" font-size="11" font-weight="650" fill="#2c5488">'+fmt(a,2)+'m</text>'+
+    // 치수: 단차 b
+    '<line x1="'+(headX+34)+'" y1="'+beamBot+'" x2="'+(headX+34)+'" y2="'+defY+'" stroke="'+okc+'" stroke-width="1.2"/>'+
+    '<text x="'+(headX+40)+'" y="'+((beamBot+defY)/2+4)+'" font-size="11" font-weight="650" fill="'+okc+'">'+(b>=0?'+':'')+fmt(b,2)+'m</text>';
+  document.getElementById("svgBeam").innerHTML=s;
+}
+
+/* ══════════════ 3. 살수공간 반경 60cm ══════════════ */
+function calcObs(){
+  const d=st.obsD, wall=st.obsKind==="wall";
+  const need=wall?0.10:0.60;
+  const ok=d>=need;
+  document.getElementById("obsRes").innerHTML=
+    '<div class="stat"><div class="k">'+(wall?'벽까지 거리':'장애물까지 거리')+'</div><div class="v">'+fmt(d,2)+'<small> m</small></div></div>'+
+    '<div class="stat"><div class="k">필요 이격</div><div class="v">'+fmt(need,2)+'<small> m 이상</small></div></div>'+
+    '<div class="stat '+(ok?'good':'bad')+'"><div class="k">판정</div><div class="v" style="font-size:15px;padding-top:2px">'+(ok?'적합':'살수공간 침범 — 부적합')+'</div></div>';
+
+  // 평면(위에서 본): 헤드 중심 + 60cm 원 + 장애물
+  const S=170, cx=170, cy=130;
+  const rr=0.6*S, obsX=cx+d*S;
+  const okc=ok?'#2f6f4f':'#9a3434';
+  let s='<circle cx="'+cx+'" cy="'+cy+'" r="'+rr+'" fill="#eef3f9" stroke="#4a7ab5" stroke-width="1.3" stroke-dasharray="5 3"/>'+
+    '<text x="'+cx+'" y="'+(cy-rr-8)+'" text-anchor="middle" font-size="10.5" fill="#2c5488">살수공간 반경 0.6m</text>'+
+    '<circle cx="'+cx+'" cy="'+cy+'" r="6" fill="#1a1a1a"/>'+
+    '<text x="'+cx+'" y="'+(cy+22)+'" text-anchor="middle" font-size="10.5" fill="#1a1a1a">헤드</text>';
+  if(wall){
+    s+='<rect x="'+obsX+'" y="10" width="14" height="230" fill="#d9cfc0" stroke="#8a795d" stroke-width="1.3"/>'+
+       '<text x="'+(obsX+7)+'" y="252" text-anchor="middle" font-size="10" fill="#5d5240"></text>'+
+       '<text x="'+(obsX-6)+'" y="26" text-anchor="end" font-size="10.5" fill="#5d5240">벽</text>';
+  }else{
+    s+='<rect x="'+(obsX-11)+'" y="'+(cy-11)+'" width="22" height="22" fill="#d9cfc0" stroke="#8a795d" stroke-width="1.3"/>'+
+       '<text x="'+obsX+'" y="'+(cy+30)+'" text-anchor="middle" font-size="10.5" fill="#5d5240">장애물</text>';
+  }
+  s+='<line x1="'+cx+'" y1="'+cy+'" x2="'+(wall?obsX:obsX-11)+'" y2="'+cy+'" stroke="'+okc+'" stroke-width="1.4"/>'+
+     '<text x="'+((cx+obsX)/2)+'" y="'+(cy-8)+'" text-anchor="middle" font-size="11" font-weight="650" fill="'+okc+'">'+fmt(d,2)+'m</text>';
+  document.getElementById("svgObs").innerHTML=s;
+}
+
+/* ══════════════ 시작 ══════════════ */
+load();
+bind("site","site","siteR",calcBCR);
+bind("foot","foot","footR",calcBCR);
+bind("gfa","gfa","gfaR",calcBCR);
+bind("capLim","capLim","capLimR",calcBCR);
+bind("farLim","farLim","farLimR",calcBCR);
+bind("beamA","beamA","beamAR",calcBeam);
+bind("beamB","beamB","beamBR",calcBeam);
+bind("obsD","obsD","obsDR",calcObs);
+document.getElementById("obsKind").value=st.obsKind;
+document.getElementById("obsKind").addEventListener("change",e=>{ st.obsKind=e.target.value; save(); calcObs(); });
+calcBCR(); calcBeam(); calcObs();
+</script>
+</body>
+</html>

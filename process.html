@@ -1,0 +1,1758 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<style>html{visibility:hidden}</style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>업무 표준 매뉴얼 · 프로세스 플로우</title>
+<style>
+  :root{
+    --bg:#ffffff; --ink:#1a1a1a; --muted:#6b6b6b; --line:#e2e2e2;
+    --line-strong:#c9c9c9; --soft:#f7f7f7; --softer:#fafafa;
+    --ok:#2f6f4f; --ok-bg:#e8f3ed; --warn:#8a6d1a; --warn-bg:#f6efd9; --over:#9a3434; --over-bg:#f6e4e4;
+    --dec:#7b1fa2;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1250px;margin:0 auto;padding:18px 18px 60px}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+    border-bottom:1.5px solid var(--ink);padding-bottom:10px;margin-bottom:14px}
+  h1{font-size:17px;font-weight:650;letter-spacing:-.01em;margin:0}
+  .sub{color:var(--muted);font-size:12px}
+  .sub a{color:var(--muted)}
+  .saved-flag{font-size:11px;color:var(--ok)}
+
+  .card{border:1px solid var(--line);border-radius:7px;margin-bottom:14px;overflow:hidden}
+  .card-h{display:flex;align-items:center;gap:8px;padding:9px 13px;background:var(--soft);
+    border-bottom:1px solid var(--line);font-size:13px;font-weight:600;flex-wrap:wrap}
+  .card-h .spacer{flex:1}
+  .card-b{padding:12px 13px}
+  .card-b.flush{padding:0}
+  button.btn{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line-strong);
+    color:var(--ink);padding:6px 11px;border-radius:5px;font-size:12px;cursor:pointer;font-family:inherit}
+  button.btn:hover{background:var(--soft)}
+  button.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  button.btn.primary:hover{background:#000}
+  button.btn.sm{padding:3px 8px;font-size:11px}
+  button.btn.danger{color:var(--over);border-color:var(--over)}
+  button.btn svg{width:13px;height:13px;flex:none}
+  .toolbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  select.big{border:1px solid var(--line-strong);border-radius:5px;padding:5px 8px;font-family:inherit;
+    font-size:12.5px;font-weight:600;max-width:280px}
+  .file-in{display:none}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:9px;line-height:1.6}
+  .hint code{background:var(--soft);padding:1px 5px;border-radius:3px;font-size:11px}
+
+  /* 단계 편집 표 */
+  table{border-collapse:collapse;width:100%;font-size:12px}
+  th,td{border:1px solid var(--line);padding:4px 7px;text-align:left;vertical-align:top}
+  th{background:var(--soft);font-weight:600;white-space:nowrap;color:#333}
+  td input,td select,td textarea{width:100%;border:none;background:transparent;font-family:inherit;
+    font-size:12px;color:var(--ink);padding:2px 0}
+  td input:focus,td select:focus,td textarea:focus{outline:1.5px solid var(--ink);outline-offset:1px;border-radius:3px;background:#fff}
+  td.no{width:34px;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums;vertical-align:middle}
+  tr.selrow td{background:#fdf6df}
+  select.st-start,select.st-end{color:var(--muted);font-weight:600}
+  select.st-task{color:var(--ink);font-weight:600}
+  select.st-decision{color:var(--dec);font-weight:600}
+  .mv{cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:4px;
+    padding:2px 5px;font-size:10px;color:var(--muted);font-family:inherit}
+  .mv:hover{color:var(--ink);border-color:var(--line-strong)}
+  .mv:disabled{opacity:.3;cursor:default}
+  .mv.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .dep-chip{display:inline-flex;align-items:center;gap:4px;background:#eef3f9;border:1px solid #b9cbe2;
+    color:#2c5488;border-radius:11px;padding:2px 9px;font-size:11px}
+  .dep-chip button{border:none;background:none;cursor:pointer;color:#2c5488;font-size:11px;padding:0;font-family:inherit}
+  .dep-chip button:hover{color:var(--over)}
+  .row-del{cursor:pointer;color:var(--muted);width:24px;text-align:center;vertical-align:middle}
+  .row-del:hover{color:var(--over)}
+  .br-list{display:flex;flex-direction:column;gap:3px}
+  .br-row{display:flex;gap:4px;align-items:center}
+  .br-row input{flex:0 0 84px;border:1px solid var(--line);border-radius:3px;padding:2px 5px;font-size:11px}
+  .br-row select{flex:1;border:1px solid var(--line);border-radius:3px;padding:2px 4px;font-size:11px;min-width:0}
+  .br-row .rm{cursor:pointer;border:none;background:none;color:var(--muted);font-size:12px;padding:0 2px}
+  .br-row .rm:hover{color:var(--over)}
+  .br-add{align-self:flex-start;font-size:10.5px;border:1px dashed var(--line-strong);background:none;
+    border-radius:4px;padding:2px 7px;cursor:pointer;color:var(--muted);font-family:inherit}
+  .br-add:hover{color:var(--ink)}
+  .next-sel{border:1px solid var(--line)!important;border-radius:3px!important;padding:2px 4px!important;font-size:11px!important}
+
+  /* 플로우차트 */
+  .flow-scroll{overflow-x:auto;padding:10px 0;position:relative}
+  .flow-node{cursor:pointer}
+  .flow-node:hover .nd{stroke:var(--ink);stroke-width:2}
+  .flow-node.selnode .nd{stroke:var(--ink);stroke-width:2.4}
+
+  /* 한눈에 보기 (가로 전개) */
+  .ov-scroll{overflow-x:auto;overflow-y:hidden;padding:4px 2px 10px}
+  /* 뉴모피즘 가로 스크롤바 */
+  .ov-scroll::-webkit-scrollbar{height:16px}
+  .ov-scroll::-webkit-scrollbar-track{background:#e4e7ec;border-radius:10px;
+    box-shadow:inset 2px 2px 5px rgba(163,177,198,.6), inset -2px -2px 5px rgba(255,255,255,.9)}
+  .ov-scroll::-webkit-scrollbar-thumb{background:#ffffff;border-radius:10px;
+    border:3px solid #e4e7ec;
+    box-shadow:2px 2px 5px rgba(163,177,198,.75), -1px -1px 3px rgba(255,255,255,1)}
+  .ov-scroll::-webkit-scrollbar-thumb:hover{background:#fbfcfe}
+  .ov-scroll{scrollbar-color:#ffffff #e4e7ec}
+
+  .ov-row{display:flex;align-items:flex-start;min-width:max-content;padding:6px 4px 8px}
+  .ov-col{flex:0 0 auto;width:205px}
+  .ov-node{border:1.5px solid #555;border-radius:7px;background:#fff;padding:8px 10px;
+    font-weight:650;font-size:12px;cursor:grab;line-height:1.4}
+  .ov-node .ns{font-weight:400;font-size:10.5px;color:var(--muted);display:block}
+  .ov-node.t-start{border-radius:20px;text-align:center}
+  .ov-node.t-end{border-radius:20px;background:#1a1a1a;color:#fff;text-align:center}
+  .ov-node.t-decision{border-color:#7b1fa2;background:#f6effa;color:#4a1266}
+  .ov-node.selov,.ov-kid.selov{outline:2px solid var(--ink);outline-offset:1px}
+  .ov-node{position:relative;padding-right:22px}
+  .ov-tg{display:block;font-size:10px;color:var(--muted);font-weight:400;margin-top:3px}
+  .ov-edit{border:none;background:none;color:#bdbdbd;cursor:pointer;font-size:11.5px;padding:0 2px;flex:none;font-family:inherit}
+  .ov-edit:hover{color:var(--ink)}
+  .ov-node .ov-edit{position:absolute;top:6px;right:6px}
+  .ov-brs{display:flex;flex-direction:column;gap:2px;margin:3px 0 2px 22px}
+  .ov-node .ov-brs,.ov-col>.ov-brs{margin-left:0;margin-top:5px}
+  .ov-bri{font-size:10px;border-radius:4px;padding:1px 7px;display:inline-flex;gap:3px;align-items:center;
+    width:max-content;font-weight:600;max-width:100%}
+  .ov-bri.ok{background:var(--ok-bg);color:var(--ok);border:1px solid #b7d3c4}
+  .ov-bri.back{background:var(--over-bg);color:var(--over);border:1px solid #e0b9b9}
+  .ov-kids{margin-top:8px;display:flex;flex-direction:column;gap:4px;border-left:2px solid var(--line);
+    padding-left:8px;margin-left:4px;animation:ovDown .16s ease-out}
+  @keyframes ovDown{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+  .ov-col.open{width:456px}
+  .ov-mini{margin-top:8px;border:1px dashed var(--line-strong);border-radius:7px;background:var(--softer);
+    padding:6px 4px;animation:ovDown .16s ease-out;overflow:hidden}
+  .ov-mini-h{font-size:10.5px;font-weight:650;color:var(--muted);padding:0 8px 3px}
+  .mini-node{cursor:grab}
+  .mini-node:active{cursor:grabbing}
+  .ov-kid{border:1px solid var(--line);border-radius:5px;background:#fff;padding:3px 7px;font-size:11px;
+    cursor:grab;display:flex;gap:5px;align-items:baseline;min-width:0}
+  .ov-kid .tt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+  .ov-kid.t-decision{border-color:#c9a6dd;background:#faf5fd;color:#4a1266}
+  .ov-kid.t-end{background:var(--soft);color:var(--muted)}
+  .ov-grip{color:#c4c4c4;font-size:10px;flex:none;cursor:grab}
+  .ov-num{color:var(--muted);font-size:9.5px;font-variant-numeric:tabular-nums;flex:none}
+  .ov-over{outline:2px dashed #4a7ab5!important;outline-offset:2px}
+  .ov-arr{flex:0 0 34px;display:flex;justify-content:center;padding-top:14px;color:#888}
+  .ov-chip{display:inline-block;font-size:9.5px;background:var(--soft);border-radius:7px;padding:0 6px;
+    margin-left:5px;color:var(--muted);font-weight:400;vertical-align:1px}
+  .inline-panel.static{position:static;transform:none;margin:14px auto 4px;animation:none;max-width:680px}
+
+  /* 인라인 상세 패널 — 클릭한 노드 아래로 펼쳐짐 */
+  .inline-panel{position:absolute;left:50%;transform:translateX(-50%);width:min(680px,96%);
+    background:#fff;border:1.5px solid var(--ink);border-radius:9px;box-shadow:0 8px 26px rgba(0,0,0,.13);
+    z-index:5;animation:ipDown .16s ease-out}
+  @keyframes ipDown{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
+  .inline-panel .ip-h{display:flex;align-items:center;gap:9px;padding:9px 14px;border-bottom:1px solid var(--line);background:var(--soft);border-radius:8px 8px 0 0}
+  .inline-panel .ip-h .ttl{font-size:13px;font-weight:650;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .inline-panel .ip-h .x{cursor:pointer;border:none;background:none;font-size:15px;color:var(--muted);padding:2px 6px}
+  .inline-panel .ip-h .x:hover{color:var(--ink)}
+  .inline-panel .ip-b{padding:12px 14px 15px}
+  .doc-desc{font-size:12px;color:var(--muted);margin-bottom:8px;white-space:pre-wrap}
+
+  /* 매뉴얼 본문(인쇄 겸용) */
+  .man-step{display:flex;gap:10px;padding:8px 4px;border-bottom:1px solid var(--line);font-size:12.5px}
+  .man-step .n{flex:none;width:26px;height:26px;border-radius:50%;background:var(--ink);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600}
+  .man-step .n.dec{background:var(--dec)}
+  .man-step .n.se{background:#fff;color:var(--muted);border:1.5px solid var(--line-strong)}
+  .man-step .bd{min-width:0}
+  .man-step .t{font-weight:650}
+  .man-step .d{color:#444;white-space:pre-wrap}
+  .man-step .m{color:var(--muted);font-size:11px;margin-top:2px}
+  .man-step .m b{color:var(--dec);font-weight:600}
+
+  /* 단계 상세 모달 (링크·이미지) */
+  .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:50;display:none;
+    align-items:flex-start;justify-content:center;padding:34px 14px;overflow-y:auto}
+  .modal-back.show{display:flex}
+  .modal{background:#fff;border-radius:9px;width:100%;max-width:680px;box-shadow:0 10px 40px rgba(0,0,0,.22)}
+  .modal-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .modal-h .ttl{font-size:14px;font-weight:650;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .modal-h .x{cursor:pointer;border:none;background:none;font-size:17px;color:var(--muted);padding:2px 6px}
+  .modal-h .x:hover{color:var(--ink)}
+  .modal-b{padding:14px 16px 18px}
+  .fgrid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:9px 14px;margin-bottom:10px}
+  .fgrid label{display:block;font-size:11px;color:var(--muted);margin-bottom:2px}
+  .fgrid input,.fgrid select{width:100%;border:1px solid var(--line-strong);border-radius:4px;
+    padding:5px 7px;font-family:inherit;font-size:12px}
+  textarea.sdesc{width:100%;min-height:70px;border:1px solid var(--line-strong);border-radius:5px;
+    padding:8px 10px;font-family:inherit;font-size:12.5px;line-height:1.6;resize:vertical}
+  .sec-t{font-size:12px;font-weight:650;margin:14px 0 6px;padding-top:11px;border-top:1px solid var(--line)}
+  .lnk-row{display:flex;gap:6px;align-items:center;margin-bottom:5px}
+  .lnk-row input{border:1px solid var(--line-strong);border-radius:4px;padding:5px 7px;font-family:inherit;font-size:12px}
+  .lnk-row input.lb{flex:0 0 120px}
+  .lnk-row input.ur{flex:1;min-width:0}
+  .lnk-row a{flex:none;font-size:11px;color:var(--ink)}
+  .lnk-row .rm{cursor:pointer;border:none;background:none;color:var(--muted);font-size:13px;padding:0 3px}
+  .lnk-row .rm:hover{color:var(--over)}
+  .img-grid{display:flex;gap:9px;flex-wrap:wrap;margin-top:8px}
+  .img-card{width:112px}
+  .img-card .thumb{width:112px;height:82px;object-fit:cover;border:1px solid var(--line);border-radius:5px;
+    cursor:zoom-in;display:block;background:var(--soft)}
+  .img-card .cap{width:100%;border:none;border-bottom:1px dashed var(--line);font-family:inherit;
+    font-size:10.5px;padding:2px 1px;color:var(--muted)}
+  .img-card .cap:focus{outline:none;border-bottom-color:var(--ink);color:var(--ink)}
+  .img-card .rm{display:block;text-align:right;font-size:10px;color:var(--muted);cursor:pointer;border:none;
+    background:none;padding:1px 0;margin-left:auto;font-family:inherit}
+  .img-card .rm:hover{color:var(--over)}
+  .storage{font-size:11px;color:var(--muted);margin-top:8px}
+  .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:60;display:none;
+    align-items:center;justify-content:center;cursor:zoom-out;flex-direction:column;gap:10px}
+  .lightbox.show{display:flex}
+  .lightbox img{max-width:92vw;max-height:86vh;border-radius:5px}
+  .lightbox .cap{color:#eee;font-size:12px}
+  /* 본문의 링크·이미지 */
+  .man-links{margin-top:4px;display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px}
+  .man-links a{color:#1d5fc4}
+  .man-imgs{margin-top:6px;display:flex;gap:7px;flex-wrap:wrap}
+  .man-imgs img{width:92px;height:66px;object-fit:cover;border:1px solid var(--line);border-radius:4px;cursor:zoom-in}
+  .att-cnt{font-size:10px;color:var(--muted);background:var(--soft);border-radius:8px;padding:0 6px;margin-left:4px;white-space:nowrap}
+  .fold-cnt{font-size:10px;color:var(--ink);background:#fff;border:1px solid var(--line-strong);border-radius:8px;
+    padding:0 6px;margin-left:4px;white-space:nowrap;cursor:pointer;display:inline-flex;align-items:center;gap:3px;vertical-align:1px}
+  .fold-cnt:hover{border-color:var(--ink)}
+  .fold-cnt svg{width:10px;height:10px}
+
+  /* 폴더 경로(브레드크럼) */
+  .crumbs{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:14px;
+    padding:9px 13px;background:var(--soft);border:1px solid var(--line);border-radius:7px;font-size:12.5px}
+  .crumbs .seg{cursor:pointer;color:#1d5fc4;display:inline-flex;align-items:center;gap:5px;
+    border:none;background:none;font-family:inherit;font-size:12.5px;padding:0}
+  .crumbs .seg:hover{text-decoration:underline}
+  .crumbs .cur{font-weight:650;display:inline-flex;align-items:center;gap:5px}
+  .crumbs .sep{color:var(--muted)}
+  .crumbs svg{width:13px;height:13px;flex:none}
+  .crumbs .up{margin-left:auto}
+
+  /* 새 매뉴얼 템플릿 선택 */
+  .tpl-card{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--line-strong);
+    border-radius:7px;padding:10px 13px;margin-bottom:8px;cursor:pointer;font-family:inherit;font-size:12.5px}
+  .tpl-card:hover{border-color:var(--ink);background:var(--soft)}
+  .tpl-card b{display:block;font-size:13px;margin-bottom:3px}
+  .tpl-card span{color:var(--muted);font-size:11.5px;line-height:1.55;display:block}
+
+  /* 본문 하위 프로세스 들여쓰기 */
+  .man-sub{margin:4px 0 4px 36px;border-left:2px solid var(--line);padding-left:10px}
+  .man-step .n.subn{width:auto;min-width:26px;border-radius:13px;padding:0 7px;font-size:10.5px}
+
+  footer{margin-top:26px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);
+    font-size:11.5px;line-height:1.7}
+
+  @media print{
+    #authGate,.modal-back,.lightbox,#crumbBar,.inline-panel{display:none!important}
+    .man-links a::after{content:" (" attr(href) ")";color:#888;font-size:10px}
+    html{visibility:visible!important}
+    header .sub a, .toolbar, .card-h .spacer ~ *, #editCard, footer, #saveState{display:none!important}
+    .card{border:none;page-break-inside:avoid}
+    .card-h{background:none;border-bottom:1.5px solid var(--ink)}
+    body{font-size:12px}
+  }
+</style>
+</head>
+<body>
+<!-- ── 접속 인증 게이트 (공통) ────────────────────────────────
+  주의: 프론트엔드 전용 간이 잠금입니다. 소스에는 비밀번호의 SHA-256 해시만 있지만,
+  코드를 아는 사람이 우회할 수 있으므로 기밀 데이터 보호 용도로는 백엔드 인증이 필요합니다. -->
+<div id="authGate" style="position:fixed;inset:0;z-index:9999;background:#f7f7f7;display:flex;
+  align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border:1px solid #c9c9c9;border-radius:10px;padding:30px 28px;
+    width:100%;max-width:360px;box-shadow:0 8px 30px rgba(0,0,0,.1);text-align:center">
+    <svg width="34" height="34" viewBox="0 0 16 16" fill="none" stroke="#1a1a1a" stroke-width="1.3" style="margin-bottom:8px"><rect x="3" y="7" width="10" height="6.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
+    <div style="font-size:15px;font-weight:650;margin-bottom:4px">소방공사 일정 관리</div>
+    <div style="font-size:12px;color:#6b6b6b;margin-bottom:16px">접속 암호를 입력하세요</div>
+    <input type="text" id="authPw" autocomplete="off" autocapitalize="off" autocorrect="off"
+      spellcheck="false" placeholder="암호"
+      style="width:100%;border:1px solid #c9c9c9;border-radius:6px;padding:9px 11px;
+      font-family:inherit;font-size:14px;text-align:center;box-sizing:border-box">
+    <div id="authErr" style="font-size:11.5px;color:#9a3434;min-height:17px;margin-top:6px"></div>
+    <button id="authBtn" style="width:100%;background:#1a1a1a;color:#fff;border:none;border-radius:6px;
+      padding:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:2px">열기</button>
+    <label style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#6b6b6b;margin-top:12px;cursor:pointer">
+      <input type="checkbox" id="authKeep"> 이 브라우저에서 로그인 유지
+    </label>
+  </div>
+</div>
+<script>
+(function(){
+  var HASH="420b78ec6f83cb93315497071fb79d65637187537b50ecd5c36cfc17d889da74"; // SHA-256
+  var FB="74d63e48-18"; // crypto.subtle 불가 환경용 보조 해시
+  var gate=document.getElementById("authGate");
+  function authed(){ try{ return sessionStorage.getItem("fireAuth")==="1"||localStorage.getItem("fireAuth.keep")==="1"; }catch(e){ return false; } }
+  function unlock(){ gate.parentNode.removeChild(gate); document.documentElement.style.visibility="visible"; }
+  if(authed()){ unlock(); return; }
+  document.documentElement.style.visibility="visible";  // 게이트만 보이게 (아래 컨텐츠는 게이트가 가림)
+  function djb2(s){ var h=5381,b=new TextEncoder().encode(s); for(var i=0;i<b.length;i++){ h=((h*33)^b[i])>>>0; } return h.toString(16)+"-"+b.length; }
+  function sha256(s){
+    if(window.crypto&&crypto.subtle&&window.isSecureContext!==false){
+      return crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)).then(function(buf){
+        return Array.from(new Uint8Array(buf)).map(function(x){return x.toString(16).padStart(2,"0");}).join("");
+      });
+    }
+    return Promise.resolve(null);
+  }
+  /* 한글 IME가 막힌 환경(윈도우 password 입력칸 등)에서 자모가 낱자로 들어온 경우 음절로 조합 */
+  function composeJamo(s){
+    var CHO="\u3131\u3132\u3134\u3137\u3138\u3139\u3141\u3142\u3143\u3145\u3146\u3147\u3148\u3149\u314a\u314b\u314c\u314d\u314e";
+    var JUNG="\u314f\u3150\u3151\u3152\u3153\u3154\u3155\u3156\u3157\u3158\u3159\u315a\u315b\u315c\u315d\u315e\u315f\u3160\u3161\u3162\u3163";
+    var JONG="\u3131\u3132\u3133\u3134\u3135\u3136\u3137\u3139\u313a\u313b\u313c\u313d\u313e\u313f\u3140\u3141\u3142\u3144\u3145\u3146\u3147\u3148\u314a\u314b\u314c\u314d\u314e";
+    var VC={"\u3157\u314f":"\u3158","\u3157\u3150":"\u3159","\u3157\u3163":"\u315a","\u315c\u3153":"\u315d","\u315c\u3154":"\u315e","\u315c\u3163":"\u315f","\u3161\u3163":"\u3162"};
+    var JC={"\u3131\u3145":"\u3133","\u3134\u3148":"\u3135","\u3134\u314e":"\u3136","\u3139\u3131":"\u313a","\u3139\u3141":"\u313b","\u3139\u3142":"\u313c","\u3139\u3145":"\u313d","\u3139\u314c":"\u313e","\u3139\u314d":"\u313f","\u3139\u314e":"\u3140","\u3142\u3145":"\u3144"};
+    var JSPLIT={}; for(var k in JC){ JSPLIT[JC[k]]=k; }
+    var out="", cho=null, jung=null, jong=null;
+    function syl(){ return String.fromCharCode(0xAC00 + CHO.indexOf(cho)*588 + JUNG.indexOf(jung)*28 + (jong?JONG.indexOf(jong)+1:0)); }
+    function flush(){ if(cho&&jung){ out+=syl(); } else { if(cho)out+=cho; if(jung)out+=jung; } cho=jung=jong=null; }
+    for(var i=0;i<s.length;i++){
+      var c=s[i];
+      if(JUNG.indexOf(c)>=0){
+        if(cho&&jung&&jong){ var mv;
+          if(JSPLIT[jong]){ mv=JSPLIT[jong][1]; jong=JSPLIT[jong][0]; } else { mv=jong; jong=null; }
+          flush(); cho=mv; jung=c;
+        }else if(cho&&jung){ var vc=VC[jung+c];
+          if(vc){ jung=vc; } else { flush(); out+=c; }
+        }else if(cho){ jung=c; }
+        else { flush(); out+=c; }
+      }else if(CHO.indexOf(c)>=0||JONG.indexOf(c)>=0){
+        if(cho&&jung){
+          if(!jong&&JONG.indexOf(c)>=0){ jong=c; }
+          else if(jong&&JC[jong+c]){ jong=JC[jong+c]; }
+          else { flush(); cho=c; }
+        }else if(cho){ flush(); cho=c; }
+        else { cho=c; }
+      }else{ flush(); out+=c; }
+    }
+    flush();
+    return out;
+  }
+  function tryOpen(){
+    var raw=(document.getElementById("authPw").value||"").trim();
+    if(!raw) return;
+    var nfc=raw.normalize?raw.normalize("NFC"):raw;
+    var cands=[raw]; if(cands.indexOf(nfc)<0)cands.push(nfc);
+    var comp=composeJamo(nfc); if(cands.indexOf(comp)<0)cands.push(comp);
+    Promise.all(cands.map(sha256)).then(function(hs){
+      var ok=false;
+      for(var i=0;i<cands.length;i++){
+        if(hs[i] ? (hs[i]===HASH) : (djb2(cands[i])===FB)){ ok=true; break; }
+      }
+      if(ok){
+        try{
+          sessionStorage.setItem("fireAuth","1");
+          if(document.getElementById("authKeep").checked) localStorage.setItem("fireAuth.keep","1");
+        }catch(e){}
+        unlock();
+      }else{
+        var err=document.getElementById("authErr");
+        err.textContent="암호가 올바르지 않습니다";
+        document.getElementById("authPw").value="";
+        document.getElementById("authPw").focus();
+      }
+    });
+  }
+  document.getElementById("authBtn").addEventListener("click",tryOpen);
+  document.getElementById("authPw").addEventListener("keydown",function(e){ if(e.key==="Enter") tryOpen(); });
+  setTimeout(function(){ document.getElementById("authPw").focus(); },50);
+})();
+</script>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>업무 표준 매뉴얼 <span style="font-weight:400;color:var(--muted)">— 프로세스 플로우</span></h1>
+      <div class="sub">"이걸 하고 나면 이걸 하고, 조건이 이러면 저리로" — 단계·조건 분기를 입력하면 플로우차트가 자동으로 그려집니다</div>
+    </div>
+    <div style="text-align:right">
+      <div class="sub"><a href="index.html">전체 일정</a> · <a href="hookup.html">훅업 공정표</a> · <a href="calc.html">법규 계산</a> · <a href="bridge.html">AI 밀어넣기</a></div>
+      <div class="sub" id="saveState"></div>
+    </div>
+  </header>
+
+  <div id="storageWarn" style="display:none;margin-bottom:14px;padding:10px 13px;border-radius:7px;
+    background:var(--over-bg);border:1px solid var(--over);color:var(--over);font-size:12px;line-height:1.6">
+    <svg style="width:13px;height:13px;vertical-align:-2px;margin-right:2px" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2.5 14.5 13.5H1.5Z" stroke-linejoin="round"/><path d="M8 6.5v3.2M8 12.2v.01" stroke-linecap="round"/></svg>
+    <b>이 환경에서는 자동 저장이 작동하지 않습니다.</b> 작업 후 JSON 백업으로 보관하세요.
+  </div>
+
+  <!-- 매뉴얼 선택 -->
+  <div class="card">
+    <div class="card-h">
+      매뉴얼 선택
+      <select class="big" id="docSel" onchange="switchDoc(this.value)"></select>
+      <button class="btn sm" onclick="renameDoc()">이름변경</button>
+      <button class="btn sm" onclick="editDesc()">설명</button>
+      <button class="btn sm danger" onclick="deleteDoc()">삭제</button>
+      <div class="spacer"></div>
+      <div class="toolbar">
+        <button class="btn primary" onclick="newDoc()">+ 새 매뉴얼</button>
+        <button class="btn" onclick="window.print()">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4.5 6V2.5h7V6"/><rect x="2" y="6" width="12" height="6" rx="1"/><rect x="4.5" y="9.5" width="7" height="4"/></svg>인쇄</button>
+        <button class="btn" onclick="exportJSON()">JSON 백업</button>
+        <button class="btn" onclick="document.getElementById('jsonIn').click()">JSON 불러오기</button>
+        <input type="file" id="jsonIn" class="file-in" accept=".json" onchange="importJSON(event)">
+      </div>
+    </div>
+  </div>
+
+  <!-- 폴더 경로 (세부단계로 들어가면 표시) -->
+  <div class="crumbs" id="crumbBar" style="display:none"></div>
+
+  <!-- 플로우차트 -->
+  <div class="card" id="flowCard">
+    <div class="card-h">Process Flow Chart <span class="sub" id="flowTitle"></span>
+      <div class="spacer"></div>
+      <button class="btn sm" id="ovBtn" onclick="toggleOv()">한눈에 보기</button>
+    </div>
+    <div class="card-b">
+      <div class="doc-desc" id="docDesc"></div>
+      <div class="flow-scroll" id="flowArea"></div>
+      <div class="hint" id="flowHint"></div>
+    </div>
+  </div>
+
+  <!-- 단계 편집 -->
+  <div class="card" id="editCard">
+    <div class="card-h">
+      단계 편집
+      <div class="spacer"></div>
+      <button class="btn primary" onclick="addStep()">+ 단계 추가</button>
+    </div>
+    <div class="card-b flush">
+      <div style="overflow-x:auto"><table id="stepTable"></table></div>
+    </div>
+  </div>
+  <div class="hint" style="margin-top:-6px">
+    <b>다음 단계</b>를 비워두면 표의 바로 아래 단계로 이어집니다. <b>판단</b> 유형은 분기(예/아니오 등)마다
+    라벨과 이동할 단계를 정합니다 — 앞 단계로 되돌아가는 분기(재작업 루프)도 가능합니다.
+  </div>
+
+  <!-- 매뉴얼 본문 (인쇄 포함) -->
+  <div class="card" id="manCard">
+    <div class="card-h">매뉴얼 본문 (단계 상세)</div>
+    <div class="card-b" id="manBody"></div>
+  </div>
+
+  <footer>
+    데이터는 이 브라우저(localStorage)에 자동 저장됩니다. 다른 사람과 공유하려면 JSON 백업을 전달하거나
+    인쇄(PDF 저장)를 사용하세요. 인쇄 시 플로우차트와 매뉴얼 본문만 출력됩니다.
+  </footer>
+</div>
+
+<!-- 새 매뉴얼 템플릿 선택 모달 -->
+<div class="modal-back" id="tplBack" onclick="if(event.target===this)closeTpl()">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-h">
+      <span class="ttl">새 매뉴얼 만들기</span>
+      <button class="x" onclick="closeTpl()">✕</button>
+    </div>
+    <div class="modal-b">
+      <label style="font-size:11px;color:var(--muted)">매뉴얼 이름 (비워두면 템플릿 이름 사용)</label>
+      <input id="tplName" autocomplete="off" style="width:100%;border:1px solid var(--line-strong);border-radius:4px;
+        padding:6px 9px;font-family:inherit;font-size:12.5px;margin:3px 0 13px;box-sizing:border-box">
+      <button class="tpl-card" onclick="createDoc('permit')">
+        <b>건축허가 연계 소방공사 (동의 대상)</b>
+        <span>건축허가·소방 동의(허가용 러프 도면) → 실시설계(AFD) → 입찰·시공사 선정 →
+        감리 지정 + 착공신고(동시 진행) → 시공(샵드로잉 승인 → AFC 배포 → 설계변경 재작성 루프)
+        → 완공검사 → 증명서 발급·건축사 제출 → 건축물 사용승인까지 전 과정 —
+        선행 조건(파란 점선)과 세부단계(폴더) 포함</span>
+      </button>
+      <button class="tpl-card" onclick="createDoc('solo')">
+        <b>소방시설 단독공사</b>
+        <span>소방시설 설계 → 착공신고 대상 여부 판단 → 감리자 지정·착공신고 → 시공(샵드로잉·AFC 관리)
+        → 완공검사 → 증명서 발급·준공 — 증설·개보수 등 건축 인허가 없이 소방만 단독 진행하는 흐름</span>
+      </button>
+      <button class="tpl-card" onclick="createDoc('award')">
+        <b>소방공사 발주·도급 기준 (분리발주·하도급)</b>
+        <span>소방시설공사업법 제21조·제22조, 시행령 제11조의2 기준 — 설계·감리 하도급 금지,
+        시공 분리발주 원칙과 예외(일괄·기술제안입찰, 국가첨단전략산업 시설 = 반도체 공장 등,
+        소방청장 인정 재개발·재건축) 판단 플로우. 각 단계에 법제처 조문 링크 첨부</span>
+      </button>
+      <button class="tpl-card" onclick="createDoc('blank')">
+        <b>빈 매뉴얼</b>
+        <span>시작-작업-종료 3단계만 있는 빈 문서에서 직접 작성</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('show')">
+  <img id="lbImg" alt=""><div class="cap" id="lbCap"></div>
+</div>
+
+<script>
+/* ══════════════ 상수/상태 ══════════════ */
+const LS_KEY="fireProcess.v1";
+const TYPES=[["start","시작"],["task","작업"],["decision","판단"],["end","종료"]];
+const TYPE_LABEL={start:"시작",task:"작업",decision:"판단",end:"종료"};
+let state={docs:[],activeId:null};
+let canStore=true, saveTimer=null, selStepId=null;
+let navPath=[]; // 현재 들어와 있는 폴더(단계) id 경로 — 비어 있으면 최상위
+
+const ICO_FOLDER='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 4.5a1 1 0 0 1 1-1h2.8l1.4 1.8h6.8a1 1 0 0 1 1 1v5.7a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z" stroke-linejoin="round"/></svg>';
+const ICO_FOLDER_OPEN='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M1.5 12.5v-8a1 1 0 0 1 1-1h2.8l1.4 1.8h5.3a1 1 0 0 1 1 1V7"/><path d="M3.4 7h11.1l-1.7 5.5H1.5z"/></svg>';
+
+function uid(){ return Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function activeDoc(){ return state.docs.find(d=>d.id===state.activeId)||null; }
+function newStep(type){ return {id:uid(),type:type||"task",title:"",desc:"",owner:"",next:"",branches:[],links:[],images:[],children:[],par:false,deps:[]}; }
+function attCnt(s){ return ((s.links||[]).length)+((s.images||[]).length); }
+function kidCnt(s){ return (s.children||[]).length; }
+function normSteps(arr){
+  (arr||[]).forEach(s=>{
+    if(!Array.isArray(s.links)) s.links=[];
+    if(!Array.isArray(s.images)) s.images=[];
+    if(!Array.isArray(s.children)) s.children=[];
+    if(!Array.isArray(s.deps)) s.deps=[];
+    s.par=!!s.par;
+    normSteps(s.children);
+  });
+}
+/* 표시 번호 계산 — 동시 진행(par) 단계는 같은 번호에 4-1, 4-2처럼 가지 번호 */
+function calcNums(arr){
+  const raw=[]; let major=0, sub=0;
+  (arr||[]).forEach((s,i)=>{
+    if(i>0&&s.par){ sub++; } else { major++; sub=1; }
+    raw.push({major,sub});
+  });
+  const cnt={}; raw.forEach(n=>cnt[n.major]=(cnt[n.major]||0)+1);
+  return raw.map(n=>cnt[n.major]>1? n.major+"-"+n.sub : ""+n.major);
+}
+
+/* ── 폴더 탐색 (세부단계 드릴다운) ── */
+function currentSteps(){
+  const d=activeDoc(); if(!d) return null;
+  let arr=d.steps;
+  for(const id of navPath){
+    const s=(arr||[]).find(x=>x.id===id);
+    if(!s){ navPath=[]; return d.steps; }
+    if(!Array.isArray(s.children)) s.children=[];
+    arr=s.children;
+  }
+  return arr;
+}
+function stepByIdIn(arr,id){
+  for(const s of arr||[]){
+    if(s.id===id) return s;
+    const r=stepByIdIn(s.children,id); if(r) return r;
+  }
+  return null;
+}
+function levelArrOf(id){ // 해당 단계가 속한 레벨(형제 배열)
+  const d=activeDoc(); if(!d) return null;
+  const walk=arr=>{
+    for(const s of arr||[]){
+      if(s.id===id) return arr;
+      const r=walk(s.children); if(r) return r;
+    }
+    return null;
+  };
+  return walk(d.steps);
+}
+function pathOf(id){
+  const d=activeDoc(); if(!d) return null;
+  const walk=(arr,trail)=>{
+    for(const s of arr||[]){
+      if(s.id===id) return trail.concat(s.id);
+      const r=walk(s.children,trail.concat(s.id)); if(r) return r;
+    }
+    return null;
+  };
+  return walk(d.steps,[]);
+}
+function enterStep(id){ // 단계를 폴더처럼 열고 안으로 들어간다
+  const p=pathOf(id); if(!p) return;
+  detailStepId=null;
+  navPath=p; selStepId=null;
+  save(); render();
+  window.scrollTo({top:0});
+}
+function goUp(){ navPath.pop(); selStepId=null; detailStepId=null; render(); window.scrollTo({top:0}); }
+function navTo(i){ navPath=navPath.slice(0,i+1); selStepId=null; detailStepId=null; render(); window.scrollTo({top:0}); } // i=-1 → 최상위
+
+function detectStorage(){
+  try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); canStore=true; }
+  catch(e){ canStore=false; document.getElementById("storageWarn").style.display="block"; }
+}
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{
+    if(!canStore){ flag("저장 불가 환경"); return; }
+    try{ localStorage.setItem(LS_KEY,JSON.stringify(state)); flag("저장됨"); }
+    catch(e){ flag("주의: 저장 실패"); }
+  },250);
+}
+function flag(m){ document.getElementById("saveState").innerHTML='<span class="saved-flag">'+esc(m)+'</span>'; }
+function load(){
+  if(!canStore) return;
+  try{
+    const raw=localStorage.getItem(LS_KEY);
+    if(raw){ const s=JSON.parse(raw); if(s&&Array.isArray(s.docs)) state=s; }
+  }catch(e){}
+  state.docs.forEach(d=>normSteps(d.steps));
+  state.ov=!!state.ov;
+}
+
+/* ══════════════ 매뉴얼 템플릿 ══════════════ */
+function ts(title,desc,owner){ return {id:uid(),type:"task",title:title,desc:desc||"",owner:owner||"",next:"",branches:[],links:[],images:[],children:[],par:false,deps:[]}; }
+function dq(title,desc){ const s=ts(title,desc); s.type="decision"; return s; }
+function se(type,title,desc){ const s=ts(title,desc); s.type=type; return s; }
+
+/* 착공신고 대상 기준 (공사업법 시행령 4조) — 템플릿 공용 (호출할 때마다 새 id) */
+const LNK_ART4={label:"시행령 제4조(착공신고 대상)",url:"https://www.law.go.kr/법령/소방시설공사업법시행령/제4조"};
+function mkStartTargets(){
+  return [
+    ts("대상 1 — 신설 공사","특정소방대상물에 소방시설을 새로 설치 — 옥내·옥외소화전, 스프링클러류, 물분무등소화설비, 자동화재탐지설비, 비상경보·비상방송, 제연·소화용수·연결송수관·연결살수·연소방지설비, 비상콘센트, 무선통신보조설비 등",""),
+    ts("대상 2 — 증설 공사","옥내·옥외소화전 증설, 스프링클러·물분무등 방호구역 확장, 자탐 경계구역·제연구역·살수구역·비상콘센트 전용회로 증설 등",""),
+    ts("대상 3 — 개설·이전·정비","설치된 소방시설 중 수신반, 소화펌프, 동력(감시)제어반의 전부 또는 일부를 교체·이전·정비하는 공사 (이 3종 외의 단순 정비는 비대상)",""),
+    ts("예외 — 긴급 교체·보수","고장·파손으로 작동시킬 수 없는 소방시설을 긴급히 교체·보수하는 경우는 신고 없이 시공 가능","")
+  ];
+}
+
+/* 완공검사 세부 프로세스 — 두 템플릿 공용 (호출할 때마다 새 id) */
+function mkAcceptance(){
+  const c1=ts("감리결과보고서 작성","시험 성적서·검측 기록·사진대지 취합","감리");
+  const c2=ts("완공검사 서류 제출","완공검사 신청서 + 감리결과보고서 — 관할 소방서 제출","공무");
+  const c3=ts("소방서 현장확인","작동 시연 준비(펌프 기동, 자탐 연동, 비상방송 등) — 감리·시공 입회","현장/감리");
+  const c5=ts("지적사항 보완","보완 시공 후 재확인 요청","현장");
+  const c6=ts("현장확인 적합","완공검사 통과 — 증명서 발급 대기","공무");
+  const c4=dq("현장확인 지적?","");
+  c4.branches=[{label:"지적",to:c5.id},{label:"적합",to:c6.id}];
+  c5.next=c3.id;
+  return [c1,c2,c3,c4,c5,c6];
+}
+
+/* 건축허가 연계 소방공사 (동의 대상) */
+function tplPermit(){
+  // 건축허가·소방 동의 — 허가 단계는 러프 도면, 성능위주설계(PBD) 대상은 심의 경로로 분기
+  const a1=ts("기본설계(허가용) 도면 작성","건축허가 단계는 실시설계 전이라 소방시설 개략 배치 수준의 러프한 도면으로 진행. 소화·경보·피난설비 등 법정 설비 누락 여부 위주로 검토 — 상세 치수·루팅은 실시설계와 샵드로잉에서 확정","설계사무소");
+  const p0=dq("성능위주설계(PBD) 대상인가?","대규모·고층 등 시행령 9조 대상이면 일반 동의 대신 성능위주설계 심의 경로로 진행 — 대상 기준과 설명은 이 단계의 세부단계 참고");
+  p0.links=[
+    {label:"소방시설법 제8조(성능위주설계)",url:"https://www.law.go.kr/법령/소방시설설치및관리에관한법률/제8조"},
+    {label:"시행령 제9조(대상 범위)",url:"https://www.law.go.kr/법령/소방시설설치및관리에관한법률시행령/제9조"}];
+  p0.children=[
+    ts("성능위주설계란?","화재안전기준을 그대로 적용하는 일반 설계와 달리, 그 건물의 용도·구조·수용인원 특성에 맞는 화재 시나리오를 설정하고 화재·피난 시뮬레이션(모의실험)으로 안전성을 공학적으로 입증하는 설계 방식. 소방기술사 등 자격을 갖춘 성능위주설계자가 수행하고, 소방서 성능위주설계 평가단의 심의를 통과해야 한다","설계(전문)"),
+    ts("왜 하는가","초고층·대형 건축물은 획일적 기준만으로 안전 확보가 어려워, 실제 화재 거동과 피난 시간을 시뮬레이션으로 검증해 기준 이상의 안전 성능을 요구하는 제도",""),
+    ts("대상 1 — 연면적 20만제곱미터 이상","특정소방대상물(아파트등 제외)",""),
+    ts("대상 2 — 50층 이상 또는 높이 200m 이상 아파트","층수는 지하층 제외",""),
+    ts("대상 3 — 30층 이상 또는 높이 120m 이상","지하층 포함, 아파트등 제외",""),
+    ts("대상 4 — 연면적 3만제곱미터 이상 철도·공항시설","철도 및 도시철도 시설, 공항시설",""),
+    ts("대상 5 — 대형 창고시설","연면적 10만제곱미터 이상 또는 지하 2개 층 이상이면서 지하층 바닥면적 합계 3만제곱미터 이상",""),
+    ts("대상 6 — 영화상영관 10개 이상","하나의 건축물 기준",""),
+    ts("대상 7 — 지하연계 복합건축물","초고층 및 지하연계 복합건축물 재난관리 특별법 대상",""),
+    ts("대상 8 — 터널","수저터널 또는 길이 5천미터 이상","")];
+  const p1=ts("PBD 사전검토 (1차 — 건축심의 전)","건축위원회 심의 대상이면 심의 신청 전에 관할 소방서장에게 사전검토 신청 — 이 단계는 기본설계(러프) 수준 도서로 진행 (시행규칙 7조)","설계(전문)/공무");
+  p1.links=[{label:"시행규칙 제7조(사전검토)",url:"https://www.law.go.kr/법령/소방시설설치및관리에관한법률시행규칙/제7조"}];
+  p1.children=[
+    ts("성능위주설계자 선정·계약","소방기술사 등 법정 자격을 갖춘 성능위주설계자와 계약 — 일반 소방설계와 별도 용역인 경우가 많음","발주/공무"),
+    ts("사전검토용 기본설계도서 작성","건축 개요, 부지·소방차 진입 계획, 소방시설 개략 계획, 화재안전 확보 개념 — 러프(기본설계) 수준","설계(전문)"),
+    ts("사전검토 신청","건축위원회 심의 신청 전에 관할 소방서장에게 제출","공무"),
+    ts("검토 의견 회신·반영","평가단 검토 의견을 설계에 반영 — 본심의 신고 서류에 보완 내용이 포함되어야 함","설계(전문)")];
+  const p2=ts("PBD 신고·본심의 (2차 — 건축허가 신청 전)","사전검토 지적 보완을 반영해 건축허가 신청 전에 신고 — 화재·피난 시뮬레이션 결과를 포함한 성능평가 도서 필요(러프로는 부족, 시공용 AFD까지는 아님). 심의 조건·지적사항은 이후 실시설계(AFD)에 반영하고, 시공 중 중요 변경은 변경신고·변경심의 대상 (시행규칙 4조)","설계(전문)/공무");
+  p2.links=[{label:"시행규칙 제4조(성능위주설계의 신고)",url:"https://www.law.go.kr/법령/소방시설설치및관리에관한법률시행규칙/제4조"}];
+  {
+    const q1=ts("화재·피난 시뮬레이션 수행","건물 용도·구조·수용인원 기반 화재 시나리오 설정 후 화재·피난 모의실험으로 안전성을 정량 입증","설계(전문)");
+    const q2=ts("성능위주설계 도서 작성","사전검토 보완 반영 + 시나리오·시뮬레이션 결과 포함 성능평가 도서 — 시공용 AFD 수준까지는 불필요","설계(전문)");
+    const q3=ts("성능위주설계 신고서 제출","건축법 11조 건축허가를 신청하기 전에 관할 소방서장에게 신고","공무");
+    const q5=ts("심의 결과 실시설계(AFD) 반영","조건부 의결 조건·지적사항을 실시설계에 반영 — 시공 중 심의 내용의 중요 변경은 변경신고·변경심의 대상","설계(전문)");
+    const q4=dq("평가단 심의 결과?","성능위주설계 평가단 심의 — 보완 요구 시 도서 재작성 루프");
+    q4.branches=[{label:"보완 요구",to:q2.id},{label:"수리(통과)",to:q5.id}];
+    p2.children=[q1,q2,q3,q4,q5];
+  }
+  const a2=ts("건축허가 동의 요청 (일반 대상)","허가권자(건축과)가 관할 소방서에 동의 요청 — 연면적·용도별 동의 대상 여부 확인","건축사");
+  a2.children=[
+    ts("동의 요청 송부","허가권자(건축과)가 허가 신청 서류의 소방 관련 설계도서를 관할 소방서로 송부","건축사"),
+    ts("소방서 검토·회신","일반 대상 5일 이내, 특급 소방안전관리대상물 등은 10일 이내 회신 — 보완 요구 시 기간 정지","소방서")];
+  const a4=ts("건축허가서 발급","PBD 대상은 심의 통과 후, 일반 대상은 소방서 동의 회신 후 허가권자가 건축허가서 발급","건축사");
+  const a3=dq("소방서 동의 검토 결과?","법정 설비 반영 여부, 소방차 진입로·소화용수 등 검토");
+  p0.branches=[{label:"대상 (PBD 심의)",to:p1.id},{label:"비대상 (일반 동의)",to:a2.id}];
+  a3.branches=[{label:"보완",to:a1.id},{label:"동의",to:a4.id}];
+  p2.next=a4.id; // 본심의 통과 → 건축허가서 발급
+
+  // 착공신고 — 대상 여부 갈림길 + 보완 루프
+  const e0=dq("착공신고 대상 공사인가?","시행령 4조: 신설·증설 공사, 그리고 수신반·소화펌프·동력(감시)제어반의 개설·이전·정비 — 대상 기준은 이 단계의 세부단계 참고");
+  e0.links=[LNK_ART4];
+  e0.children=mkStartTargets();
+  const e1=ts("착공신고 서류 준비","착공신고서, 실시설계 도서, 시공사 등록·기술인력 서류, 감리자 지정신고 수리 확인","공무");
+  const e2=ts("관할 소방서 접수","공사 착공 전에 신고 — 착공 후 신고 지연 시 과태료 주의","공무");
+  const e4=ts("착공신고 필증 수령","필증 사본 현장 게시·보관","공무");
+  const e3=dq("소방서 보완 요구?","");
+  const e5=ts("비대상 — 신고 없이 시공 진행","착공신고 의무는 없지만 대상 여부 판단 근거(설비 종류·공사 범위)를 내부 기록으로 남겨둘 것","공무");
+  const eZ=se("end","착공신고 단계 완료 → 시공","대상은 필증 수령 후, 비대상은 판단 기록 후 시공 개시");
+  e0.branches=[{label:"대상",to:e1.id},{label:"비대상",to:e5.id}];
+  e3.branches=[{label:"보완",to:e1.id},{label:"수리",to:e4.id}];
+  e4.next=eZ.id; // 필증 수령 후 완료로 (비대상 안내 단계 건너뜀)
+
+  // 시공 — 샵드로잉 승인·AFC 배포·설계변경 재작성 루프
+  const b1=ts("샵 드로잉 작성","실시설계를 시공 상세로 구체화 — 관경·루팅·행거 간격, 타 공종(덕트·전기·위생배관) 간섭 반영","시공사");
+  const b3=ts("AFC 도면 배포","감리 승인본을 AFC(시공용 승인도면)로 배포. 리비전 번호·배포 이력 관리, 구본은 반드시 회수 — 현장에 구본이 돌면 재시공 위험","공무");
+  const b4=ts("시공 (배관·기구·배선)","AFC 최신본 기준 시공. 매립·천장 은폐 전 감리 검측 필수(사진 기록)","현장");
+  const b6=ts("수압·연동·성능시험","배관 수압시험, 자탐 연동시험, 펌프 성능시험 — 감리 입회, 성적서 보관","현장/감리");
+  const b2=dq("감리 샵드로잉 승인?","");
+  b2.branches=[{label:"보완",to:b1.id},{label:"승인",to:b3.id}];
+  const b5=dq("설계변경·간섭 발생?","건축 변경, 타 공종 간섭, 자재 변경 등으로 시공 중 수시 발생 — AFC가 계속 갱신되는 이유");
+  b5.branches=[{label:"발생 — 샵드로잉 재작성",to:b1.id},{label:"없음",to:b6.id}];
+
+  const s2=ts("건축허가·소방 동의","허가 단계 도면은 러프(기본설계) 수준 — 상세는 실시설계·샵드로잉에서 확정. 성능위주설계(PBD) 대상이면 일반 동의 대신 사전검토(건축심의 전) → 신고·본심의(건축허가 전) 2단계 심의로 진행","건축사/설계");
+  s2.children=[a1,p0,p1,p2,a2,a3,a4];
+  const s3=ts("소방시설 실시설계","산출물: AFD(설계 승인 도면)·내역서 — 이게 나와야 물량 산출과 입찰이 가능","설계사무소");
+  s3.children=[
+    ts("실시설계 도면 작성","수리계산서, 펌프·수조 등 장비 용량 산정 포함","설계사무소"),
+    ts("내역서·시방서 작성","AFD 기준 물량 산출 — 입찰 내역의 근거","설계사무소"),
+    ts("설계도서(AFD) 확정·배포","입찰용·착공신고용 도서 일체 — 이후 변경은 리비전으로 관리","공무")];
+  const bid=ts("입찰·시공사 선정","실시설계(AFD)가 나와야 입찰이 가능하고, 여기서 시공사가 선정되어야 착공신고에 시공자를 지정할 수 있다","공무");
+  const bidSep=ts("발주 방식 확인 (분리발주 원칙)","소방시설공사는 다른 업종 공사와 분리도급이 원칙(공사업법 21조). 일괄·기술제안입찰, 국가첨단전략산업 시설(반도체 공장 등) 같은 시행령 11조의2 예외에 해당할 때만 통합발주 가능 — 상세 기준은 '소방공사 발주·도급 기준' 매뉴얼 참고","공무");
+  bidSep.links=[
+    {label:"공사업법 제21조(도급)",url:"https://www.law.go.kr/법령/소방시설공사업법/제21조"},
+    {label:"시행령 제11조의2(분리도급 예외)",url:"https://www.law.go.kr/법령/소방시설공사업법시행령/제11조의2"}];
+  bid.children=[
+    bidSep,
+    ts("입찰 도서 배포","AFD 도면·물량내역서·시방 기준, 공사 범위·공기 명시","공무"),
+    ts("견적 접수·기술 검토","견적 비교표 작성, 소방시설공사업 등록·기술인력·실적 확인","공무"),
+    ts("시공사 계약 체결","계약 후 착공신고용 시공사 서류(등록증·기술인력 자격) 확보","공무")];
+  bid.deps=[s3.id];
+  const s4=ts("소방공사 감리자 지정 신고","공사 착공 전 감리자 지정 신고 필수 — 착공신고와 같이 들어간다","공무");
+  s4.children=[
+    ts("감리 계약 체결","감리 대상·등급(상주/일반) 확인 후 계약","공무"),
+    ts("감리자 지정신고서 제출","관할 소방서 제출","감리"),
+    ts("지정신고 수리 확인","수리 확인 후 착공신고 진행","공무")];
+  const s5=ts("소방시설공사 착공신고","대상 여부 판단부터 — 대상이면 착공 전 신고(보완 루프), 비대상이면 기록 후 시공. 설계도서(AFD)와 선정된 시공사 서류가 있어야 제출 가능","공무");
+  s5.children=[e0,e1,e2,e3,e4,e5,eZ];
+  s5.par=true;                 // 감리자 지정 신고와 동시 진행 (같은 번호 5-1/5-2)
+  s5.deps=[s3.id,bid.id];      // 선행: 실시설계(AFD), 입찰·시공사 선정
+  const s6=ts("소방시설 공사 (시공)","샵드로잉 승인 후 시공. 현장 간섭·설계변경으로 AFC 도면이 계속 갱신되므로 리비전 관리가 핵심","현장");
+  s6.children=[b1,b2,b3,b4,b5,b6];
+  const s7=ts("소방시설 완공검사","감리결과보고서 첨부하여 신청, 소방서 현장확인","공무/감리");
+  s7.children=mkAcceptance();
+
+  return {id:uid(),name:"건축허가 연계 소방공사 (동의 대상)",
+    desc:"건축허가(소방 동의)부터 건축물 사용승인까지 — 소방공사가 건축 인허가와 맞물려 진행되는 표준 흐름입니다. 각 단계의 세부단계(폴더)에 실무 디테일이 들어 있고, 파란 점선은 선행 조건(AFD가 나와야 입찰, 시공사가 있어야 착공신고)입니다.",
+    steps:[
+      se("start","공사 수주·계약",""),
+      s2,s3,bid,s4,s5,s6,s7,
+      ts("소방시설완공검사 증명서 발급","증명서 원본 수령 — 건축물 사용승인 신청에 필요","공무"),
+      ts("증명서 건축사 제출","사용승인(준공) 신청 서류에 첨부되도록 건축사무소에 전달","공무"),
+      ts("건축물 사용승인 신청","건축주·건축사가 허가권자에 신청 — 소방완공검사증명서 등 첨부","건축사"),
+      se("end","건축물 사용승인 (준공)","")
+    ]};
+}
+
+/* 소방공사 발주·도급 기준 (분리발주·하도급) — 법제처 국가법령정보센터 조문 링크 포함 */
+function tplAward(){
+  const L21={label:"공사업법 제21조(도급)",url:"https://www.law.go.kr/법령/소방시설공사업법/제21조"};
+  const L22={label:"공사업법 제22조(하도급의 제한)",url:"https://www.law.go.kr/법령/소방시설공사업법/제22조"};
+  const LD ={label:"시행령 제11조의2(분리도급 예외)",url:"https://www.law.go.kr/법령/소방시설공사업법시행령/제11조의2"};
+
+  const s2=ts("발주 원칙 확인","소방시설공사등(설계·시공·감리)은 해당 소방시설업자에게 도급해야 하고, 시공은 다른 업종 공사와 분리하여 도급하는 것이 원칙","발주/공무");
+  s2.links=[L21];
+  s2.children=[
+    ts("설계 — 소방시설설계업자에게","설계는 하도급 자체가 금지되므로 처음부터 설계업 등록업체와 직접 계약","발주"),
+    ts("시공 — 소방시설공사업자에게 분리발주","건축 등 타 업종 공사에 묶어 일괄 발주 불가(예외 제외). 위반 시 벌칙 대상","발주"),
+    ts("감리 — 소방공사감리업자 지정","공사와 별도로 감리업자를 지정·계약, 감리 하도급 금지","발주")];
+
+  const s5=ts("분리발주 계약","소방시설공사업자와 직접 도급계약 — 예외에 해당하지 않는 한 타 업종과 통합 불가","발주/공무");
+  s5.links=[L21];
+  const s6=ts("통합발주 (예외 적용)","적용한 예외의 근거 조항·사유를 계약 서류에 기록해 둘 것 (감사·민원 대응)","발주/공무");
+  s6.links=[LD];
+
+  const s3=dq("착공신고 대상 소방시설공사인가?","시행령 제4조의 소방시설공사에 해당하지 않으면 분리도급 의무가 없다(예외 제3호)");
+  const s4=dq("분리도급 예외에 해당?","시행령 제11조의2 각 호 — 하나라도 해당하면 다른 업종 공사와 함께 도급 가능");
+  s4.links=[LD];
+  s4.children=[
+    ts("1호 — 재난 긴급 공사","재난 발생으로 긴급하게 착공해야 하는 공사",""),
+    ts("2호 — 국방·국가안보 기밀 공사","기밀 유지가 필요한 공사",""),
+    ts("3호 — 소방시설공사 미해당","시행령 제4조 각 호의 공사에 해당하지 않는 경우(착공신고 비대상)",""),
+    ts("4호 — 1천제곱미터 이하 비상경보설비","연면적 1천제곱미터 이하 특정소방대상물의 비상경보설비 설치 공사",""),
+    ts("5호 — 대안·일괄·기술제안입찰","국가·지방계약법령에 따른 대안입찰, 일괄입찰, 실시설계·기본설계 기술제안입찰",""),
+    ts("5호의2 — 국가첨단전략산업 시설 (반도체 등)","국가첨단전략기술 관련 연구·개발시설 또는 그 기술로 제품을 생산하는 시설 공사 — 반도체 공장 신·증설이 여기에 해당. 2024.4.2. 신설, 시행 이후 입찰공고(공고 없으면 도급계약)분부터 적용",""),
+    ts("6호 — 소방청장 인정 (국가유산수리·재개발 등)","공사 성질상 분리도급이 곤란하다고 소방청장이 인정해 고시하는 경우 — 민간 재개발·재건축 소방시설공사 포함(2024.5.30. 고시)","")];
+
+  const s7=ts("하도급 제한 준수","도급받은 자는 설계·시공·감리를 제3자에게 하도급할 수 없다 — 시공만 일부 1회 하도급 가능","수급인/발주");
+  s7.links=[L22];
+  s7.children=[
+    ts("설계 하도급 금지","예외 없음 — 도급받은 설계를 제3자에게 재위탁 불가",""),
+    ts("감리 하도급 금지","예외 없음 (법제처 유권해석 동일)",""),
+    ts("시공 일부 하도급 가능","대통령령 기준을 충족할 때 도급받은 공사의 일부를 다른 공사업자에게 1회만 가능 — 하도급 시 발주자·관계인에게 미리 알릴 것",""),
+    ts("재하도급 금지","하수급인은 하도급받은 공사를 다시 하도급할 수 없다","")];
+
+  const s8=se("end","도급 계약 체결·공사 착수","");
+  s3.branches=[{label:"미해당 (신고 대상 아님)",to:s6.id},{label:"해당",to:s4.id}];
+  s4.branches=[{label:"예외 해당",to:s6.id},{label:"미해당 (원칙)",to:s5.id}];
+  s5.next=s7.id; // 분리발주 후 바로 하도급 관리로
+
+  return {id:uid(),name:"소방공사 발주·도급 기준 (분리발주·하도급)",
+    desc:"소방시설공사업법 제21조(분리도급 원칙)·제22조(하도급 제한)와 시행령 제11조의2(분리도급 예외) 기준 — 설계·감리는 하도급 금지, 시공은 분리발주가 원칙이고 일괄입찰·국가첨단전략산업 시설(반도체 공장 등) 등 예외에서만 통합발주가 가능합니다. 각 단계의 링크는 법제처 국가법령정보센터 조문으로 연결됩니다.",
+    steps:[ se("start","소방공사 발주 준비",""), s2,s3,s4,s5,s6,s7,s8 ]};
+}
+
+/* 소방시설 단독공사 */
+function tplSolo(){
+  const s2=ts("소방시설 설계","단독공사는 설계부터 시공사가 주도하는 경우가 많음","설계사무소");
+  s2.children=[
+    ts("현장 실측·기존시설 조사","기존 건물은 준공도면이 없는 경우가 많음 — 현황 실측 후 현황도 작성","설계/시공"),
+    ts("설계도서 작성","용도·면적 기준 법정 소방시설 적용 검토 포함","설계사무소")];
+
+  const d1=ts("감리자 지정 신고","감리 대상이면 착공신고 전에 지정 신고","공무");
+  const d2=ts("착공신고 서류 제출","신고서 + 설계도서 + 시공사 서류 — 관할 소방서","공무");
+  const d4=ts("필증 수령·시공 준비","비대상 공사는 신고 없이 바로 시공 준비","공무");
+  const d0=dq("착공신고 대상 공사?","신설·증설, 수신반·소화펌프·동력(감시)제어반 개설·이전·정비인지 확인 — 대상 기준은 세부단계 참고, 비대상이면 신고 절차 생략");
+  d0.links=[LNK_ART4];
+  d0.children=mkStartTargets();
+  const d3=dq("소방서 보완 요구?","");
+  d0.branches=[{label:"대상",to:d1.id},{label:"비대상",to:d4.id}];
+  d3.branches=[{label:"보완",to:d2.id},{label:"수리",to:d4.id}];
+  const s3=ts("착공신고·감리자 지정","착공신고 대상 여부 판단부터 시작","공무");
+  s3.children=[d0,d1,d2,d3,d4];
+  s3.deps=[s2.id]; // 설계도서가 있어야 착공신고 가능
+
+  const s4=ts("소방시설 공사","","현장");
+  s4.children=[
+    ts("샵드로잉·AFC 관리","시공 상세도 작성 → 감리(또는 발주처) 승인 → AFC 배포. 변경 발생 시 리비전 갱신·구본 회수","시공사"),
+    ts("시공·은폐 전 검측","배관·기구·배선 설치, 매립·은폐 전 검측 및 사진 기록","현장"),
+    ts("수압·연동시험","성적서 보관 — 완공검사 서류에 첨부","현장/감리")];
+
+  const s5=ts("소방시설 완공검사","","공무/감리");
+  s5.children=mkAcceptance();
+
+  return {id:uid(),name:"소방시설 단독공사",
+    desc:"건축 인허가와 별개로 소방공사만 단독 진행되는 흐름(설비 증설·개보수·리모델링 등)입니다. 착공신고 대상 여부 판단 분기가 포함되어 있습니다.",
+    steps:[
+      se("start","공사 계약 (소방 단독)",""),
+      s2,s3,s4,s5,
+      ts("소방시설 완공검사 증명서 발급","원본 수령 후 발주처 전달","공무"),
+      se("end","준공·인수인계","준공도서(AFC 최종본·시험성적서·사용설명서) 인계")
+    ]};
+}
+
+/* ══════════════ 매뉴얼 관리 ══════════════ */
+function newDoc(){
+  document.getElementById("tplName").value="";
+  document.getElementById("tplBack").classList.add("show");
+  setTimeout(()=>document.getElementById("tplName").focus(),50);
+}
+function closeTpl(){ document.getElementById("tplBack").classList.remove("show"); }
+function createDoc(kind){
+  let d;
+  if(kind==="permit") d=tplPermit();
+  else if(kind==="solo") d=tplSolo();
+  else if(kind==="award") d=tplAward();
+  else d={id:uid(),name:"새 매뉴얼",desc:"",steps:[
+    se("start","시작",""),
+    newStep("task"),
+    se("end","종료","")
+  ]};
+  const nm=document.getElementById("tplName").value.trim();
+  if(nm) d.name=nm;
+  normSteps(d.steps);
+  state.docs.push(d); state.activeId=d.id; navPath=[];
+  closeTpl();
+  save(); render();
+  window.scrollTo({top:0});
+}
+function switchDoc(id){ state.activeId=id; selStepId=null; navPath=[]; detailStepId=null; save(); render(); }
+function renameDoc(){
+  const d=activeDoc(); if(!d) return;
+  const n=prompt("매뉴얼 이름",d.name);
+  if(n&&n.trim()){ d.name=n.trim(); save(); render(); }
+}
+function editDesc(){
+  const d=activeDoc(); if(!d) return;
+  const n=prompt("매뉴얼 설명(머리말)",d.desc||"");
+  if(n!=null){ d.desc=n; save(); render(); }
+}
+function deleteDoc(){
+  const d=activeDoc(); if(!d) return;
+  if(!confirm('매뉴얼 "'+d.name+'" 을 삭제할까요?')) return;
+  state.docs=state.docs.filter(x=>x.id!==d.id);
+  state.activeId=state.docs.length?state.docs[0].id:null;
+  navPath=[];
+  save(); render();
+}
+
+/* ══════════════ 단계 편집 ══════════════ */
+function addStep(){
+  const d=activeDoc();
+  if(!d){ alert("먼저 '새 매뉴얼'을 만들어 주세요."); return; }
+  const arr=currentSteps();
+  // 종료 단계가 마지막이면 그 앞에 삽입
+  const endIdx=arr.length && arr[arr.length-1].type==="end" ? arr.length-1 : arr.length;
+  arr.splice(endIdx,0,newStep("task"));
+  save(); render();
+}
+function insStep(i){
+  const arr=currentSteps(); if(!arr) return;
+  arr.splice(i+1,0,newStep("task"));
+  save(); render();
+}
+function delStep(i){
+  const arr=currentSteps(); if(!arr) return;
+  const s=arr[i];
+  const kids=kidCnt(s)?" (세부단계 "+kidCnt(s)+"개 포함)":"";
+  if(!confirm('단계 "'+(s.title||"(무제)")+'" 삭제?'+kids)) return;
+  if(detailStepId===s.id) detailStepId=null;
+  arr.splice(i,1);
+  // 이 단계를 가리키던 참조 정리 (같은 레벨 안에서만 연결됨)
+  arr.forEach(x=>{
+    if(x.next===s.id) x.next="";
+    (x.branches||[]).forEach(b=>{ if(b.to===s.id) b.to=""; });
+    x.deps=(x.deps||[]).filter(v=>v!==s.id);
+  });
+  save(); render();
+}
+function togglePar(i){
+  const arr=currentSteps(); if(!arr||!arr[i]||i===0) return;
+  arr[i].par=!arr[i].par;
+  save(); render();
+}
+function mvStep(i,dir){
+  const arr=currentSteps(); const j=i+dir;
+  if(!arr||j<0||j>=arr.length) return;
+  [arr[i],arr[j]]=[arr[j],arr[i]];
+  save(); render();
+}
+function setStep(i,f,v){
+  const arr=currentSteps(); if(!arr||!arr[i]) return;
+  const s=arr[i];
+  if(f==="type"){
+    s.type=v;
+    if(v==="decision"&&!(s.branches||[]).length) s.branches=[{label:"예",to:""},{label:"아니오",to:""}];
+    render(); save(); return;
+  }
+  s[f]=v; save();
+  if(f==="title") renderFlow(), renderMan(), renderCrumb();
+  if(f==="next") renderFlow(), renderMan();
+}
+function brSet(i,bi,f,v){
+  const arr=currentSteps(); if(!arr) return;
+  const b=arr[i].branches[bi]; if(!b) return;
+  b[f]=v; save(); renderFlow(); renderMan();
+}
+function brAdd(i){
+  const arr=currentSteps(); if(!arr) return;
+  (arr[i].branches=arr[i].branches||[]).push({label:"",to:""});
+  save(); render();
+}
+function brDel(i,bi){
+  const arr=currentSteps(); if(!arr) return;
+  arr[i].branches.splice(bi,1);
+  save(); render();
+}
+function selectStep(id){
+  if(detailStepId===id){ closeStepDetail(); return; } // 같은 노드 다시 클릭 = 접기
+  openStepDetail(id);
+}
+
+/* ══════════════ 단계 상세 — 인라인 패널 (클릭한 노드 아래로 펼쳐짐) ══════════════ */
+let detailStepId=null;
+let panelH=360, panelRepass=false; // 인라인 패널 높이 (렌더 후 실측으로 보정)
+function stepById(id){ const d=activeDoc(); return d? stepByIdIn(d.steps,id) : null; }
+function openStepDetail(id){
+  const s=stepById(id); if(!s) return;
+  if(!Array.isArray(s.links)) s.links=[]; if(!Array.isArray(s.images)) s.images=[];
+  if(!Array.isArray(s.children)) s.children=[]; if(!Array.isArray(s.deps)) s.deps=[];
+  // 다른 레벨의 단계면 그 단계가 있는 폴더 레벨로 이동해서 펼친다 (한눈에 보기에서는 그대로)
+  if(!state.ov){
+    const p=pathOf(id)||[];
+    const lvl=p.slice(0,-1);
+    if(lvl.join("/")!==navPath.join("/")) navPath=lvl;
+  }
+  detailStepId=id; selStepId=id;
+  render();
+  const el=document.getElementById("inlinePanel");
+  if(el) el.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function closeStepDetail(){
+  detailStepId=null;
+  save(); render();
+}
+function sdSet(f,v){
+  const s=stepById(detailStepId); if(!s) return;
+  s[f]=v; save();
+  const t=document.getElementById("sdTitle");
+  if(t) t.textContent="["+TYPE_LABEL[s.type]+"] "+(s.title||"(무제)");
+}
+function sdSync(){ // 텍스트 편집을 마치면(blur) 표·플로우·본문에 반영
+  renderTable(); renderMan(); renderCrumb(); renderFlow();
+}
+function panelHTML(s){
+  return '<div class="inline-panel" id="inlinePanel">'+
+  '<div class="ip-h"><span class="ttl" id="sdTitle">['+TYPE_LABEL[s.type]+'] '+esc(s.title||"(무제)")+'</span>'+
+    '<button class="x" onclick="closeStepDetail()" title="접기">✕</button></div>'+
+  '<div class="ip-b">'+
+  '<div class="fgrid">'+
+    '<div><label>제목</label><input value="'+esc(s.title)+'" oninput="sdSet(\'title\',this.value)" onchange="sdSync()"></div>'+
+    '<div><label>유형</label><select onchange="sdSet(\'type\',this.value);render()">'+
+      TYPES.map(([v,l])=>'<option value="'+v+'"'+(v===s.type?" selected":"")+'>'+l+'</option>').join("")+'</select></div>'+
+    '<div><label>담당</label><input value="'+esc(s.owner)+'" oninput="sdSet(\'owner\',this.value)" onchange="sdSync()"></div>'+
+  '</div>'+
+  '<label style="font-size:11px;color:var(--muted)">내용 / 기준</label>'+
+  '<textarea class="sdesc" oninput="sdSet(\'desc\',this.value)" onchange="sdSync()">'+esc(s.desc)+'</textarea>'+
+  '<div class="sec-t">선행 단계 (이 단계를 하려면 먼저 끝나야 하는 것)</div>'+
+  '<div id="sdDeps"></div>'+
+  '<div class="sec-t">세부단계 (이 단계를 폴더처럼 열기)</div>'+
+  '<div class="toolbar">'+
+    '<button class="btn sm" onclick="enterStep(\''+s.id+'\')">'+ICO_FOLDER_OPEN+
+      (kidCnt(s)?'세부단계 열기 · '+kidCnt(s)+'단계':'폴더 열고 세부단계 만들기')+'</button>'+
+    '<span class="sub" style="font-size:11px">이 단계 안에 하위 프로세스(세부단계)를 담을 수 있습니다</span>'+
+  '</div>'+
+  '<div class="sec-t">참고 링크 (매뉴얼·규정·양식 등)</div>'+
+  '<div id="sdLinks"></div>'+
+  '<button class="btn sm" onclick="lnkAdd()">+ 링크 추가</button>'+
+  '<div class="sec-t">이미지 (예시 화면·서식 캡처 등)</div>'+
+  '<div class="toolbar">'+
+    '<button class="btn sm" onclick="document.getElementById(\'sImgIn\').click()">'+
+      '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5.5 4.5l1-1.7h3l1 1.7" stroke-linejoin="round"/><rect x="1.5" y="4.5" width="13" height="9" rx="1.5"/><circle cx="8" cy="9" r="2.4"/></svg>이미지 업로드</button>'+
+    '<input type="file" id="sImgIn" class="file-in" accept="image/*" multiple onchange="sAddImageFiles(event)">'+
+    '<button class="btn sm" onclick="sAddImageUrl()">'+
+      '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6.5 9.5l3-3"/><path d="M7.6 4.6l1.1-1.1a2.47 2.47 0 0 1 3.5 3.5L11.1 8.1"/><path d="M8.4 11.4l-1.1 1.1a2.47 2.47 0 0 1-3.5-3.5L4.9 7.9"/></svg>이미지 URL 추가</button>'+
+    '<span class="sub" style="font-size:11px">업로드 시 자동 압축(긴 변 1280px) 후 브라우저에 저장</span>'+
+  '</div>'+
+  '<div class="img-grid" id="sdImgs"></div>'+
+  '<div class="storage" id="sdStorage"></div>'+
+  '</div></div>';
+}
+function renderSdDeps(){
+  const s=stepById(detailStepId); if(!s) return;
+  const arr=levelArrOf(s.id)||[];
+  const nums=calcNums(arr);
+  const idxOf={}; arr.forEach((x,i)=>idxOf[x.id]=i);
+  const label=id=>{ const j=idxOf[id]; return j==null?"?":nums[j]+". "+(arr[j].title||"(무제)"); };
+  const chips=(s.deps||[]).map((dp,i)=>
+    '<span class="dep-chip">'+esc(label(dp))+'<button title="선행 해제" onclick="depDel('+i+')">✕</button></span>').join(" ");
+  const opts=arr.filter(x=>x.id!==s.id&&!(s.deps||[]).includes(x.id))
+    .map(x=>'<option value="'+x.id+'">'+esc(label(x.id))+'</option>').join("");
+  document.getElementById("sdDeps").innerHTML=
+    '<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:7px">'+
+      (chips||'<span class="sub" style="font-size:11px">지정된 선행 단계가 없습니다 — 예: 착공신고에는 설계도서(실시설계)와 시공사 선정이 먼저 필요</span>')+'</div>'+
+    (opts?'<div style="display:flex;gap:6px;align-items:center">'+
+      '<select id="depSel" class="next-sel" style="max-width:280px"><option value="">같은 레벨의 단계 선택…</option>'+opts+'</select>'+
+      '<button class="btn sm" onclick="depAdd()">+ 선행 추가</button>'+
+      '<span class="sub" style="font-size:11px">플로우차트에 파란 점선으로 표시</span></div>':'');
+}
+function depAdd(){
+  const s=stepById(detailStepId); if(!s) return;
+  const v=document.getElementById("depSel").value; if(!v) return;
+  (s.deps=s.deps||[]).push(v);
+  save(); renderFlow(); renderMan();
+}
+function depDel(i){
+  const s=stepById(detailStepId); if(!s) return;
+  s.deps.splice(i,1);
+  save(); renderFlow(); renderMan();
+}
+function renderSdLinks(){
+  const s=stepById(detailStepId); if(!s) return;
+  document.getElementById("sdLinks").innerHTML=(s.links||[]).map((l,i)=>
+    '<div class="lnk-row">'+
+      '<input class="lb" value="'+esc(l.label)+'" placeholder="라벨 (예: 착공신고 양식)" oninput="lnkSet('+i+',\'label\',this.value)">'+
+      '<input class="ur" value="'+esc(l.url)+'" placeholder="https://…" oninput="lnkSet('+i+',\'url\',this.value)">'+
+      '<a href="'+esc(l.url||"#")+'" target="_blank" rel="noopener" title="새 탭에서 열기">열기</a>'+
+      '<button class="rm" onclick="lnkDel('+i+')">✕</button>'+
+    '</div>').join("") || '<div class="sub" style="font-size:11px;margin-bottom:5px">등록된 링크가 없습니다.</div>';
+}
+function lnkAdd(){ const s=stepById(detailStepId); if(!s) return; s.links.push({label:"",url:""}); save(); renderFlow(); }
+function lnkSet(i,f,v){ const s=stepById(detailStepId); if(s&&s.links[i]){ s.links[i][f]=v; save(); } }
+function lnkDel(i){ const s=stepById(detailStepId); if(!s) return; s.links.splice(i,1); save(); renderFlow(); }
+function renderSdImgs(){
+  const s=stepById(detailStepId); if(!s) return;
+  document.getElementById("sdImgs").innerHTML=(s.images||[]).map((im,i)=>
+    '<div class="img-card">'+
+      '<img class="thumb" src="'+esc(im.src)+'" alt="" loading="lazy" onclick="openLightbox('+i+')" onerror="this.style.opacity=.25">'+
+      '<input class="cap" value="'+esc(im.cap||"")+'" placeholder="설명…" oninput="sImgCap('+i+',this.value)">'+
+      '<button class="rm" onclick="sRmImage('+i+')">삭제</button>'+
+    '</div>').join("") || '<span class="sub" style="font-size:11px">등록된 이미지가 없습니다.</span>';
+  const used=new Blob([JSON.stringify(state)]).size;
+  const pct=Math.round(used/(5*1024*1024)*100);
+  document.getElementById("sdStorage").innerHTML=
+    '브라우저 저장 사용량 약 <b'+(pct>80?' style="color:var(--over)"':'')+'>'+(used/1024/1024).toFixed(2)+' MB / 5 MB ('+pct+'%)</b>';
+}
+function sResizeImage(file,maxEdge,q){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onerror=()=>rej(new Error("파일 읽기 실패"));
+    r.onload=()=>{
+      const img=new Image();
+      img.onerror=()=>rej(new Error("이미지 해석 실패"));
+      img.onload=()=>{
+        let w=img.width,h=img.height;
+        if(Math.max(w,h)>maxEdge){ const k=maxEdge/Math.max(w,h); w=Math.round(w*k); h=Math.round(h*k); }
+        const cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+        const ctx=cv.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img,0,0,w,h);
+        res(cv.toDataURL("image/jpeg",q));
+      };
+      img.src=r.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+async function sAddImageFiles(ev){
+  const s=stepById(detailStepId); if(!s) return;
+  const files=[...ev.target.files]; ev.target.value="";
+  for(const f of files){
+    try{ s.images.push({src:await sResizeImage(f,1280,0.75), cap:f.name.replace(/\.[^.]+$/,""), up:1}); }
+    catch(e){ alert(f.name+" 처리 실패"); }
+  }
+  save(); renderFlow();
+}
+function sAddImageUrl(){
+  const s=stepById(detailStepId); if(!s) return;
+  const u=prompt("이미지 URL을 붙여넣으세요 (https://…)");
+  if(!u||!u.trim()) return;
+  s.images.push({src:u.trim(),cap:"",up:0});
+  save(); renderFlow();
+}
+function sImgCap(i,v){ const s=stepById(detailStepId); if(s&&s.images[i]){ s.images[i].cap=v; save(); } }
+function sRmImage(i){
+  const s=stepById(detailStepId); if(!s) return;
+  if(!confirm("이미지를 삭제할까요?")) return;
+  s.images.splice(i,1); save(); renderFlow();
+}
+let lbCtx=null;
+function openLightbox(i){
+  const s=stepById(detailStepId)||lbCtx; if(!s||!s.images[i]) return;
+  document.getElementById("lbImg").src=s.images[i].src;
+  document.getElementById("lbCap").textContent=s.images[i].cap||"";
+  document.getElementById("lightbox").classList.add("show");
+}
+function openLightboxFor(stepId,i){
+  lbCtx=stepById(stepId)||null;
+  const s=lbCtx; if(!s||!s.images[i]) return;
+  document.getElementById("lbImg").src=s.images[i].src;
+  document.getElementById("lbCap").textContent=s.images[i].cap||"";
+  document.getElementById("lightbox").classList.add("show");
+}
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){
+    const lb=document.getElementById("lightbox");
+    if(lb.classList.contains("show")){ lb.classList.remove("show"); return; }
+    if(document.getElementById("tplBack").classList.contains("show")){ closeTpl(); return; }
+    if(detailStepId) closeStepDetail();
+  }
+});
+
+/* ══════════════ 렌더 ══════════════ */
+function render(){ renderDocSel(); renderCrumb(); renderTable(); renderFlow(); renderMan(); }
+function renderCrumb(){
+  const bar=document.getElementById("crumbBar");
+  const d=activeDoc();
+  if(!d||!navPath.length){ bar.style.display="none"; bar.innerHTML=""; return; }
+  bar.style.display="flex";
+  let arr=d.steps;
+  let html='<button class="seg" onclick="navTo(-1)">'+ICO_FOLDER+esc(d.name)+'</button>';
+  navPath.forEach((id,i)=>{
+    const s=(arr||[]).find(x=>x.id===id); if(!s) return;
+    const last=i===navPath.length-1;
+    html+='<span class="sep">›</span>'+
+      (last?'<span class="cur">'+ICO_FOLDER_OPEN+esc(s.title||"(무제)")+'</span>'
+           :'<button class="seg" onclick="navTo('+i+')">'+ICO_FOLDER+esc(s.title||"(무제)")+'</button>');
+    arr=s.children||[];
+  });
+  html+='<button class="btn sm up" onclick="goUp()">'+
+    '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12.5V4.5M4.5 8 8 4.5 11.5 8"/></svg>상위 단계로</button>';
+  bar.innerHTML=html;
+}
+function renderDocSel(){
+  document.getElementById("docSel").innerHTML =
+    state.docs.map(d=>'<option value="'+d.id+'"'+(d.id===state.activeId?" selected":"")+'>'+esc(d.name)+'</option>').join("")
+    || '<option value="">— 매뉴얼 없음 (+ 새 매뉴얼) —</option>';
+}
+function stepOptions(arr,selfId,cur){
+  const nums=calcNums(arr);
+  return '<option value="">(바로 아래 단계로)</option>'+
+    arr.map((s,i)=>s.id===selfId?'':
+      '<option value="'+s.id+'"'+(s.id===cur?" selected":"")+'>'+nums[i]+'. '+esc(s.title||"(무제)")+'</option>').join("");
+}
+function renderTable(){
+  const tbl=document.getElementById("stepTable");
+  const d=activeDoc();
+  if(!d){ tbl.innerHTML='<tbody><tr><td style="padding:14px;color:var(--muted)">매뉴얼을 먼저 만들어 주세요.</td></tr></tbody>'; return; }
+  const arr=currentSteps();
+  if(!arr.length){
+    tbl.innerHTML='<tbody><tr><td style="padding:14px;color:var(--muted)">아직 세부단계가 없습니다. 위의 "+ 단계 추가"로 이 폴더 안의 프로세스를 만들어 주세요.</td></tr></tbody>';
+    return;
+  }
+  const nums=calcNums(arr);
+  let html='<thead><tr><th>#</th><th>유형</th><th style="min-width:150px">제목</th><th style="min-width:200px">내용 / 기준</th>'+
+    '<th>담당</th><th style="min-width:180px">다음 단계 / 분기</th><th></th><th></th><th></th></tr></thead><tbody>';
+  arr.forEach((s,i)=>{
+    let nextCell;
+    if(s.type==="decision"){
+      nextCell='<div class="br-list">'+
+        (s.branches||[]).map((b,bi)=>
+          '<div class="br-row">'+
+            '<input value="'+esc(b.label)+'" placeholder="조건 라벨" oninput="brSet('+i+','+bi+',\'label\',this.value)">'+
+            '<select onchange="brSet('+i+','+bi+',\'to\',this.value)">'+stepOptions(arr,s.id,b.to)+'</select>'+
+            '<button class="rm" title="분기 삭제" onclick="brDel('+i+','+bi+')">✕</button>'+
+          '</div>').join("")+
+        '<button class="br-add" onclick="brAdd('+i+')">+ 분기 추가</button></div>';
+    }else if(s.type==="end"){
+      nextCell='<span style="color:var(--muted);font-size:11px">(프로세스 종료)</span>';
+    }else{
+      nextCell='<select class="next-sel" onchange="setStep('+i+',\'next\',this.value)">'+stepOptions(arr,s.id,s.next)+'</select>';
+    }
+    html+='<tr data-sid="'+s.id+'"'+(s.id===selStepId?' class="selrow"':'')+'>'+
+      '<td class="no">'+nums[i]+'</td>'+
+      '<td style="width:70px"><select class="st-'+s.type+'" onchange="setStep('+i+',\'type\',this.value)">'+
+        TYPES.map(([v,l])=>'<option value="'+v+'"'+(v===s.type?" selected":"")+'>'+l+'</option>').join("")+'</select></td>'+
+      '<td><input value="'+esc(s.title)+'" placeholder="'+(s.type==="decision"?"판단 질문 (예: 보완 요구?)":"단계 제목")+'" oninput="setStep('+i+',\'title\',this.value)"></td>'+
+      '<td><input value="'+esc(s.desc)+'" placeholder="상세 내용, 기준, 참고" oninput="setStep('+i+',\'desc\',this.value)"></td>'+
+      '<td style="width:80px"><input value="'+esc(s.owner)+'" placeholder="-" oninput="setStep('+i+',\'owner\',this.value)"></td>'+
+      '<td>'+nextCell+'</td>'+
+      '<td style="width:96px;white-space:nowrap;vertical-align:middle">'+
+        '<button class="mv" '+(i===0?'disabled':'')+' onclick="mvStep('+i+',-1)">▲</button>'+
+        '<button class="mv" '+(i===arr.length-1?'disabled':'')+' onclick="mvStep('+i+',1)">▼</button>'+
+        '<button class="mv'+(s.par?' on':'')+'" '+(i===0?'disabled':'')+' title="바로 위 단계와 동시 진행 (같은 번호 4-1/4-2)" onclick="togglePar('+i+')">동시</button></td>'+
+      '<td style="width:118px;vertical-align:middle;white-space:nowrap">'+
+        '<button class="mv" title="링크·이미지 첨부/상세" onclick="openStepDetail(\''+s.id+'\')">상세'+(attCnt(s)?'·'+attCnt(s):'')+'</button>'+
+        '<button class="mv" title="세부단계(폴더) 안으로 들어가기" onclick="enterStep(\''+s.id+'\')">세부'+(kidCnt(s)?'·'+kidCnt(s):'')+'</button>'+
+        '<button class="mv" title="아래에 삽입" onclick="insStep('+i+')">+삽입</button></td>'+
+      '<td class="row-del" onclick="delStep('+i+')" title="삭제">✕</td></tr>';
+  });
+  tbl.innerHTML=html+'</tbody>';
+}
+
+/* ══════════════ 플로우차트 (SVG) ══════════════ */
+function renderFlow(){
+  const area=document.getElementById("flowArea");
+  const d=activeDoc();
+  const steps=currentSteps()||[];
+  let title="";
+  if(d){
+    title="— "+d.name;
+    let walk=d.steps;
+    navPath.forEach(id=>{
+      const s=(walk||[]).find(x=>x.id===id); if(!s) return;
+      title+=" › "+(s.title||"(무제)"); walk=s.children||[];
+    });
+  }
+  document.getElementById("flowTitle").textContent = title;
+  document.getElementById("docDesc").textContent = d&&!navPath.length? (d.desc||"") : "";
+  const btn=document.getElementById("ovBtn");
+  if(btn) btn.textContent = state.ov? "세로 플로우" : "한눈에 보기";
+  const hint=document.getElementById("flowHint");
+  if(hint) hint.innerHTML = state.ov?
+    '가로 방향 = 진행 순서. <b>단계 카드를 클릭하면 그 과정의 세부 프로세스가 세로 플로우와 같은 미니 차트</b>(사각형=작업, 마름모=판단, 붉은 점선=재작업 루프)<b>로 아래에 펼쳐집니다</b>'+
+    ' — 다시 클릭하면 접히고, 루트는 한 번에 하나. 미니 차트 안의 폴더 배지를 누르면 더 깊은 폴더의 차트가 이어서 펼쳐집니다.'+
+    ' <b>미니 차트의 노드를 위아래로 끌면 같은 폴더 안에서 순서가 바뀌고</b>, 루트 카드는 좌우로 끌어 다른 카드 위에 놓으면 순서가 바뀝니다. 카드의 ✎ 또는 노드 클릭으로 상세 패널을 엽니다.':
+    '사각형=작업 · 마름모=조건 판단(분기별 화살표에 라벨) · 노드를 클릭하면 <b>그 자리에서 아래로 상세 패널이 펼쳐져</b> 제목·내용·링크·이미지·선행 단계를 바로 편집할 수 있습니다 — 같은 노드를 다시 클릭하거나 ✕ / Esc로 접힙니다.<br>'+
+    '각 단계는 폴더처럼 <b>세부단계</b>를 담을 수 있습니다 — 노드 왼쪽 위의 폴더 표시, 편집 표의 "세부" 버튼, 상세 패널의 "세부단계 열기"로 안에 들어가고, 위의 경로 표시줄로 되돌아옵니다.<br>'+
+    '편집 표의 <b>"동시"</b>를 켜면 바로 위 단계와 나란히(같은 번호 4-1/4-2) 진행되는 것으로 표시되고, '+
+    '<b>파란 점선</b>은 선행 조건(예: 설계도서가 나와야 입찰 가능), <b>왼쪽 붉은 점선</b>은 되돌아가는 재작업 루프입니다.';
+  if(!d||!steps.length){ area.innerHTML='<div style="color:var(--muted);font-size:12px;padding:10px">'+
+    (navPath.length?'이 폴더는 비어 있습니다. 아래 "+ 단계 추가"로 세부단계를 만들어 주세요.':'단계를 추가하면 플로우차트가 그려집니다.')+'</div>'; return; }
+  if(state.ov){ renderOverview(area,steps); return; }
+
+  const CX=430, TW=280, DW=210, VGAP=42;
+  const idxOf={}; steps.forEach((s,i)=>idxOf[s.id]=i);
+  const nums=calcNums(steps);
+
+  // 동시 진행 그룹 구성
+  const groups=[];
+  steps.forEach((s,i)=>{
+    if(i>0&&s.par&&groups.length) groups[groups.length-1].push(i);
+    else groups.push([i]);
+  });
+  const giOf={}; groups.forEach((g,k)=>g.forEach(i=>giOf[i]=k));
+
+  // 노드 크기·배치 (동시 그룹은 나란히)
+  const nodes=steps.map((s,i)=>{
+    const h = s.type==="decision"?66 : (s.type==="start"||s.type==="end")?36 : (s.desc?52:40);
+    return {s,i,h,w:s.type==="decision"?DW:(s.type==="task"?TW:170)};
+  });
+  // 펼침 대상(인라인 상세 패널) — 해당 그룹 아래에 패널 높이만큼 간격 확보
+  const openIdx = detailStepId!=null && idxOf[detailStepId]!=null ? idxOf[detailStepId] : null;
+  let panelTop=null;
+  let y=8;
+  groups.forEach(g=>{
+    if(g.length>1){
+      const gap=26;
+      g.forEach(i=>{ nodes[i].w=Math.min(nodes[i].w, Math.floor((820-gap*(g.length-1))/g.length)); });
+      const tot=g.reduce((a,i)=>a+nodes[i].w,0)+gap*(g.length-1);
+      let x=CX-tot/2;
+      g.forEach(i=>{ nodes[i].x=x+nodes[i].w/2; x+=nodes[i].w+gap; });
+    }else{
+      nodes[g[0]].x=CX;
+    }
+    const gh=Math.max.apply(null,g.map(i=>nodes[i].h));
+    g.forEach(i=>{ nodes[i].y=y; });
+    y+=gh+VGAP;
+    if(openIdx!=null && g.indexOf(openIdx)>=0){ // 이 그룹 아래로 패널이 펼쳐진다
+      panelTop=y-VGAP+14;
+      y+=panelH+26;
+    }
+  });
+  const H=y+8;
+
+  // 엣지 수집: {from,to,label} — 기본 다음은 다음 그룹(동시 단계 전부)으로
+  const nextGroup=i=>{ const gk=giOf[i]; return gk+1<groups.length? groups[gk+1] : []; };
+  const edges=[];
+  nodes.forEach(n=>{
+    const s=n.s;
+    if(s.type==="end") return;
+    if(s.type==="decision"){
+      const brs=(s.branches||[]).length?(s.branches):[{label:"",to:""}];
+      brs.forEach(b=>{
+        if(b.to){ const ti=idxOf[b.to]; if(ti!=null) edges.push({from:n.i,to:ti,label:b.label||""}); }
+        else{ const t=nextGroup(n.i)[0]; if(t!=null) edges.push({from:n.i,to:t,label:b.label||""}); }
+      });
+    }else{
+      if(s.next){ const ti=idxOf[s.next]; if(ti!=null) edges.push({from:n.i,to:ti,label:""}); }
+      else nextGroup(n.i).forEach(t=>edges.push({from:n.i,to:t,label:""}));
+    }
+  });
+  const edgeKey=new Set(edges.map(e=>e.from+">"+e.to));
+
+  // 그리기
+  let svg='';
+  let rLane=0,lLane=0;
+  edges.forEach(e=>{
+    const a=nodes[e.from], b=nodes[e.to];
+    const aBot=a.y+a.h, bTop=b.y;
+    if(giOf[e.to]===giOf[e.from]+1){ // 바로 다음 그룹 (동시 그룹이면 대각선 팬아웃)
+      svg+='<line x1="'+a.x+'" y1="'+aBot+'" x2="'+b.x+'" y2="'+(bTop-6)+'" stroke="#888" stroke-width="1.4" marker-end="url(#arr)"/>';
+      if(e.label) svg+='<text x="'+((a.x+b.x)/2+8)+'" y="'+(aBot+(bTop-aBot)/2+3)+'" font-size="10.5" fill="#7b1fa2" font-weight="600">'+esc(e.label)+'</text>';
+    }else if(giOf[e.to]>giOf[e.from]){ // 앞으로 점프: 오른쪽 레인
+      rLane++;
+      const lx=CX+Math.max(TW,DW)/2+26+rLane*20;
+      const sy=a.y+a.h/2, ey=bTop-10;
+      svg+='<polyline fill="none" stroke="#888" stroke-width="1.4" marker-end="url(#arr)" points="'+
+        (a.x+a.w/2)+','+sy+' '+lx+','+sy+' '+lx+','+ey+' '+b.x+','+ey+' '+b.x+','+(bTop-6)+'"/>';
+      if(e.label) svg+='<text x="'+(a.x+a.w/2+6)+'" y="'+(sy-5)+'" font-size="10.5" fill="#7b1fa2" font-weight="600">'+esc(e.label)+'</text>';
+    }else{ // 되돌아가기(루프)·같은 그룹: 왼쪽 레인
+      lLane++;
+      const lx=CX-Math.max(TW,DW)/2-26-lLane*20;
+      const sy=a.y+a.h/2, ey=bTop-10;
+      svg+='<polyline fill="none" stroke="#b06060" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#arrR)" points="'+
+        (a.x-a.w/2)+','+sy+' '+lx+','+sy+' '+lx+','+ey+' '+b.x+','+ey+' '+b.x+','+(bTop-6)+'"/>';
+      if(e.label) svg+='<text x="'+(a.x-a.w/2-6)+'" y="'+(sy-5)+'" font-size="10.5" fill="#b06060" font-weight="600" text-anchor="end">'+esc(e.label)+'</text>';
+    }
+  });
+  // 선행 조건(deps): 파란 점선 — 흐름 화살표와 겹치면 생략
+  nodes.forEach(n=>{
+    (n.s.deps||[]).forEach(dp=>{
+      const ai=idxOf[dp];
+      if(ai==null||edgeKey.has(ai+">"+n.i)) return;
+      const a=nodes[ai];
+      rLane++;
+      const lx=CX+Math.max(TW,DW)/2+26+rLane*20;
+      const sy=a.y+a.h/2, ey=n.y-10;
+      svg+='<polyline fill="none" stroke="#4a7ab5" stroke-width="1.3" stroke-dasharray="3 3" marker-end="url(#arrB)" points="'+
+        (a.x+a.w/2)+','+sy+' '+lx+','+sy+' '+lx+','+ey+' '+n.x+','+ey+' '+n.x+','+(n.y-6)+'"/>';
+      svg+='<text x="'+(lx+4)+'" y="'+((sy+ey)/2+3)+'" font-size="9.5" fill="#4a7ab5">선행</text>';
+    });
+  });
+  // 노드
+  nodes.forEach(n=>{
+    const s=n.s, cy=n.y+n.h/2, nx=n.x;
+    const solo=groups[giOf[n.i]].length===1;
+    const selCls=s.id===detailStepId?' selnode':'';
+    const click=' onclick="selectStep(\''+s.id+'\')"';
+    if(s.type==="decision"){
+      const w=n.w/2;
+      svg+='<g class="flow-node'+selCls+'"'+click+'><polygon class="nd" points="'+nx+','+n.y+' '+(nx+w)+','+cy+' '+nx+','+(n.y+n.h)+' '+(nx-w)+','+cy+
+        '" fill="#f6effa" stroke="#7b1fa2" stroke-width="1.4"/>'+
+        '<text x="'+nx+'" y="'+(cy+4)+'" text-anchor="middle" font-size="12" font-weight="650" fill="#4a1266">'+esc(clip(s.title||"(판단)",16))+'</text></g>';
+    }else if(s.type==="start"||s.type==="end"){
+      svg+='<g class="flow-node'+selCls+'"'+click+'><rect class="nd" x="'+(nx-n.w/2)+'" y="'+n.y+'" width="'+n.w+'" height="'+n.h+'" rx="18" fill="'+(s.type==="start"?"#fff":"#1a1a1a")+'" stroke="#1a1a1a" stroke-width="1.4"/>'+
+        '<text x="'+nx+'" y="'+(cy+4)+'" text-anchor="middle" font-size="12" font-weight="650" fill="'+(s.type==="start"?"#1a1a1a":"#fff")+'">'+esc(clip(s.title||TYPE_LABEL[s.type],18))+'</text></g>';
+    }else{
+      const maxT=Math.max(10,Math.floor(n.w/12));
+      svg+='<g class="flow-node'+selCls+'"'+click+'><rect class="nd" x="'+(nx-n.w/2)+'" y="'+n.y+'" width="'+n.w+'" height="'+n.h+'" rx="5" fill="#fff" stroke="#555" stroke-width="1.4"/>'+
+        '<text x="'+nx+'" y="'+(n.y+(s.desc?20:n.h/2+4))+'" text-anchor="middle" font-size="12" font-weight="650">'+esc(clip(nums[n.i]+". "+(s.title||"(무제)"),maxT))+'</text>'+
+        (s.desc?'<text x="'+nx+'" y="'+(n.y+37)+'" text-anchor="middle" font-size="10" fill="#6b6b6b">'+esc(clip(s.desc,maxT+8))+'</text>':'')+'</g>';
+    }
+    if(s.owner&&s.type!=="decision"&&solo)
+      svg+='<text x="'+(nx+n.w/2+8)+'" y="'+(cy+3)+'" font-size="10" fill="#6b6b6b">'+esc(s.owner)+'</text>';
+    if(attCnt(s)){
+      const bx=nx+n.w/2-2, by=n.y-2;
+      svg+='<g class="flow-node" onclick="openStepDetail(\''+s.id+'\')"><circle cx="'+bx+'" cy="'+by+'" r="8" fill="#1a1a1a"/>'+
+        '<text x="'+bx+'" y="'+(by+3)+'" text-anchor="middle" font-size="9" fill="#fff" font-weight="600">'+attCnt(s)+'</text></g>';
+    }
+    if(kidCnt(s)){ // 폴더 표시(세부단계 있음) — 클릭하면 안으로
+      const pw=kidCnt(s)>9?38:32;
+      const x0=nx-n.w/2-6, y0=n.y-11;
+      svg+='<g class="flow-node" onclick="enterStep(\''+s.id+'\')"><title>세부단계 '+kidCnt(s)+'개 — 클릭하여 열기</title>'+
+        '<rect x="'+x0+'" y="'+y0+'" width="'+pw+'" height="18" rx="9" fill="#fff" stroke="#1a1a1a" stroke-width="1.2"/>'+
+        '<g transform="translate('+(x0+5)+','+(y0+2.5)+') scale(0.8)"><path d="M1.5 4.5a1 1 0 0 1 1-1h2.8l1.4 1.8h6.8a1 1 0 0 1 1 1v5.7a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z" fill="none" stroke="#1a1a1a" stroke-width="1.7" stroke-linejoin="round"/></g>'+
+        '<text x="'+(x0+pw-8)+'" y="'+(y0+13)+'" text-anchor="middle" font-size="10" font-weight="650" fill="#1a1a1a">'+kidCnt(s)+'</text></g>';
+    }
+  });
+  const openStep = openIdx!=null ? steps[openIdx] : null;
+  area.innerHTML='<svg width="880" height="'+H+'" viewBox="0 0 880 '+H+'" style="min-width:880px;display:block;margin:0 auto">'+
+    '<defs><marker id="arr" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#888"/></marker>'+
+    '<marker id="arrR" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#b06060"/></marker>'+
+    '<marker id="arrB" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#4a7ab5"/></marker></defs>'+
+    svg+'</svg>'+
+    (openStep? panelHTML(openStep) : '');
+  if(openStep){
+    renderSdLinks(); renderSdImgs(); renderSdDeps();
+    const el=document.getElementById("inlinePanel");
+    const svgEl=area.querySelector("svg");
+    const svgOff=svgEl.getBoundingClientRect().top-area.getBoundingClientRect().top+area.scrollTop;
+    el.style.top=(svgOff+panelTop)+"px";
+    const h=el.offsetHeight;
+    if(Math.abs(h-panelH)>6 && !panelRepass){ // 실제 패널 높이에 맞춰 간격 재배치 (1회)
+      panelH=h; panelRepass=true;
+      renderFlow();
+      panelRepass=false;
+      return;
+    }
+  }
+}
+function clip(s,n){ s=String(s); return s.length>n? s.slice(0,n-1)+"…" : s; }
+
+/* ══════════════ 한눈에 보기 (가로 전개 + 드래그 정렬) ══════════════ */
+function toggleOv(){ state.ov=!state.ov; save(); render(); }
+let ovOpen=new Set(); // 펼쳐 놓은 카드 id (세션 한정)
+/* 판단 분기를 yes/no · pass/fail 느낌으로 — 앞으로 가면 초록(통과), 되돌아가면 빨강(재작업) */
+function ovBranches(s,arr,nums,prefix){
+  if(s.type!=="decision") return '';
+  const idx={}; arr.forEach((x,i)=>idx[x.id]=i);
+  const si=idx[s.id];
+  const brs=(s.branches||[]).length?s.branches:[{label:"",to:""}];
+  return '<div class="ov-brs">'+brs.map(b=>{
+    const ti=b.to!=null&&b.to!==""? idx[b.to] : (si+1<arr.length? si+1 : null);
+    const back = ti!=null && ti<=si;
+    const ref = ti==null? "다음" : prefix+nums[ti]+". "+clip(arr[ti].title||"(무제)",14);
+    return '<span class="ov-bri '+(back?'back':'ok')+'">'+esc(b.label||"분기")+' → '+esc(ref)+'</span>';
+  }).join('')+'</div>';
+}
+/* 펼친 폴더를 세로 플로우와 같은 표현(마름모·분기 화살표·재작업 루프)의 미니 차트로 렌더 */
+let ovCharts={};
+function miniFlowSVG(arr,prefix,chartKey,parentIds){
+  const W=440, CX=220, TW=240, DW=150, VGAP=30;
+  const nums=calcNums(arr);
+  const idxOf={}; arr.forEach((s,i)=>idxOf[s.id]=i);
+  const groups=[];
+  arr.forEach((s,i)=>{ if(i>0&&s.par&&groups.length) groups[groups.length-1].push(i); else groups.push([i]); });
+  const giOf={}; groups.forEach((g,k)=>g.forEach(i=>giOf[i]=k));
+  const nodes=arr.map((s,i)=>{
+    const h=s.type==="decision"?50:(s.type==="start"||s.type==="end")?28:(s.desc?42:32);
+    return {s,i,h,w:s.type==="decision"?DW:(s.type==="task"?TW:120)};
+  });
+  let y=6;
+  groups.forEach(g=>{
+    if(g.length>1){
+      const gap=14;
+      g.forEach(i=>{ nodes[i].w=Math.min(nodes[i].w, Math.floor((W-40-gap*(g.length-1))/g.length)); });
+      const tot=g.reduce((a,i)=>a+nodes[i].w,0)+gap*(g.length-1);
+      let x=CX-tot/2;
+      g.forEach(i=>{ nodes[i].x=x+nodes[i].w/2; x+=nodes[i].w+gap; });
+    }else nodes[g[0]].x=CX;
+    const gh=Math.max.apply(null,g.map(i=>nodes[i].h));
+    g.forEach(i=>{ nodes[i].y=y; });
+    y+=gh+VGAP;
+  });
+  const H=y+4;
+  const nextGroup=i=>{ const gk=giOf[i]; return gk+1<groups.length? groups[gk+1] : []; };
+  const edges=[];
+  nodes.forEach(n=>{
+    const s=n.s;
+    if(s.type==="end") return;
+    if(s.type==="decision"){
+      const brs=(s.branches||[]).length?s.branches:[{label:"",to:""}];
+      brs.forEach(b=>{
+        if(b.to){ const ti=idxOf[b.to]; if(ti!=null) edges.push({from:n.i,to:ti,label:b.label||""}); }
+        else{ const t=nextGroup(n.i)[0]; if(t!=null) edges.push({from:n.i,to:t,label:b.label||""}); }
+      });
+    }else{
+      if(s.next){ const ti=idxOf[s.next]; if(ti!=null) edges.push({from:n.i,to:ti,label:""}); }
+      else nextGroup(n.i).forEach(t=>edges.push({from:n.i,to:t,label:""}));
+    }
+  });
+  const edgeKey=new Set(edges.map(e=>e.from+">"+e.to));
+  let svg=''; let rLane=0,lLane=0;
+  edges.forEach(e=>{
+    const a=nodes[e.from], b=nodes[e.to];
+    const aBot=a.y+a.h, bTop=b.y;
+    if(giOf[e.to]===giOf[e.from]+1){
+      svg+='<line x1="'+a.x+'" y1="'+aBot+'" x2="'+b.x+'" y2="'+(bTop-5)+'" stroke="#888" stroke-width="1.2" marker-end="url(#mArr)"/>';
+      if(e.label) svg+='<text x="'+((a.x+b.x)/2+6)+'" y="'+(aBot+(bTop-aBot)/2+3)+'" font-size="9" fill="#7b1fa2" font-weight="600">'+esc(clip(e.label,10))+'</text>';
+    }else if(giOf[e.to]>giOf[e.from]){
+      rLane++;
+      const lx=CX+Math.max(TW,DW)/2+10+rLane*12;
+      const sy=a.y+a.h/2, ey=bTop-8;
+      svg+='<polyline fill="none" stroke="#888" stroke-width="1.2" marker-end="url(#mArr)" points="'+
+        (a.x+a.w/2)+','+sy+' '+lx+','+sy+' '+lx+','+ey+' '+b.x+','+ey+' '+b.x+','+(bTop-5)+'"/>';
+      if(e.label) svg+='<text x="'+(a.x+a.w/2+4)+'" y="'+(sy-4)+'" font-size="9" fill="#7b1fa2" font-weight="600">'+esc(clip(e.label,10))+'</text>';
+    }else{
+      lLane++;
+      const lx=CX-Math.max(TW,DW)/2-10-lLane*12;
+      const sy=a.y+a.h/2, ey=bTop-8;
+      svg+='<polyline fill="none" stroke="#b06060" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#mArrR)" points="'+
+        (a.x-a.w/2)+','+sy+' '+lx+','+sy+' '+lx+','+ey+' '+b.x+','+ey+' '+b.x+','+(bTop-5)+'"/>';
+      if(e.label) svg+='<text x="'+(a.x-a.w/2-4)+'" y="'+(sy-4)+'" font-size="9" fill="#b06060" font-weight="600" text-anchor="end">'+esc(clip(e.label,10))+'</text>';
+    }
+  });
+  nodes.forEach(n=>{ // 선행 점선
+    (n.s.deps||[]).forEach(dp=>{
+      const ai=idxOf[dp];
+      if(ai==null||edgeKey.has(ai+">"+n.i)) return;
+      const a=nodes[ai];
+      rLane++;
+      const lx=CX+Math.max(TW,DW)/2+10+rLane*12;
+      const sy=a.y+a.h/2, ey=n.y-8;
+      svg+='<polyline fill="none" stroke="#4a7ab5" stroke-width="1.1" stroke-dasharray="3 3" marker-end="url(#mArrB)" points="'+
+        (a.x+a.w/2)+','+sy+' '+lx+','+sy+' '+lx+','+ey+' '+n.x+','+ey+' '+n.x+','+(n.y-5)+'"/>';
+    });
+  });
+  nodes.forEach(n=>{
+    const s=n.s, cy=n.y+n.h/2, nx=n.x;
+    const sel=s.id===detailStepId?' selnode':'';
+    const gAttr='<g class="flow-node mini-node'+sel+'" data-ch="'+chartKey+'" data-i="'+n.i+'" onclick="ovMiniClick(\''+s.id+'\')">';
+    if(s.type==="decision"){
+      const w=n.w/2;
+      svg+=gAttr+'<polygon class="nd" points="'+nx+','+n.y+' '+(nx+w)+','+cy+' '+nx+','+(n.y+n.h)+' '+(nx-w)+','+cy+
+        '" fill="#f6effa" stroke="#7b1fa2" stroke-width="1.2"/>'+
+        '<text x="'+nx+'" y="'+(cy+3.5)+'" text-anchor="middle" font-size="10" font-weight="650" fill="#4a1266">'+esc(clip(s.title||"(판단)",13))+'</text></g>';
+    }else if(s.type==="start"||s.type==="end"){
+      svg+=gAttr+'<rect class="nd" x="'+(nx-n.w/2)+'" y="'+n.y+'" width="'+n.w+'" height="'+n.h+'" rx="14" fill="'+(s.type==="start"?"#fff":"#1a1a1a")+'" stroke="#1a1a1a" stroke-width="1.2"/>'+
+        '<text x="'+nx+'" y="'+(cy+3.5)+'" text-anchor="middle" font-size="10" font-weight="650" fill="'+(s.type==="start"?"#1a1a1a":"#fff")+'">'+esc(clip(s.title||TYPE_LABEL[s.type],14))+'</text></g>';
+    }else{
+      const maxT=Math.max(9,Math.floor(n.w/10));
+      svg+=gAttr+'<rect class="nd" x="'+(nx-n.w/2)+'" y="'+n.y+'" width="'+n.w+'" height="'+n.h+'" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>'+
+        '<text x="'+nx+'" y="'+(n.y+(s.desc?16:n.h/2+3.5))+'" text-anchor="middle" font-size="10" font-weight="650">'+esc(clip(prefix+nums[n.i]+". "+(s.title||"(무제)"),maxT))+'</text>'+
+        (s.desc?'<text x="'+nx+'" y="'+(n.y+30)+'" text-anchor="middle" font-size="8.5" fill="#6b6b6b">'+esc(clip(s.desc,maxT+8))+'</text>':'')+'</g>';
+    }
+    if(attCnt(s)){
+      const bx=nx+n.w/2-2, by=n.y-1;
+      svg+='<g class="flow-node" onclick="event.stopPropagation();ovClick(\''+s.id+'\')"><circle cx="'+bx+'" cy="'+by+'" r="6.5" fill="#1a1a1a"/>'+
+        '<text x="'+bx+'" y="'+(by+2.7)+'" text-anchor="middle" font-size="8" fill="#fff" font-weight="600">'+attCnt(s)+'</text></g>';
+    }
+    if(kidCnt(s)){ // 폴더 배지 — 클릭하면 이 폴더의 미니 차트가 아래에 추가로 펼쳐짐
+      const open=ovOpen.has(s.id);
+      const pw=kidCnt(s)>9?32:27;
+      const x0=nx-n.w/2-5, y0=n.y-9;
+      svg+='<g class="flow-node" onclick="event.stopPropagation();ovCardClick(\''+s.id+'\',0)"><title>세부단계 '+kidCnt(s)+'개 — 클릭하여 '+(open?'접기':'펼치기')+'</title>'+
+        '<rect x="'+x0+'" y="'+y0+'" width="'+pw+'" height="15" rx="7.5" fill="'+(open?'#1a1a1a':'#fff')+'" stroke="#1a1a1a" stroke-width="1.1"/>'+
+        '<g transform="translate('+(x0+4)+','+(y0+2)+') scale(0.68)"><path d="M1.5 4.5a1 1 0 0 1 1-1h2.8l1.4 1.8h6.8a1 1 0 0 1 1 1v5.7a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z" fill="none" stroke="'+(open?'#fff':'#1a1a1a')+'" stroke-width="1.8" stroke-linejoin="round"/></g>'+
+        '<text x="'+(x0+pw-7)+'" y="'+(y0+11)+'" text-anchor="middle" font-size="8.5" font-weight="650" fill="'+(open?'#fff':'#1a1a1a')+'">'+kidCnt(s)+'</text></g>';
+    }
+  });
+  ovCharts[chartKey]={parentIds:parentIds.slice(), nodes:nodes.map(n=>({id:n.s.id,y:n.y,h:n.h}))};
+  return '<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" style="display:block">'+
+    '<defs><marker id="mArr" markerWidth="6" markerHeight="6" refX="4.5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#888"/></marker>'+
+    '<marker id="mArrR" markerWidth="6" markerHeight="6" refX="4.5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#b06060"/></marker>'+
+    '<marker id="mArrB" markerWidth="6" markerHeight="6" refX="4.5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#4a7ab5"/></marker></defs>'+svg+'</svg>';
+}
+/* 열려 있는 하위 폴더들의 미니 차트를 깊이 순으로 이어 붙임 */
+function ovDeepCharts(step,pfxNum,pathIds){
+  let out='';
+  const nums=calcNums(step.children||[]);
+  (step.children||[]).forEach((c,j)=>{
+    const cn=pfxNum+"."+nums[j];
+    if(kidCnt(c)&&ovOpen.has(c.id)){
+      out+='<div class="ov-mini"><div class="ov-mini-h">↳ '+esc(cn+'. '+(c.title||"(무제)"))+' 내부</div>'+
+        miniFlowSVG(c.children,cn+".",c.id,pathIds.concat(c.id))+'</div>';
+      out+=ovDeepCharts(c,cn,pathIds.concat(c.id));
+    }
+  });
+  return out;
+}
+function renderOverview(area,steps){
+  ovCharts={};
+  const nums=calcNums(steps);
+  const idxOf={}; steps.forEach((s,i)=>idxOf[s.id]=i);
+  const ref=id=>{ const i=idxOf[id]; return i==null?"?":nums[i]; };
+  const parentIds=navPath.slice();
+  let cols='';
+  steps.forEach((s,i)=>{
+    if(i>0) cols+='<div class="ov-arr"><svg width="26" height="16" viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8h17M14 3l7 5-7 5"/></svg></div>';
+    const path=parentIds.concat(s.id).join("/");
+    const open=ovOpen.has(s.id);
+    const chips=(nums[i].indexOf("-")>=0?'<span class="ov-chip">동시</span>':'')+
+      ((s.deps||[]).length?'<span class="ov-chip">선행 '+s.deps.map(ref).join("·")+'</span>':'');
+    cols+='<div class="ov-col'+(open?' open':'')+'">'+
+      '<div class="ov-node t-'+s.type+(s.id===detailStepId?' selov':'')+'" draggable="true" data-path="'+path+'"'+
+        ' ondragstart="ovDragStart(event)" ondragover="ovDragOver(event)" ondragleave="ovDragLeave(event)" ondrop="ovDrop(event)" ondragend="ovDragEnd(event)"'+
+        ' onclick="ovCardClick(\''+s.id+'\',1)">'+
+        (s.type==="start"||s.type==="end"?'':'<span class="ns">'+nums[i]+'. '+TYPE_LABEL[s.type]+'</span>')+
+        esc(s.title||TYPE_LABEL[s.type])+chips+
+        (kidCnt(s)?'<span class="ov-tg">'+(open?'▾ 세부단계 접기':'▸ 세부단계 '+kidCnt(s)+'개 — 클릭하여 펼치기')+'</span>':'')+
+        '<button class="ov-edit" title="상세 열기" onclick="event.stopPropagation();ovClick(\''+s.id+'\')">✎</button>'+
+      '</div>'+
+      ovBranches(s,steps,nums,"")+
+      (kidCnt(s)&&open?
+        '<div class="ov-mini">'+miniFlowSVG(s.children,nums[i]+".",s.id,parentIds.concat(s.id))+'</div>'+
+        ovDeepCharts(s,String(nums[i]),parentIds.concat(s.id))
+        :'')+
+    '</div>';
+  });
+  const openStep=detailStepId? stepById(detailStepId):null;
+  area.innerHTML='<div class="ov-scroll" id="ovScroll"><div class="ov-row">'+cols+'</div></div>'+
+    (openStep? panelHTML(openStep).replace('class="inline-panel"','class="inline-panel static"') : '');
+  if(openStep){ renderSdLinks(); renderSdImgs(); renderSdDeps(); }
+}
+function ovCardClick(id,isRoot){
+  if(Date.now()-ovDropT<350) return; // 드롭 직후 클릭 무시
+  const s=stepById(id);
+  if(s&&kidCnt(s)){
+    if(ovOpen.has(id)){ ovOpen.delete(id); }
+    else{
+      if(isRoot){ (currentSteps()||[]).forEach(x=>ovOpen.delete(x.id)); } // 루트는 한 번에 하나만 (아코디언)
+      ovOpen.add(id);
+    }
+    renderFlow();
+  }else{
+    ovClick(id); // 세부단계 없는 카드는 상세 패널 토글
+  }
+}
+/* 드래그 정렬 — 같은 폴더(형제) 안에서만 */
+let ovDrag=null, ovDropT=0;
+function ovArrOfParent(ids){ // 부모 id 체인 → 그 부모의 형제 배열
+  const d=activeDoc(); if(!d) return null;
+  let arr=d.steps;
+  for(const id of ids){ const s=(arr||[]).find(x=>x.id===id); if(!s) return null; arr=s.children; }
+  return arr;
+}
+function ovDragStart(ev){
+  ev.stopPropagation();
+  ovDrag={path:ev.currentTarget.dataset.path.split("/")};
+  try{ ev.dataTransfer.effectAllowed="move"; ev.dataTransfer.setData("text/plain",""); }catch(e){}
+}
+function ovDragOver(ev){
+  if(!ovDrag) return;
+  const tgt=ev.currentTarget.dataset.path.split("/");
+  const same=tgt.length===ovDrag.path.length && tgt.slice(0,-1).join("/")===ovDrag.path.slice(0,-1).join("/");
+  if(!same) return;
+  ev.preventDefault(); ev.stopPropagation();
+  ev.currentTarget.classList.add("ov-over");
+}
+function ovDragLeave(ev){ ev.currentTarget.classList.remove("ov-over"); }
+function ovDragEnd(){ ovDrag=null; document.querySelectorAll(".ov-over").forEach(el=>el.classList.remove("ov-over")); }
+function ovDrop(ev){
+  ev.preventDefault(); ev.stopPropagation();
+  ev.currentTarget.classList.remove("ov-over");
+  if(!ovDrag) return;
+  const a=ovDrag.path, b=ev.currentTarget.dataset.path.split("/");
+  ovDrag=null; ovDropT=Date.now();
+  if(a.length!==b.length || a.slice(0,-1).join("/")!==b.slice(0,-1).join("/")) return; // 같은 폴더 안에서만
+  const arr=ovArrOfParent(a.slice(0,-1)); if(!arr) return;
+  const ai=arr.findIndex(x=>x.id===a[a.length-1]);
+  const bi=arr.findIndex(x=>x.id===b[b.length-1]);
+  if(ai<0||bi<0||ai===bi) return;
+  const [m]=arr.splice(ai,1);
+  arr.splice(bi,0,m);
+  save(); render();
+}
+function ovClick(id){
+  if(Date.now()-ovDropT<350) return; // 드롭 직후 클릭 무시
+  if(detailStepId===id){ closeStepDetail(); return; }
+  openStepDetail(id);
+}
+function ovMiniClick(id){ ovClick(id); }
+/* 미니 차트 노드를 위아래로 끌어 같은 폴더 안 순서 변경 */
+let mDrag=null;
+document.addEventListener("pointerdown",e=>{
+  if(!state.ov||e.button!==0) return;
+  const g=e.target.closest(".mini-node"); if(!g) return;
+  mDrag={ch:g.dataset.ch,i:+g.dataset.i,y0:e.clientY,el:g,moved:false};
+});
+document.addEventListener("pointermove",e=>{
+  if(!mDrag) return;
+  const dy=e.clientY-mDrag.y0;
+  if(!mDrag.moved&&Math.abs(dy)>7){ mDrag.moved=true; mDrag.el.style.opacity="0.55"; }
+  if(mDrag.moved){ e.preventDefault(); mDrag.el.setAttribute("transform","translate(0,"+dy+")"); }
+});
+document.addEventListener("pointerup",e=>{
+  const d=mDrag; mDrag=null;
+  if(!d||!d.moved) return;
+  ovDropT=Date.now();
+  d.el.style.opacity="";
+  const info=ovCharts[d.ch]; if(!info){ render(); return; }
+  const dy=e.clientY-d.y0;
+  const me=info.nodes[d.i];
+  const cy=me.y+me.h/2+dy;
+  let ti=0;
+  info.nodes.forEach((n,j)=>{ if(cy>n.y+n.h/2-1) ti=j; });
+  if(ti===d.i){ render(); return; }
+  const arr=ovArrOfParent(info.parentIds); if(!arr){ render(); return; }
+  const ai=arr.findIndex(x=>x.id===info.nodes[d.i].id);
+  if(ai<0){ render(); return; }
+  const [m]=arr.splice(ai,1);
+  arr.splice(ti,0,m);
+  save(); render();
+});
+
+/* ══════════════ 매뉴얼 본문 ══════════════ */
+function renderMan(){
+  const box=document.getElementById("manBody");
+  const d=activeDoc();
+  if(!d){ box.innerHTML=""; return; }
+  box.innerHTML=manLevel(d.steps,"",0);
+}
+function manLevel(arr,prefix,depth){
+  const nums=calcNums(arr);
+  const idxOf={}; (arr||[]).forEach((s,i)=>idxOf[s.id]=i);
+  const ref=id=>{ const i=idxOf[id]; return i==null?"?":prefix+nums[i]+". "+(arr[i].title||"(무제)"); };
+  return (arr||[]).map((s,i)=>{
+    const num=prefix+nums[i];
+    // 기본 다음 = 다음 그룹의 첫 단계 (동시 진행 단계는 건너뜀)
+    let j=i+1; while(j<arr.length&&arr[j].par) j++;
+    const defNext=arr[j]? prefix+nums[j]+". "+(arr[j].title||"(무제)") : "";
+    let flow="";
+    if(s.type==="decision"){
+      flow=(s.branches||[]).map(b=>'<b>'+esc(b.label||"분기")+'</b> → '+esc(b.to?ref(b.to):(defNext||"다음"))).join(" · ");
+    }else if(s.type!=="end"){
+      if(s.next) flow="다음: "+esc(ref(s.next));
+      else if(defNext) flow="다음: "+esc(defNext);
+    }
+    const deps=(s.deps||[]).filter(v=>idxOf[v]!=null);
+    if(deps.length) flow=(flow?flow+' &nbsp;·&nbsp; ':'')+'<span style="color:#2c5488">선행: '+deps.map(v=>esc(ref(v))).join(" · ")+'</span>';
+    const ncls=(s.type==="decision"?"dec":(s.type==="start"||s.type==="end"?"se":""))+(depth?" subn":"");
+    const links=(s.links||[]).filter(l=>l.url);
+    const linkHtml=links.length?'<div class="man-links">'+links.map(l=>
+      '<a href="'+esc(l.url)+'" target="_blank" rel="noopener">'+
+      '<svg style="width:11px;height:11px;vertical-align:-1.5px;margin-right:2px" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6.5 9.5l3-3"/><path d="M7.6 4.6l1.1-1.1a2.47 2.47 0 0 1 3.5 3.5L11.1 8.1"/><path d="M8.4 11.4l-1.1 1.1a2.47 2.47 0 0 1-3.5-3.5L4.9 7.9"/></svg>'+
+      esc(l.label||l.url)+'</a>').join("")+'</div>':'';
+    const imgHtml=(s.images||[]).length?'<div class="man-imgs">'+s.images.map((im,ii)=>
+      '<img src="'+esc(im.src)+'" alt="'+esc(im.cap||"")+'" title="'+esc(im.cap||"")+'" loading="lazy" onclick="openLightboxFor(\''+s.id+'\','+ii+')">').join("")+'</div>':'';
+    const foldBadge=kidCnt(s)?'<span class="fold-cnt" title="세부단계 열기" onclick="event.stopPropagation();enterStep(\''+s.id+'\')">'+ICO_FOLDER+'세부 '+kidCnt(s)+'</span>':'';
+    const parBadge=nums[i].indexOf("-")>=0?'<span class="att-cnt" title="같은 번호 단계와 동시 진행">동시 진행</span>':'';
+    const kidsHtml=kidCnt(s)?'<div class="man-sub">'+manLevel(s.children,num+".",depth+1)+'</div>':'';
+    return '<div class="man-step"><div class="n '+ncls+'">'+num+'</div><div class="bd">'+
+      '<div class="t" style="cursor:pointer" onclick="openStepDetail(\''+s.id+'\')" title="클릭: 상세(링크·이미지)">['+TYPE_LABEL[s.type]+'] '+esc(s.title||"(무제)")+
+        (s.owner?' <span style="font-weight:400;color:var(--muted)">— 담당: '+esc(s.owner)+'</span>':'')+
+        (attCnt(s)?'<span class="att-cnt">첨부 '+attCnt(s)+'</span>':'')+parBadge+foldBadge+'</div>'+
+      (s.desc?'<div class="d">'+esc(s.desc)+'</div>':'')+
+      (flow?'<div class="m">'+flow+'</div>':'')+
+      linkHtml+imgHtml+
+    '</div></div>'+kidsHtml;
+  }).join("");
+}
+
+/* ══════════════ 백업 ══════════════ */
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(state,null,1)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  const t=new Date();
+  a.download="업무프로세스_백업_"+t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0")+".json";
+  a.click(); URL.revokeObjectURL(a.href);
+}
+function importJSON(ev){
+  const f=ev.target.files[0]; ev.target.value="";
+  if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const s=JSON.parse(r.result);
+      if(!s||!Array.isArray(s.docs)) throw 0;
+      if(!confirm("현재 데이터를 백업 파일 내용으로 대체할까요?")) return;
+      state=s;
+      state.docs.forEach(d=>normSteps(d.steps));
+      state.ov=!!state.ov;
+      if(!state.docs.find(d=>d.id===state.activeId)) state.activeId=state.docs[0]?state.docs[0].id:null;
+      navPath=[];
+      save(); render();
+    }catch(e){ alert("JSON 파일을 해석할 수 없습니다."); }
+  };
+  r.readAsText(f);
+}
+
+/* ══════════════ 시작 ══════════════ */
+detectStorage();
+load();
+if(!state.docs.length) flag("+ 새 매뉴얼로 시작하세요");
+render();
+</script>
+</body>
+</html>
